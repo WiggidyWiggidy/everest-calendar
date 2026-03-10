@@ -29,10 +29,10 @@ export function useEvents() {
     setLoading(false);
   }, [supabase]);
 
-  // Create a new event
-  async function createEvent(formData: EventFormData) {
+  // Create a new event — returns true on success, false on failure
+  async function createEvent(formData: EventFormData): Promise<boolean> {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) return false;
 
     const { error } = await supabase.from('calendar_events').insert({
       user_id: user.id,
@@ -47,9 +47,11 @@ export function useEvents() {
 
     if (error) {
       console.error('Error creating event:', error);
-    } else {
-      await fetchEvents(); // Refresh the list
+      return false;
     }
+
+    await fetchEvents(); // Refresh the list
+    return true;
   }
 
   // Update an existing event

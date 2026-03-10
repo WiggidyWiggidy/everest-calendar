@@ -76,8 +76,27 @@ export default function ChatPage() {
       ...suggestion,
       status: 'planned',
     };
-    await createEvent(formData);
-    alert(`"${suggestion.title}" added to your calendar!`);
+    const success = await createEvent(formData);
+    if (success) {
+      // Show a brief in-chat confirmation instead of a blocking alert
+      const confirmMsg: ChatMessage = {
+        id: 'confirm-' + Date.now(),
+        user_id: '',
+        role: 'assistant',
+        content: `✅ "${suggestion.title}" has been added to your calendar on ${suggestion.event_date}. Head to the Calendar page to see it!`,
+        created_at: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, confirmMsg]);
+    } else {
+      const errorMsg: ChatMessage = {
+        id: 'error-' + Date.now(),
+        user_id: '',
+        role: 'assistant',
+        content: `❌ Couldn't add "${suggestion.title}" to your calendar. Make sure you've run the Supabase schema SQL — check the supabase/schema.sql file in your project.`,
+        created_at: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, errorMsg]);
+    }
   }
 
   // Send a message to Claude

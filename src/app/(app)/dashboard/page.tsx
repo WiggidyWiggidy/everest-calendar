@@ -5,8 +5,8 @@
 // Overview with upcoming events, status breakdown,
 // quick-add button, and launch countdown
 // ============================================
-import { useState, useMemo } from 'react';
-import { format, isAfter, isBefore, addDays, startOfDay, differenceInDays } from 'date-fns';
+import { useState, useMemo, useEffect } from 'react';
+import { format, isAfter, isBefore, addDays, startOfDay, differenceInDays, parseISO } from 'date-fns';
 import {
   Rocket,
   CalendarDays,
@@ -27,6 +27,13 @@ import { cn } from '@/lib/utils';
 export default function DashboardPage() {
   const { events, loading, createEvent } = useEvents();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [launchDate, setLaunchDate] = useState<Date | null>(null);
+
+  // Read the launch date saved in Settings from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem('everest_launch_date');
+    if (stored) setLaunchDate(parseISO(stored));
+  }, []);
 
   // Compute dashboard stats
   const stats = useMemo(() => {
@@ -48,9 +55,6 @@ export default function DashboardPage() {
     return { upcoming, planned, inProgress, done, total: events.length };
   }, [events]);
 
-  // Launch countdown — set to null until user configures it
-  // For now, we'll show a placeholder
-  const launchDate: Date | null = null;
   const daysUntilLaunch = launchDate ? differenceInDays(launchDate, new Date()) : null;
 
   async function handleQuickAdd(data: EventFormData) {
