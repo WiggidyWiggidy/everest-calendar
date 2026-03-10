@@ -93,6 +93,7 @@ export interface Agent {
   system_prompt: string;
   auto_learn: boolean;
   last_optimised_at: string | null; // set after memory optimiser runs
+  agent_type: 'chat' | 'analyst';   // 'chat' = regular agent, 'analyst' = voice-to-build analyst
   created_at: string;
   updated_at: string;
 }
@@ -150,6 +151,45 @@ export interface AgentMessage {
 export interface MemorySuggestion {
   title: string;
   content: string;
+}
+
+// ============================================
+// Voice-to-Build Pipeline Types
+// ============================================
+
+export interface RawThought {
+  id: string;
+  user_id: string;
+  text: string;
+  status: 'unprocessed' | 'processed' | 'archived';
+  created_at: string;
+}
+
+export interface TaskBacklog {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string;
+  category: string;
+  priority_score: number;
+  status: 'pending' | 'approved' | 'in-progress' | 'done' | 'dismissed';
+  source_thought_ids: string[];
+  created_at: string;
+}
+
+export interface AnalystConfig {
+  id: string;
+  user_id: string;
+  master_prompt: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProcessedTask {
+  title: string;
+  category: string;
+  description: string;
+  priority_score: number;
 }
 
 // Default system prompt for the Personal Assistant agent
