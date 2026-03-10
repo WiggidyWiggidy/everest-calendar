@@ -1,0 +1,259 @@
+'use client';
+
+// ============================================
+// Dashboard Page
+// Overview with upcoming events, status breakdown,
+// quick-add button, and launch countdown
+// ============================================
+import { useState, useMemo } from 'react';
+import { format, isAfter, isBefore, addDays, startOfDay, differenceInDays } from 'date-fns';
+import {
+  Rocket,
+  CalendarDays,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  Plus,
+  TrendingUp,
+} from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import EventDialog from '@/components/calendar/EventDialog';
+import { useEvents } from '@/lib/hooks/useEvents';
+import { CATEGORY_COLORS, CATEGORY_LABELS, EventFormData } from '@/types';
+import { cn } from '@/lib/utils';
+
+export default function DashboardPage() {
+  const { events, loading, createEvent } = useEvents();
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Compute dashboard stats
+  const stats = useMemo(() => {
+    const today = startOfDay(new Date());
+    const nextWeek = addDays(today, 7);
+
+    const upcoming = events
+      .filter((e) => {
+        const date = new Date(e.event_date);
+        return isAfter(date, today) || format(date, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd');
+      })
+      .filter((e) => isBefore(new Date(e.event_date), nextWeek))
+      .sort((a, b) => a.event_date.localeCompare(b.event_date));
+
+    const planned = events.filter((e) => e.status === 'planned').length;
+    const inProgress = events.filter((e) => e.status === 'in-progress').length;
+    const done = events.filter((e) => e.status === 'done').length;
+
+    return { upcoming, planned, inProgress, done, total: events.length };
+  }, [events]);
+
+  // Launch countdown — set to null until user configures it
+  // For now, we'll show a placeholder
+  const launchDate: Date | null = null;
+  const daysUntilLaunch = launchDate ? differenceInDays(launchDate, new Date()) : null;
+
+  async function handleQuickAdd(data: EventFormData) {
+    await createEvent(data);
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-500 text-sm">
+            Welcome back! Here&apos;s your launch overview.
+          </p>
+        </div>
+        <Button onClick={() => setDialogOpen(true)}>
+          <Plus className="h-4 w-4 mr-1" />
+          Quick Add
+        </Button>
+      </div>
+
+      {/* Stat cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Total Events</p>
+                <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
+              </div>
+              <div className="h-10 w-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+                <CalendarDays className="h-5 w-5 text-indigo-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Planned</p>
+                <p className="text-3xl font-bold text-gray-900">{stats.planned}</p>
+              </div>
+              <div className="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Clock className="h-5 w-5 text-blue-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">In Progress</p>
+                <p className="text-3xl font-bold text-yellow-600">{stats.inProgress}</p>
+              </div>
+              <div className="h-10 w-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+                <TrendingUp className="h-5 w-5 text-yellow-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Done</p>
+                <p className="text-3xl font-bold text-green-600">{stats.done}</p>
+              </div>
+              <div className="h-10 w-10 bg-green-100 rounded-lg flex items-center justify-center">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Upcoming events (next 7 days) */}
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-indigo-600" />
+                Upcoming Events (Next 7 Days)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {stats.upcoming.length === 0 ? (
+                <p className="text-gray-400 text-sm py-8 text-center">
+                  No upcoming events this week. Click &quot;Quick Add&quot; to create one!
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {stats.upcoming.map((event) => {
+                    const colors = CATEGORY_COLORS[event.category];
+                    return (
+                      <div
+                        key={event.id}
+                        className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 transition-colors"
+                      >
+                        <div className={cn('w-2 h-10 rounded-full', colors.dot)} />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm text-gray-900 truncate">
+                            {event.title}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            {format(new Date(event.event_date + 'T00:00:00'), 'EEE, MMM d')}
+                            {event.event_time && ` at ${event.event_time.slice(0, 5)}`}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className={cn('text-xs', colors.bg, colors.text)}>
+                          {CATEGORY_LABELS[event.category]}
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            'text-xs',
+                            event.priority === 'high' && 'border-red-200 text-red-600',
+                            event.priority === 'medium' && 'border-yellow-200 text-yellow-600',
+                            event.priority === 'low' && 'border-gray-200 text-gray-500'
+                          )}
+                        >
+                          {event.priority}
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Launch countdown */}
+        <div>
+          <Card className="bg-gradient-to-br from-indigo-600 to-purple-700 text-white border-0">
+            <CardContent className="p-6 text-center">
+              <Rocket className="h-10 w-10 mx-auto mb-3 opacity-80" />
+              <h3 className="text-lg font-bold mb-1">Launch Countdown</h3>
+              {daysUntilLaunch !== null ? (
+                <>
+                  <p className="text-5xl font-black my-4">{daysUntilLaunch}</p>
+                  <p className="text-indigo-200">days until launch</p>
+                  <p className="text-sm text-indigo-200 mt-2">
+                    {format(launchDate!, 'MMMM d, yyyy')}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-indigo-200 text-sm mt-2">
+                    Set your launch date in Settings to start the countdown!
+                  </p>
+                  <a
+                    href="/settings"
+                    className="inline-block mt-4 px-4 py-2 bg-white/20 rounded-lg text-sm font-medium hover:bg-white/30 transition-colors"
+                  >
+                    Set Launch Date →
+                  </a>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Progress bar */}
+          <Card className="mt-4">
+            <CardContent className="p-4">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">Completion Rate</h3>
+              <div className="w-full bg-gray-100 rounded-full h-3">
+                <div
+                  className="bg-indigo-600 h-3 rounded-full transition-all duration-500"
+                  style={{
+                    width: `${stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : 0}%`,
+                  }}
+                />
+              </div>
+              <p className="text-xs text-gray-400 mt-2">
+                {stats.done} of {stats.total} events completed
+                {stats.total > 0 && ` (${Math.round((stats.done / stats.total) * 100)}%)`}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Quick-add dialog */}
+      <EventDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        onSave={handleQuickAdd}
+        defaultDate={format(new Date(), 'yyyy-MM-dd')}
+      />
+    </div>
+  );
+}
