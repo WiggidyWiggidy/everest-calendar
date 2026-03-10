@@ -3,6 +3,7 @@
 // ============================================
 // Agents Page
 // Split layout: Memory Panel (left) + Chat Panel (right)
+// Analyst agents get the full-width AnalystDashboard instead.
 // Manages agent selection, memory CRUD, and agent lifecycle
 // ============================================
 import { useState, useEffect, useCallback } from 'react';
@@ -13,6 +14,7 @@ import {
   updateAgent,
   deleteAgent,
   ensureDefaultAgent,
+  ensureSystemAnalyst,
 } from '@/lib/agents';
 import {
   getMemories,
@@ -23,6 +25,7 @@ import {
 import AgentSelector from '@/components/agents/AgentSelector';
 import MemoryPanel from '@/components/agents/MemoryPanel';
 import ChatPanel from '@/components/agents/ChatPanel';
+import AnalystDashboard from '@/components/agents/AnalystDashboard';
 import NewAgentDialog from '@/components/agents/NewAgentDialog';
 import { Loader2 } from 'lucide-react';
 
@@ -33,15 +36,18 @@ export default function AgentsPage() {
   const [loading, setLoading] = useState(true);
   const [showNewDialog, setShowNewDialog] = useState(false);
 
-  // Load agents on mount — ensure default exists
+  // Load agents on mount — ensure default + system analyst exist
   useEffect(() => {
     async function init() {
       await ensureDefaultAgent();
+      await ensureSystemAnalyst();
       const allAgents = await getAgents();
       setAgents(allAgents);
 
       if (allAgents.length > 0) {
-        setActiveAgent(allAgents[0]);
+        // Default to first non-analyst agent so chat is shown first
+        const firstChat = allAgents.find((a) => a.agent_type !== 'analyst');
+        setActiveAgent(firstChat || allAgents[0]);
       }
       setLoading(false);
     }
@@ -93,6 +99,11 @@ export default function AgentsPage() {
 
   async function handleDeleteAgent() {
     if (!activeAgent) return;
+    // Don't allow deleting the System Analyst
+    if (activeAgent.agent_type === 'analyst') {
+      alert('System agents cannot be deleted.');
+      return;
+    }
     // Don't allow deleting the last agent
     if (agents.length <= 1) {
       alert('You must have at least one agent.');
@@ -166,31 +177,35 @@ export default function AgentsPage() {
         onNewAgent={() => setShowNewDialog(true)}
       />
 
-      {/* Split layout */}
+      {/* Main content — analyst gets full-width dashboard, chat agents get split layout */}
       {activeAgent ? (
-        <div className="flex-1 flex overflow-hidden">
-          {/* Left: Memory Panel */}
-          <div className="w-80 shrink-0 hidden md:block">
-            <MemoryPanel
-              agent={activeAgent}
-              memories={memories}
-              onCreateMemory={handleCreateMemory}
-              onUpdateMemory={handleUpdateMemory}
-              onDeleteMemory={handleDeleteMemory}
-              onUpdateAgent={handleUpdateAgent}
-              onDeleteAgent={handleDeleteAgent}
-              onMemoriesReplaced={loadMemories}
-            />
-          </div>
+        activeAgent.agent_type === 'analyst' ? (
+          <AnalystDashboard agent={activeAgent} />
+        ) : (
+          <div className="flex-1 flex overflow-hidden">
+            {/* Left: Memory Panel */}
+            <div className="w-80 shrink-0 hidden md:block">
+              <MemoryPanel
+                agent={activeAgent}
+                memories={memories}
+                onCreateMemory={handleCreateMemory}
+                onUpdateMemory={handleUpdateMemory}
+                onDeleteMemory={handleDeleteMemory}
+                onUpdateAgent={handleUpdateAgent}
+                onDeleteAgent={handleDeleteAgent}
+                onMemoriesReplaced={loadMemories}
+              />
+            </div>
 
-          {/* Right: Chat Panel */}
-          <div className="flex-1 min-w-0">
-            <ChatPanel
-              agent={activeAgent}
-              onMemorySuggestion={handleMemorySuggestion}
-            />
+            {/* Right: Chat Panel */}
+            <div className="flex-1 min-w-0">
+              <ChatPanel
+                agent={activeAgent}
+                onMemorySuggestion={handleMemorySuggestion}
+              />
+            </div>
           </div>
-        </div>
+        )
       ) : (
         <div className="flex-1 flex items-center justify-center">
           <p className="text-gray-400">No agents found. Create one to get started.</p>

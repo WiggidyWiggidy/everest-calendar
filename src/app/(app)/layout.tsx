@@ -5,6 +5,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import Sidebar from '@/components/layout/Sidebar';
+import VoiceCapture from '@/components/global/VoiceCapture';
 
 export default async function AppLayout({
   children,
@@ -27,6 +28,7 @@ export default async function AppLayout({
         <div className="p-6 lg:p-8 pt-16 lg:pt-8">
           {children}
         </div>
+        <VoiceCapture />
       </main>
     </div>
   );

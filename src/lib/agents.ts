@@ -35,6 +35,7 @@ export async function createAgent(agent: {
   icon?: string;
   system_prompt: string;
   auto_learn?: boolean;
+  agent_type?: 'chat' | 'analyst';
 }): Promise<Agent | null> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
@@ -61,6 +62,32 @@ export async function deleteAgent(id: string): Promise<boolean> {
   const { error } = await supabase.from('agents').delete().eq('id', id);
   if (error) { console.error('deleteAgent error:', error); return false; }
   return true;
+}
+
+// Create the System Analyst agent if one doesn't already exist for this user
+export async function ensureSystemAnalyst(): Promise<Agent | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  // Check if an analyst agent already exists
+  const { data: existing } = await supabase
+    .from('agents')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('agent_type', 'analyst')
+    .single();
+
+  if (existing) return existing;
+
+  // Create the System Analyst agent
+  return createAgent({
+    name: 'System Analyst',
+    icon: '🔬',
+    description: 'Batch-processes raw thoughts into prioritised technical tasks for Opus handoff',
+    system_prompt: 'System agent — uses analyst_config table for prompt management',
+    auto_learn: false,
+    agent_type: 'analyst',
+  });
 }
 
 // Create the default Personal Assistant if user has no agents
