@@ -31,7 +31,9 @@ export default function AgentSelector({
           className={cn(
             'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors',
             activeAgentId === agent.id
-              ? 'bg-indigo-100 text-indigo-700'
+              ? agent.agent_type === 'analyst'
+                ? 'bg-amber-100 text-amber-700'
+                : 'bg-indigo-100 text-indigo-700'
               : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
           )}
         >

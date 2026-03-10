@@ -9,7 +9,7 @@ import { AnalystConfig } from '@/types';
 
 const supabase = createClient();
 
-const DEFAULT_MASTER_PROMPT =
+export const DEFAULT_MASTER_PROMPT =
   `You are the Lead Technical Analyst scaling global physical product brands (Europe/US focus). Review these raw brain dumps. Break them into distinct technical tasks. Score each task (1-10) based strictly on: 1. Automating workflows to save the founder time. 2. Improving conversion rates and revenue systems. Return a strict JSON array with objects containing: "title" (string), "category" (string), "description" (string, exactly 2 sentences), "priority_score" (integer 1-10). Return ONLY the JSON array. No preamble. No markdown code fences.`;
 
 // Fetch the user's analyst config, creating it with the default prompt if it doesn't exist
