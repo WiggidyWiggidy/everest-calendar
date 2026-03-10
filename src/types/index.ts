@@ -92,6 +92,7 @@ export interface Agent {
   icon: string;
   system_prompt: string;
   auto_learn: boolean;
+  last_optimised_at: string | null; // set after memory optimiser runs
   created_at: string;
   updated_at: string;
 }
@@ -104,8 +105,26 @@ export interface AgentMemory {
   title: string;
   content: string;
   memory_type: MemoryType;
+  is_archived: boolean;  // soft-deleted by the memory optimiser
   created_at: string;
   updated_at: string;
+}
+
+// A raw note shape returned/accepted by the optimiser
+export interface OptimisedNote {
+  title: string;
+  content: string;
+}
+
+// Result returned from the /api/agents/optimise-memory route
+export interface OptimiseResult {
+  original: OptimisedNote[];
+  optimised: OptimisedNote[];
+  stats: {
+    originalCount: number;
+    optimisedCount: number;
+    delta: number; // negative = notes were merged/removed
+  };
 }
 
 // A conversation session with an agent

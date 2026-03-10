@@ -179,6 +179,7 @@ export default function AgentsPage() {
               onDeleteMemory={handleDeleteMemory}
               onUpdateAgent={handleUpdateAgent}
               onDeleteAgent={handleDeleteAgent}
+              onMemoriesReplaced={loadMemories}
             />
           </div>
 
