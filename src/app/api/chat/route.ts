@@ -6,8 +6,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
-// System prompt that positions Claude as a launch planning strategist
-const SYSTEM_PROMPT = `You are the Everest Launch Strategist — an expert product launch planning assistant built into Everest Calendar, the command centre for Everest Labs.
+// Build the system prompt with the current date so Claude uses correct years
+function buildSystemPrompt(): string {
+  const today = new Date().toISOString().split('T')[0]; // e.g. "2026-03-10"
+  return `You are the Everest Launch Strategist — an expert product launch planning assistant built into Everest Calendar, the command centre for Everest Labs.
+
+IMPORTANT: Today's date is ${today}. Always use this as your reference when suggesting dates. Never suggest dates in the past.
 
 Your role:
 - Help plan and optimize product launches
@@ -28,6 +32,7 @@ When suggesting calendar events, use this exact format (one per suggestion):
 \`\`\`
 
 Be concise, strategic, and actionable. You are speaking with the founder of Everest Labs.`;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -58,7 +63,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1024,
-        system: SYSTEM_PROMPT + eventContext,
+        system: buildSystemPrompt() + eventContext,
         messages: messages.map((m: { role: string; content: string }) => ({
           role: m.role,
           content: m.content,
