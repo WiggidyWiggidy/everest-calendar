@@ -1,14 +1,15 @@
 // ============================================
 // /api/chat — Proxies chat requests to Anthropic
 // Keeps the API key server-side for security
-// Receives messages + event context, returns Claude's response
+// Supports agent memory injection: fetches agent config + memories,
+// builds a personalised system prompt, and returns Claude's response
 // ============================================
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
-// Build the system prompt with the current date so Claude uses correct years
-function buildSystemPrompt(): string {
-  const today = new Date().toISOString().split('T')[0]; // e.g. "2026-03-10"
+// Fallback system prompt when no agent is specified
+function buildDefaultSystemPrompt(): string {
+  const today = new Date().toISOString().split('T')[0];
   return `You are the Everest Launch Strategist — an expert product launch planning assistant built into Everest Calendar, the command centre for Everest Labs.
 
 IMPORTANT: Today's date is ${today}. Always use this as your reference when suggesting dates. Never suggest dates in the past.
@@ -34,6 +35,80 @@ When suggesting calendar events, use this exact format (one per suggestion):
 Be concise, strategic, and actionable. You are speaking with the founder of Everest Labs.`;
 }
 
+// Build the full system prompt with agent config, memories, and event context
+async function buildAgentSystemPrompt(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  agentId: string,
+  events: unknown[] | undefined
+): Promise<string> {
+  const today = new Date().toISOString().split('T')[0];
+
+  // Fetch agent config
+  const { data: agent } = await supabase
+    .from('agents')
+    .select('*')
+    .eq('id', agentId)
+    .single();
+
+  if (!agent) {
+    return buildDefaultSystemPrompt();
+  }
+
+  // Fetch memories for this agent
+  const { data: memories } = await supabase
+    .from('agent_memories')
+    .select('*')
+    .eq('agent_id', agentId)
+    .order('created_at', { ascending: true });
+
+  // Format memories as markdown
+  let memoryNotes = '(No memory notes yet.)';
+  if (memories && memories.length > 0) {
+    memoryNotes = memories
+      .map((m: { title: string; content: string }) => `### ${m.title}\n${m.content}`)
+      .join('\n\n');
+  }
+
+  // Inject memories into the agent's system prompt
+  let systemPrompt = agent.system_prompt.replace('{memory_notes}', memoryNotes);
+
+  // Add date awareness
+  systemPrompt += `\n\nIMPORTANT: Today's date is ${today}. Always use this as your reference when suggesting dates. Never suggest dates in the past.`;
+
+  // Add event suggestion format
+  systemPrompt += `\n\nWhen suggesting calendar events, use this exact format (one per suggestion):
+\`\`\`event
+{
+  "title": "Event title here",
+  "description": "Brief description",
+  "event_date": "YYYY-MM-DD",
+  "event_time": "HH:MM",
+  "category": "product|marketing|content|meeting|deadline",
+  "priority": "high|medium|low"
+}
+\`\`\``;
+
+  // Add auto-learn instruction if enabled
+  if (agent.auto_learn) {
+    systemPrompt += `\n\nAUTO-LEARN: When you learn something important about the user's preferences, project, or working style, suggest saving it as a memory by including this block in your response:
+<memory_suggestion>
+{
+  "title": "Short title for this memory",
+  "content": "What to remember about this (markdown)"
+}
+</memory_suggestion>
+
+Only suggest a memory when you genuinely learn something new and useful. Do not suggest memories for every message.`;
+  }
+
+  // Add event context
+  if (events && events.length > 0) {
+    systemPrompt += `\n\nHere are the user's current calendar events:\n${JSON.stringify(events, null, 2)}`;
+  }
+
+  return systemPrompt;
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Verify the user is authenticated
@@ -44,12 +119,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { messages, events } = await request.json();
+    const { messages, events, agent_id } = await request.json();
 
-    // Build context about current calendar events
-    let eventContext = '';
-    if (events && events.length > 0) {
-      eventContext = `\n\nHere are the user's current calendar events:\n${JSON.stringify(events, null, 2)}`;
+    // Build the system prompt — use agent-specific if agent_id provided
+    let systemPrompt: string;
+    if (agent_id) {
+      systemPrompt = await buildAgentSystemPrompt(supabase, agent_id, events);
+    } else {
+      systemPrompt = buildDefaultSystemPrompt();
+      // Add event context for non-agent mode
+      if (events && events.length > 0) {
+        systemPrompt += `\n\nHere are the user's current calendar events:\n${JSON.stringify(events, null, 2)}`;
+      }
     }
 
     // Call Anthropic API
@@ -63,7 +144,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1024,
-        system: buildSystemPrompt() + eventContext,
+        system: systemPrompt,
         messages: messages.map((m: { role: string; content: string }) => ({
           role: m.role,
           content: m.content,

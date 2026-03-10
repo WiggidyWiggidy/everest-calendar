@@ -76,3 +76,72 @@ export interface SuggestedEvent {
   category: EventCategory;
   priority: EventPriority;
 }
+
+// ============================================
+// Agent Memory System Types
+// ============================================
+
+export type MemoryType = 'manual' | 'auto' | 'system_prompt';
+
+// An AI agent with a specific role and persistent memory
+export interface Agent {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string | null;
+  icon: string;
+  system_prompt: string;
+  auto_learn: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// A memory note attached to an agent
+export interface AgentMemory {
+  id: string;
+  agent_id: string;
+  user_id: string;
+  title: string;
+  content: string;
+  memory_type: MemoryType;
+  created_at: string;
+  updated_at: string;
+}
+
+// A conversation session with an agent
+export interface AgentConversation {
+  id: string;
+  agent_id: string;
+  user_id: string;
+  title: string | null;
+  created_at: string;
+}
+
+// A single message within a conversation
+export interface AgentMessage {
+  id: string;
+  conversation_id: string;
+  user_id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
+}
+
+// Memory suggestion extracted from assistant response
+export interface MemorySuggestion {
+  title: string;
+  content: string;
+}
+
+// Default system prompt for the Personal Assistant agent
+export const DEFAULT_AGENT_PROMPT = `You are a personal assistant for product launch planning at Everest Labs.
+You help with timeline management, task prioritization, and strategic advice.
+
+Key behaviours:
+- Be concise and actionable
+- Reference the user's calendar events when relevant
+- If the user corrects you or gives feedback, acknowledge it clearly
+- When you learn something important about the user's preferences or project, suggest saving it as a memory note
+
+You have access to the following memory notes which contain things you've learned:
+{memory_notes}`;

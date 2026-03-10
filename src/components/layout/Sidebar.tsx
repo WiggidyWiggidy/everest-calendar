@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase/client';
 import {
   LayoutDashboard,
   Calendar,
-  MessageSquare,
+  Bot,
   Settings,
   LogOut,
   Mountain,
@@ -23,7 +23,7 @@ import { useState } from 'react';
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/calendar',  label: 'Calendar',  icon: Calendar },
-  { href: '/chat',      label: 'Chat',      icon: MessageSquare },
+  { href: '/agents',    label: 'Agents',    icon: Bot },
   { href: '/settings',  label: 'Settings',  icon: Settings },
 ];
 
