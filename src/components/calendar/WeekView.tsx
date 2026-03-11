@@ -77,17 +77,20 @@ export default function WeekView({
               )}
             </div>
 
-            {/* Events for this day */}
+            {/* Events for this day — big movers sorted first */}
             {dayEvents.length > 0 ? (
               <div className="space-y-2 ml-10">
-                {dayEvents.map((event) => {
+                {[...dayEvents]
+                  .sort((a, b) => (b.is_big_mover ? 1 : 0) - (a.is_big_mover ? 1 : 0))
+                  .map((event) => {
                   const colors = CATEGORY_COLORS[event.category];
                   return (
                     <button
                       key={event.id}
                       className={cn(
                         'w-full text-left p-2 rounded-lg border transition-colors hover:shadow-sm',
-                        event.status === 'done' && 'opacity-60'
+                        event.status === 'done' && 'opacity-60',
+                        event.is_big_mover && 'border-l-4 border-amber-500'
                       )}
                       onClick={(e) => {
                         e.stopPropagation();
@@ -99,6 +102,11 @@ export default function WeekView({
                         <span className={cn('font-medium text-sm', event.status === 'done' && 'line-through')}>
                           {event.title}
                         </span>
+                        {event.is_big_mover && (
+                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium ml-1">
+                            Big Mover
+                          </span>
+                        )}
                         <Badge variant="outline" className={cn('text-xs ml-auto', colors.bg, colors.text)}>
                           {CATEGORY_LABELS[event.category]}
                         </Badge>

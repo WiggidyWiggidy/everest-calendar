@@ -1,9 +1,15 @@
 'use client';
 
 // ============================================
-// Dashboard Page
-// Overview with upcoming events, status breakdown,
-// quick-add button, and launch countdown
+// Dashboard Page — Sprint 0: Launch Readiness
+// Answers in under 5 seconds: "Am I on track for March 29th?"
+//
+// Features:
+//   • 6 stat cards (Total, Planned, In Progress, Done, Overdue, Launch Tasks)
+//   • Today's Big Mover banner (amber, conditional)
+//   • Upcoming Events (next 7 days)
+//   • Launch Countdown card + Completion Rate bar
+//   • Launch Dependencies checklist with inline quick-add
 // ============================================
 import { useState, useMemo, useEffect } from 'react';
 import { format, isAfter, isBefore, addDays, startOfDay, differenceInDays, parseISO } from 'date-fns';
@@ -15,19 +21,28 @@ import {
   AlertCircle,
   Plus,
   TrendingUp,
+  CheckSquare,
+  Loader2,
+  Check,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import EventDialog from '@/components/calendar/EventDialog';
 import { useEvents } from '@/lib/hooks/useEvents';
-import { CATEGORY_COLORS, CATEGORY_LABELS, EventFormData } from '@/types';
+import { getLaunchTasks, addLaunchTask, updateTaskStatus } from '@/lib/task-backlog';
+import { CATEGORY_COLORS, CATEGORY_LABELS, EventFormData, TaskBacklog } from '@/types';
 import { cn } from '@/lib/utils';
 
 export default function DashboardPage() {
   const { events, loading, createEvent } = useEvents();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [launchDate, setLaunchDate] = useState<Date | null>(null);
+  const [dialogOpen, setDialogOpen]         = useState(false);
+  const [launchDate, setLaunchDate]         = useState<Date | null>(null);
+  const [launchTasks, setLaunchTasks]       = useState<TaskBacklog[]>([]);
+  const [newTaskTitle, setNewTaskTitle]     = useState('');
+  const [newTaskDueDate, setNewTaskDueDate] = useState('');
+  const [addingTask, setAddingTask]         = useState(false);
 
   // Read the launch date saved in Settings from localStorage
   useEffect(() => {
@@ -35,9 +50,18 @@ export default function DashboardPage() {
     if (stored) setLaunchDate(parseISO(stored));
   }, []);
 
+  // Fetch launch dependency tasks
+  useEffect(() => {
+    async function fetchLaunchTasks() {
+      const tasks = await getLaunchTasks();
+      setLaunchTasks(tasks);
+    }
+    fetchLaunchTasks();
+  }, []);
+
   // Compute dashboard stats
   const stats = useMemo(() => {
-    const today = startOfDay(new Date());
+    const today    = startOfDay(new Date());
     const nextWeek = addDays(today, 7);
 
     const upcoming = events
@@ -48,17 +72,63 @@ export default function DashboardPage() {
       .filter((e) => isBefore(new Date(e.event_date), nextWeek))
       .sort((a, b) => a.event_date.localeCompare(b.event_date));
 
-    const planned = events.filter((e) => e.status === 'planned').length;
+    const planned    = events.filter((e) => e.status === 'planned').length;
     const inProgress = events.filter((e) => e.status === 'in-progress').length;
-    const done = events.filter((e) => e.status === 'done').length;
+    const done       = events.filter((e) => e.status === 'done').length;
 
-    return { upcoming, planned, inProgress, done, total: events.length };
+    const overdue = events.filter(
+      (e) =>
+        e.status === 'planned' &&
+        isBefore(new Date(e.event_date + 'T00:00:00'), startOfDay(new Date()))
+    );
+
+    return { upcoming, planned, inProgress, done, total: events.length, overdue: overdue.length };
   }, [events]);
 
   const daysUntilLaunch = launchDate ? differenceInDays(launchDate, new Date()) : null;
 
+  // Derived values
+  const incompleteLaunchTasks = launchTasks.filter((t) => t.status !== 'done').length;
+
+  const todaysBigMover = events.find(
+    (e) =>
+      e.is_big_mover &&
+      e.event_date === format(new Date(), 'yyyy-MM-dd')
+  );
+
+  // Sort: overdue incomplete → future/no-date incomplete → done
+  const sortedLaunchTasks = [...launchTasks].sort((a, b) => {
+    if (a.status === 'done' && b.status !== 'done') return 1;
+    if (b.status === 'done' && a.status !== 'done') return -1;
+    const today    = startOfDay(new Date());
+    const aOverdue = a.due_date && isBefore(new Date(a.due_date + 'T00:00:00'), today);
+    const bOverdue = b.due_date && isBefore(new Date(b.due_date + 'T00:00:00'), today);
+    if (aOverdue && !bOverdue) return -1;
+    if (bOverdue && !aOverdue) return 1;
+    return 0;
+  });
+
   async function handleQuickAdd(data: EventFormData) {
     await createEvent(data);
+  }
+
+  async function handleAddLaunchTask() {
+    if (!newTaskTitle.trim()) return;
+    setAddingTask(true);
+    const success = await addLaunchTask(newTaskTitle, newTaskDueDate || null);
+    if (success) {
+      setNewTaskTitle('');
+      setNewTaskDueDate('');
+      const updated = await getLaunchTasks();
+      setLaunchTasks(updated);
+    }
+    setAddingTask(false);
+  }
+
+  async function handleCompleteLaunchTask(id: string) {
+    await updateTaskStatus(id, 'done');
+    const updated = await getLaunchTasks();
+    setLaunchTasks(updated);
   }
 
   if (loading) {
@@ -71,6 +141,8 @@ export default function DashboardPage() {
 
   return (
     <div>
+
+      {/* ── Page header ──────────────────────────────────────────── */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
@@ -84,8 +156,9 @@ export default function DashboardPage() {
         </Button>
       </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      {/* ── 6 stat cards ─────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -141,10 +214,59 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Overdue — red when > 0, gray when clear */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Overdue</p>
+                <p className={cn('text-3xl font-bold', stats.overdue > 0 ? 'text-red-600' : 'text-gray-400')}>
+                  {stats.overdue}
+                </p>
+              </div>
+              <div className={cn(
+                'h-10 w-10 rounded-lg flex items-center justify-center',
+                stats.overdue > 0 ? 'bg-red-100' : 'bg-gray-100'
+              )}>
+                <AlertCircle className={cn('h-5 w-5', stats.overdue > 0 ? 'text-red-600' : 'text-gray-400')} />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Launch Tasks — incomplete count */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Launch Tasks</p>
+                <p className="text-3xl font-bold text-gray-900">{incompleteLaunchTasks}</p>
+              </div>
+              <div className="h-10 w-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                <CheckSquare className="h-5 w-5 text-amber-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Upcoming events (next 7 days) */}
+      {/* ── Today's Big Mover banner (conditional) ───────────────── */}
+      {todaysBigMover && (
+        <div className="bg-amber-50 border border-amber-300 rounded-xl px-5 py-3 flex items-center gap-3 mb-6">
+          <span className="text-xl">🎯</span>
+          <div>
+            <p className="text-xs font-semibold text-amber-600 uppercase tracking-wide">Today&apos;s Big Mover</p>
+            <p className="text-base font-bold text-amber-900">{todaysBigMover.title}</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Main 3-column grid ────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+
+        {/* Left col (2/3): Upcoming Events */}
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>
@@ -184,9 +306,9 @@ export default function DashboardPage() {
                           variant="outline"
                           className={cn(
                             'text-xs',
-                            event.priority === 'high' && 'border-red-200 text-red-600',
+                            event.priority === 'high'   && 'border-red-200 text-red-600',
                             event.priority === 'medium' && 'border-yellow-200 text-yellow-600',
-                            event.priority === 'low' && 'border-gray-200 text-gray-500'
+                            event.priority === 'low'    && 'border-gray-200 text-gray-500'
                           )}
                         >
                           {event.priority}
@@ -200,7 +322,7 @@ export default function DashboardPage() {
           </Card>
         </div>
 
-        {/* Launch countdown */}
+        {/* Right col (1/3): Launch Countdown + Completion Rate */}
         <div>
           <Card className="bg-gradient-to-br from-indigo-600 to-purple-700 text-white border-0">
             <CardContent className="p-6 text-center">
@@ -230,7 +352,6 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Progress bar */}
           <Card className="mt-4">
             <CardContent className="p-4">
               <h3 className="text-sm font-semibold text-gray-700 mb-3">Completion Rate</h3>
@@ -249,15 +370,110 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
+
       </div>
 
-      {/* Quick-add dialog */}
+      {/* ── Launch Dependencies ───────────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Launch Dependencies</CardTitle>
+        </CardHeader>
+        <CardContent>
+
+          {/* Inline quick-add form */}
+          <div className="flex gap-2 mb-4">
+            <Input
+              placeholder="Add a launch dependency..."
+              value={newTaskTitle}
+              onChange={(e) => setNewTaskTitle(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddLaunchTask()}
+              className="flex-1"
+            />
+            <Input
+              type="date"
+              value={newTaskDueDate}
+              onChange={(e) => setNewTaskDueDate(e.target.value)}
+              className="w-40"
+            />
+            <Button
+              onClick={handleAddLaunchTask}
+              disabled={!newTaskTitle.trim() || addingTask}
+            >
+              {addingTask
+                ? <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                : <Plus className="h-4 w-4 mr-1" />
+              }
+              Add
+            </Button>
+          </div>
+
+          {/* Task list: overdue → future/no-date → done */}
+          {sortedLaunchTasks.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-8">
+              No launch dependencies yet. Add your first one above.
+            </p>
+          ) : (
+            <div>
+              {sortedLaunchTasks.map((task) => (
+                <div key={task.id} className="flex items-center gap-3 py-2 border-b last:border-0">
+
+                  {/* Checkbox — click to mark done */}
+                  <button
+                    onClick={() => handleCompleteLaunchTask(task.id)}
+                    className={cn(
+                      'h-5 w-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors',
+                      task.status === 'done'
+                        ? 'bg-green-500 border-green-500'
+                        : 'border-gray-300 hover:border-indigo-500'
+                    )}
+                  >
+                    {task.status === 'done' && <Check className="h-3 w-3 text-white" />}
+                  </button>
+
+                  {/* Title */}
+                  <span className={cn(
+                    'flex-1 text-sm',
+                    task.status === 'done' ? 'line-through text-gray-400' : 'text-gray-800'
+                  )}>
+                    {task.title}
+                  </span>
+
+                  {/* Due date */}
+                  {task.due_date && (
+                    <span className={cn(
+                      'text-xs font-medium',
+                      task.status !== 'done' &&
+                      isBefore(new Date(task.due_date + 'T00:00:00'), startOfDay(new Date()))
+                        ? 'text-red-600'
+                        : 'text-gray-400'
+                    )}>
+                      {task.status !== 'done' &&
+                       isBefore(new Date(task.due_date + 'T00:00:00'), startOfDay(new Date()))
+                        ? '⚠ '
+                        : ''}
+                      {format(new Date(task.due_date + 'T00:00:00'), 'MMM d')}
+                    </span>
+                  )}
+                  {!task.due_date && task.status !== 'done' && (
+                    <span className="text-xs text-gray-300">No due date</span>
+                  )}
+
+                </div>
+              ))}
+            </div>
+          )}
+
+        </CardContent>
+      </Card>
+
+      {/* Quick-add calendar event dialog */}
       <EventDialog
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
         onSave={handleQuickAdd}
         defaultDate={format(new Date(), 'yyyy-MM-dd')}
       />
+
     </div>
   );
 }

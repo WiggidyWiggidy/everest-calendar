@@ -75,6 +75,7 @@ export default function ChatPage() {
     const formData: EventFormData = {
       ...suggestion,
       status: 'planned',
+      is_big_mover: false,
     };
     const success = await createEvent(formData);
     if (success) {

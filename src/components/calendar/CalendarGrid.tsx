@@ -98,38 +98,48 @@ export default function CalendarGrid({
                 </span>
               </div>
 
-              {/* Event pills (show up to 3, then "+N more") */}
+              {/* Event pills (show up to 3, then "+N more") — big movers sorted first */}
               <div className="space-y-0.5">
-                {dayEvents.slice(0, 3).map((event) => {
-                  const colors = CATEGORY_COLORS[event.category];
-                  return (
-                    <button
-                      key={event.id}
-                      className={cn(
-                        'w-full text-left text-xs px-1.5 py-0.5 rounded truncate font-medium',
-                        colors.bg,
-                        colors.text,
-                        event.status === 'done' && 'line-through opacity-60'
-                      )}
-                      onClick={(e) => {
-                        e.stopPropagation(); // Don't trigger day click
-                        onEventClick(event);
-                      }}
-                    >
-                      {event.event_time && (
-                        <span className="opacity-70">
-                          {event.event_time.slice(0, 5)}{' '}
-                        </span>
-                      )}
-                      {event.title}
-                    </button>
+                {(() => {
+                  const sortedDayEvents = [...dayEvents].sort((a, b) =>
+                    (b.is_big_mover ? 1 : 0) - (a.is_big_mover ? 1 : 0)
                   );
-                })}
-                {dayEvents.length > 3 && (
-                  <p className="text-xs text-gray-400 px-1">
-                    +{dayEvents.length - 3} more
-                  </p>
-                )}
+                  return (
+                    <>
+                      {sortedDayEvents.slice(0, 3).map((event) => {
+                        const colors = CATEGORY_COLORS[event.category];
+                        return (
+                          <button
+                            key={event.id}
+                            className={cn(
+                              'w-full text-left text-xs px-1.5 py-0.5 rounded truncate font-medium',
+                              colors.bg,
+                              colors.text,
+                              event.status === 'done' && 'line-through opacity-60',
+                              event.is_big_mover && 'border-l-2 border-amber-500'
+                            )}
+                            onClick={(e) => {
+                              e.stopPropagation(); // Don't trigger day click
+                              onEventClick(event);
+                            }}
+                          >
+                            {event.event_time && (
+                              <span className="opacity-70">
+                                {event.event_time.slice(0, 5)}{' '}
+                              </span>
+                            )}
+                            {event.is_big_mover ? '⭐ ' : ''}{event.title}
+                          </button>
+                        );
+                      })}
+                      {sortedDayEvents.length > 3 && (
+                        <p className="text-xs text-gray-400 px-1">
+                          +{sortedDayEvents.length - 3} more
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             </div>
           );

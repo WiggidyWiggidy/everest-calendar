@@ -65,3 +65,43 @@ export async function deleteTask(id: string): Promise<boolean> {
   if (error) { console.error('deleteTask error:', error); return false; }
   return true;
 }
+
+// ---- Launch Dependencies ----
+
+// Returns all non-dismissed launch tasks ordered by due_date ascending
+export async function getLaunchTasks(): Promise<TaskBacklog[]> {
+  const { data, error } = await supabase
+    .from('task_backlog')
+    .select('*')
+    .eq('is_launch_task', true)
+    .neq('status', 'dismissed')
+    .order('due_date', { ascending: true, nullsFirst: false });
+
+  if (error) { console.error('getLaunchTasks error:', error); return []; }
+  return data || [];
+}
+
+// Direct insert bypassing the Analyst pipeline
+// Sets is_launch_task = true, status = 'pending'
+export async function addLaunchTask(
+  title: string,
+  due_date: string | null
+): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { error } = await supabase.from('task_backlog').insert({
+    user_id: user.id,
+    title: title.trim(),
+    description: '',
+    category: 'product',
+    priority_score: 5,
+    status: 'pending',
+    is_launch_task: true,
+    due_date: due_date || null,
+    source_thought_ids: [],
+  });
+
+  if (error) { console.error('addLaunchTask error:', error); return false; }
+  return true;
+}
