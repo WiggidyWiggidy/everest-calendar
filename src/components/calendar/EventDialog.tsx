@@ -42,6 +42,7 @@ const emptyForm: EventFormData = {
   category: 'product',
   priority: 'medium',
   status: 'planned',
+  is_big_mover: false,
 };
 
 export default function EventDialog({
@@ -66,6 +67,7 @@ export default function EventDialog({
         category: event.category,
         priority: event.priority,
         status: event.status,
+        is_big_mover: event.is_big_mover ?? false,
       });
     } else {
       setForm({ ...emptyForm, event_date: defaultDate || '' });
@@ -162,6 +164,27 @@ export default function EventDialog({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Big Mover toggle */}
+          <div className="flex items-center justify-between py-2">
+            <div>
+              <p className="text-sm font-medium text-gray-700">Big Mover</p>
+              <p className="text-xs text-gray-400">Flag as today&apos;s most important event</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, is_big_mover: !form.is_big_mover })}
+              className={`relative w-10 h-6 rounded-full transition-colors ${
+                form.is_big_mover ? 'bg-amber-500' : 'bg-gray-300'
+              }`}
+            >
+              <span
+                className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                  form.is_big_mover ? 'translate-x-4' : 'translate-x-0'
+                }`}
+              />
+            </button>
           </div>
 
           {/* Priority & Status — side by side */}

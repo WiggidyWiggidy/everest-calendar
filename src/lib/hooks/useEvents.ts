@@ -43,6 +43,7 @@ export function useEvents() {
       category: formData.category,
       priority: formData.priority,
       status: formData.status,
+      is_big_mover: formData.is_big_mover ?? false,
     });
 
     if (error) {
@@ -66,6 +67,7 @@ export function useEvents() {
         category: formData.category,
         priority: formData.priority,
         status: formData.status,
+        is_big_mover: formData.is_big_mover ?? false,
       })
       .eq('id', id);
 

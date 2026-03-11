@@ -101,7 +101,7 @@ export default function ChatPanel({ agent, onMemorySuggestion }: ChatPanelProps)
 
   // Add a suggested event to calendar
   async function handleAddSuggested(suggestion: SuggestedEvent) {
-    const formData: EventFormData = { ...suggestion, status: 'planned' };
+    const formData: EventFormData = { ...suggestion, status: 'planned', is_big_mover: false };
     const success = await createEvent(formData);
 
     const statusMsg: AgentMessage = {

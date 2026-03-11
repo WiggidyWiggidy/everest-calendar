@@ -43,6 +43,7 @@ export interface CalendarEvent {
   category: EventCategory;
   priority: EventPriority;
   status: EventStatus;
+  is_big_mover: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -56,6 +57,7 @@ export interface EventFormData {
   category: EventCategory;
   priority: EventPriority;
   status: EventStatus;
+  is_big_mover: boolean;
 }
 
 // Chat message as stored in Supabase
@@ -174,6 +176,8 @@ export interface TaskBacklog {
   priority_score: number;
   status: 'pending' | 'approved' | 'in-progress' | 'done' | 'dismissed';
   source_thought_ids: string[];
+  is_launch_task: boolean;
+  due_date: string | null;
   created_at: string;
 }
 
