@@ -1,10 +1,18 @@
 // ============================================
 // /api/assistant — Agentic calendar assistant with tool use
-// Replaces /api/chat for all non-analyst agents.
-// Runs an agentic loop: Claude calls calendar tools autonomously
-// until stop_reason === 'end_turn', then returns the final message
+// Runs an agentic loop: Claude calls tools autonomously until
+// stop_reason === 'end_turn', then returns the final message
 // and a list of all actions taken.
-// Slash command preprocessing: strips /dump /feature /schedule /erins
+//
+// Supports two calling modes:
+//   ChatPanel   — sends { messages, agent_id }
+//   CommandCentre — sends { messages, agentId, conversationId }
+//
+// When called from CommandCentre (camelCase fields), the route
+// manages its own conversation: creates one on first use, fetches
+// history on subsequent calls, and persists user + assistant messages.
+//
+// Slash command preprocessing strips /dump /feature /schedule /erins
 // prefixes and injects per-category context into the system prompt.
 // ============================================
 import { NextRequest, NextResponse } from 'next/server';
@@ -177,7 +185,7 @@ const TOOLS = [
             },
             status_from: {
               type: 'string',
-              description: 'Only update events currently in this status. E.g. "planned" to avoid re-updating already done events.',
+              description: 'Only update events currently in this status.',
             },
           },
         },
@@ -188,6 +196,20 @@ const TOOLS = [
         },
       },
       required: ['filter', 'new_status'],
+    },
+  },
+  {
+    name: 'save_raw_thought',
+    description: 'Save a raw thought or brain dump to the thoughts log for later processing by the Analyst. Use this automatically whenever the user sends a /dump command or asks to capture an idea for later.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        content: {
+          type: 'string',
+          description: 'The thought content to save. Use the clean content without the /dump prefix.',
+        },
+      },
+      required: ['content'],
     },
   },
 ];
@@ -323,9 +345,9 @@ async function executeTool(
       .select('id, title, status, event_time, is_big_mover')
       .eq('user_id', userId);
 
-    if (filter.date)        query = query.eq('event_date', filter.date);
+    if (filter.date)                    query = query.eq('event_date', filter.date);
     if (filter.is_big_mover !== undefined) query = query.eq('is_big_mover', filter.is_big_mover);
-    if (filter.status_from) query = query.eq('status', filter.status_from);
+    if (filter.status_from)             query = query.eq('status', filter.status_from);
 
     const { data: candidates, error: fetchError } = await query;
     if (fetchError) return { success: false, error: fetchError.message };
@@ -333,8 +355,7 @@ async function executeTool(
       return { success: true, updated: 0, message: 'No matching events found.' };
     }
 
-    // Apply before_time filter in code (simpler than Supabase time comparison)
-    let targets: Array<{ id: string; title: string; status: string; event_time?: string | null }> = candidates;
+    let targets: Array<{ id: string; title: string; event_time?: string | null }> = candidates;
     if (filter.before_time) {
       targets = candidates.filter((e: { event_time?: string | null }) => {
         if (!e.event_time) return false;
@@ -362,6 +383,17 @@ async function executeTool(
     };
   }
 
+  if (toolName === 'save_raw_thought') {
+    const { error } = await supabase
+      .from('raw_thoughts')
+      .insert({
+        user_id: userId,
+        text: input.content as string,
+      });
+    if (error) return { success: false, error: error.message };
+    return { success: true, message: 'Thought saved for Analyst processing.' };
+  }
+
   return { success: false, error: `Unknown tool: ${toolName}` };
 }
 
@@ -371,44 +403,106 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { messages, agent_id } = await request.json();
-    if (!messages || !agent_id) {
-      return NextResponse.json({ error: 'messages and agent_id are required' }, { status: 400 });
+    const {
+      messages,
+      agent_id,                              // from ChatPanel (snake_case)
+      agentId: incomingAgentId,              // from CommandCentre (camelCase)
+      conversationId: incomingConversationId, // from CommandCentre
+    } = await request.json();
+
+    if (!messages) {
+      return NextResponse.json({ error: 'messages is required' }, { status: 400 });
     }
 
-    // ── Slash command preprocessing ──────────────────────────────────────────
-    // Parse the last user message for a slash command prefix.
-    // Strip the slash from the content and inject category-specific context
-    // into the system prompt so Claude knows what mode it's operating in.
+    // ── Agent resolution ──────────────────────────────────────────────────────
+    // Priority: explicit agent_id (ChatPanel) → explicit agentId (CommandCentre)
+    // → fallback to default chat agent from DB
+    let resolvedAgentId: string = agent_id || incomingAgentId || '';
+    if (!resolvedAgentId) {
+      const { data: defaultAgent } = await supabase
+        .from('agents')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('agent_type', 'chat')
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .single();
+      if (!defaultAgent) {
+        return NextResponse.json({ error: 'No agent found for this user' }, { status: 400 });
+      }
+      resolvedAgentId = defaultAgent.id;
+    }
+
+    // ── CommandCentre conversation management ─────────────────────────────────
+    // When called from CommandCentre (camelCase fields present), the route
+    // manages its own conversation so context accumulates across submissions.
+    const isCommandCentre = incomingAgentId !== undefined || incomingConversationId !== undefined;
+    let resolvedConversationId: string | null = incomingConversationId || null;
+    let anthropicMessages: Array<{ role: string; content: string }> = messages.map(
+      (m: { role: string; content: string }) => ({ role: m.role, content: m.content })
+    );
+
+    if (isCommandCentre) {
+      if (!resolvedConversationId) {
+        // First use — create a new persistent conversation
+        const { data: newConvo } = await supabase
+          .from('agent_conversations')
+          .insert({ agent_id: resolvedAgentId, user_id: user.id, title: 'Command Centre' })
+          .select('id')
+          .single();
+        resolvedConversationId = newConvo?.id ?? null;
+      } else {
+        // Subsequent use — load last 20 messages for context
+        const { data: existingMsgs } = await supabase
+          .from('agent_messages')
+          .select('role, content')
+          .eq('conversation_id', resolvedConversationId)
+          .order('created_at', { ascending: true })
+          .limit(20);
+
+        if (existingMsgs && existingMsgs.length > 0) {
+          const newUserMsg = messages[messages.length - 1] as { role: string; content: string };
+          anthropicMessages = [
+            ...existingMsgs.map((m: { role: string; content: string }) => ({ role: m.role, content: m.content })),
+            { role: newUserMsg.role, content: newUserMsg.content },
+          ];
+        }
+      }
+
+      // Persist the incoming user message
+      const lastUserMsg = messages[messages.length - 1] as { role: string; content: string };
+      if (resolvedConversationId && lastUserMsg) {
+        await supabase.from('agent_messages').insert({
+          conversation_id: resolvedConversationId,
+          user_id: user.id,
+          role: 'user',
+          content: lastUserMsg.content,
+        });
+      }
+    }
+
+    // ── Slash command preprocessing ───────────────────────────────────────────
     let conversationCategory: SlashCategory = 'general';
-    const lastUserMessage = messages[messages.length - 1] as { role: string; content: string };
-    const rawContent = typeof lastUserMessage?.content === 'string' ? lastUserMessage.content : '';
+    const lastMsg = anthropicMessages[anthropicMessages.length - 1];
+    const rawContent = typeof lastMsg?.content === 'string' ? lastMsg.content : '';
     const parsed = parseSlashCommand(rawContent);
 
     if (parsed.hasSlashCommand) {
       conversationCategory = parsed.category;
-      // Replace content in the messages array with the stripped version
-      messages[messages.length - 1] = {
-        ...lastUserMessage,
+      anthropicMessages[anthropicMessages.length - 1] = {
+        ...lastMsg,
         content: parsed.cleanContent,
       };
     }
 
-    let systemPrompt = await buildSystemPrompt(supabase, agent_id);
-
-    // Inject per-category context after the main system prompt
+    let systemPrompt = await buildSystemPrompt(supabase, resolvedAgentId);
     const categoryContext = CATEGORY_CONTEXT[conversationCategory];
     if (categoryContext) {
       systemPrompt = systemPrompt + '\n\n' + categoryContext;
     }
 
+    // ── Agentic loop ──────────────────────────────────────────────────────────
     const actionsTaken: ActionTaken[] = [];
-
-    let anthropicMessages = messages.map((m: { role: string; content: string }) => ({
-      role: m.role,
-      content: m.content,
-    }));
-
     let finalMessage = '';
     let iterations = 0;
 
@@ -440,18 +534,13 @@ export async function POST(request: NextRequest) {
 
       const aiData = await response.json();
 
-      // Capture any text blocks in this iteration
       const textBlocks = aiData.content.filter((b: { type: string }) => b.type === 'text');
       if (textBlocks.length > 0) {
         finalMessage = textBlocks.map((b: { text: string }) => b.text).join('\n');
       }
 
-      // If no more tool calls, we're done
-      if (aiData.stop_reason !== 'tool_use') {
-        break;
-      }
+      if (aiData.stop_reason !== 'tool_use') break;
 
-      // Execute all tool calls in this iteration
       const toolUseBlocks = aiData.content.filter((b: { type: string }) => b.type === 'tool_use');
       const toolResults = [];
 
@@ -476,7 +565,6 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // Append assistant turn + tool results and loop
       anthropicMessages = [
         ...anthropicMessages,
         { role: 'assistant', content: aiData.content },
@@ -484,10 +572,23 @@ export async function POST(request: NextRequest) {
       ];
     }
 
+    // ── Persist assistant reply (CommandCentre only) ──────────────────────────
+    if (isCommandCentre && resolvedConversationId && finalMessage) {
+      await supabase.from('agent_messages').insert({
+        conversation_id: resolvedConversationId,
+        user_id: user.id,
+        role: 'assistant',
+        content: finalMessage,
+      });
+    }
+
     return NextResponse.json({
-      message: finalMessage,
+      message: finalMessage,             // ChatPanel reads this
+      reply: finalMessage,               // CommandCentre reads this
       actions_taken: actionsTaken,
       category: conversationCategory,
+      agentId: resolvedAgentId,
+      conversationId: resolvedConversationId,
     });
   } catch (error) {
     console.error('assistant route: unexpected error:', error);
