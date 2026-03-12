@@ -131,7 +131,9 @@ export default function CommandCentre() {
         onClick={() => setIsOpen(true)}
         aria-label="Open command centre"
         className={cn(
-          'fixed bottom-6 right-5 z-50',
+          // On mobile: sit above the MobileCommandBar (~130px tall) so bottom-36 clears it.
+          // On sm+: MobileCommandBar is hidden (lg:hidden), so bottom-6 is fine.
+          'fixed bottom-36 sm:bottom-6 right-5 z-[60]',
           'flex items-center gap-2 pl-4 pr-5 py-3',
           'bg-gray-900 text-white rounded-full shadow-2xl',
           'text-sm font-medium tracking-tight border border-white/10',
@@ -148,15 +150,15 @@ export default function CommandCentre() {
   // ── Open state — command panel ───────────────────────────────────────────────
   return (
     <>
-      {/* Mobile backdrop — tap to close */}
+      {/* Mobile backdrop — tap to close. z-[55] sits above MobileCommandBar (z-50) */}
       <div
-        className="fixed inset-0 z-40 bg-black/10 backdrop-blur-[1px] sm:hidden"
+        className="fixed inset-0 z-[55] bg-black/10 backdrop-blur-[1px] sm:hidden"
         onClick={() => setIsOpen(false)}
       />
 
-      {/* Panel — bottom sheet on mobile, floating card on desktop */}
+      {/* Panel — z-[60] ensures it covers MobileCommandBar (z-50) when open */}
       <div className={cn(
-        'fixed z-50',
+        'fixed z-[60]',
         'bottom-0 inset-x-0',
         'sm:bottom-6 sm:right-5 sm:left-auto sm:inset-x-auto sm:w-[420px]'
       )}>
