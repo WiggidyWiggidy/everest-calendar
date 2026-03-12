@@ -3,27 +3,34 @@
 // ============================================
 // ChatPanel
 // Right panel — conversation with the active agent
-// Handles sending messages, parsing event suggestions,
-// and detecting memory suggestions from auto-learn
+// Routes all messages through /api/assistant (agentic tool-use loop).
+// Displays inline action summary strips below assistant messages.
+// Memory auto-learn still supported via <memory_suggestion> blocks.
 // ============================================
 import { useState, useEffect, useRef } from 'react';
-import { Agent, AgentConversation, AgentMessage, SuggestedEvent, MemorySuggestion, EventFormData, CATEGORY_COLORS, CATEGORY_LABELS } from '@/types';
+import {
+  Agent,
+  AgentConversation,
+  AgentMessage,
+  MemorySuggestion,
+  ActionTaken,
+} from '@/types';
 import { getMessages, saveMessage, createConversation, getConversations } from '@/lib/agents';
-import { useEvents } from '@/lib/hooks/useEvents';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
 import MemorySuggestionBanner from './MemorySuggestionBanner';
 import {
   Send,
   Bot,
   User,
-  CalendarPlus,
   Loader2,
   MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+// Local extended type — adds actions_taken to in-memory messages (not persisted to DB)
+type AgentMessageWithActions = AgentMessage & { actions_taken?: ActionTaken[] };
 
 interface ChatPanelProps {
   agent: Agent;
@@ -31,14 +38,13 @@ interface ChatPanelProps {
 }
 
 export default function ChatPanel({ agent, onMemorySuggestion }: ChatPanelProps) {
-  const [conversation, setConversation] = useState<AgentConversation | null>(null);
-  const [messages, setMessages] = useState<AgentMessage[]>([]);
-  const [input, setInput] = useState('');
-  const [sending, setSending] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [conversation, setConversation]       = useState<AgentConversation | null>(null);
+  const [messages, setMessages]               = useState<AgentMessageWithActions[]>([]);
+  const [input, setInput]                     = useState('');
+  const [sending, setSending]                 = useState(false);
+  const [loading, setLoading]                 = useState(true);
   const [pendingSuggestion, setPendingSuggestion] = useState<MemorySuggestion | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { events, createEvent } = useEvents();
 
   // Load or create conversation when agent changes
   useEffect(() => {
@@ -47,16 +53,13 @@ export default function ChatPanel({ agent, onMemorySuggestion }: ChatPanelProps)
       setMessages([]);
       setConversation(null);
 
-      // Get existing conversations for this agent
       const convos = await getConversations(agent.id);
 
       if (convos.length > 0) {
-        // Use the most recent conversation
         setConversation(convos[0]);
         const msgs = await getMessages(convos[0].id);
-        setMessages(msgs);
+        setMessages(msgs as AgentMessageWithActions[]);
       } else {
-        // Create a new conversation
         const newConvo = await createConversation(agent.id, 'New conversation');
         setConversation(newConvo);
       }
@@ -66,27 +69,14 @@ export default function ChatPanel({ agent, onMemorySuggestion }: ChatPanelProps)
     init();
   }, [agent.id]);
 
-  // Auto-scroll to bottom
+  // Auto-scroll to bottom on new messages
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
 
-  // Extract event suggestions from assistant response
-  function parseSuggestedEvents(content: string): SuggestedEvent[] {
-    const regex = /```event\s*\n([\s\S]*?)```/g;
-    const suggestions: SuggestedEvent[] = [];
-    let match;
-    while ((match = regex.exec(content)) !== null) {
-      try {
-        suggestions.push(JSON.parse(match[1]));
-      } catch { /* skip malformed */ }
-    }
-    return suggestions;
-  }
-
-  // Extract memory suggestions from assistant response
+  // Extract memory suggestions from assistant response text
   function parseMemorySuggestions(content: string): MemorySuggestion[] {
     const regex = /<memory_suggestion>\s*\n([\s\S]*?)<\/memory_suggestion>/g;
     const suggestions: MemorySuggestion[] = [];
@@ -99,25 +89,7 @@ export default function ChatPanel({ agent, onMemorySuggestion }: ChatPanelProps)
     return suggestions;
   }
 
-  // Add a suggested event to calendar
-  async function handleAddSuggested(suggestion: SuggestedEvent) {
-    const formData: EventFormData = { ...suggestion, status: 'planned', is_big_mover: false };
-    const success = await createEvent(formData);
-
-    const statusMsg: AgentMessage = {
-      id: 'status-' + Date.now(),
-      conversation_id: conversation?.id || '',
-      user_id: '',
-      role: 'assistant',
-      content: success
-        ? `Added "${suggestion.title}" to your calendar on ${suggestion.event_date}.`
-        : `Couldn't add "${suggestion.title}" to your calendar. Check your Supabase setup.`,
-      created_at: new Date().toISOString(),
-    };
-    setMessages((prev) => [...prev, statusMsg]);
-  }
-
-  // Send message to the agent
+  // Send message through the agentic assistant route
   async function handleSend() {
     if (!input.trim() || sending || !conversation) return;
 
@@ -125,41 +97,43 @@ export default function ChatPanel({ agent, onMemorySuggestion }: ChatPanelProps)
     setInput('');
     setSending(true);
 
-    // Save user message
+    // Persist and display user message
     const savedUser = await saveMessage(conversation.id, 'user', userText);
     if (savedUser) {
-      setMessages((prev) => [...prev, savedUser]);
+      setMessages((prev) => [...prev, savedUser as AgentMessageWithActions]);
     }
 
     try {
-      // Build recent messages for context (last 20)
+      // Build recent message history for context (last 20)
       const recentMessages = [
         ...messages.slice(-20).map((m) => ({ role: m.role, content: m.content })),
         { role: 'user' as const, content: userText },
       ];
 
-      // Call API with agent context
-      const response = await fetch('/api/chat', {
+      // /api/assistant runs the full agentic loop server-side
+      const response = await fetch('/api/assistant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: recentMessages,
-          events,
           agent_id: agent.id,
         }),
       });
 
       const data = await response.json();
-
       if (data.error) throw new Error(data.error);
 
-      // Save assistant response
+      // Persist assistant message, attach actions_taken for in-memory display
       const savedAssistant = await saveMessage(conversation.id, 'assistant', data.message);
       if (savedAssistant) {
-        setMessages((prev) => [...prev, savedAssistant]);
+        const messageWithActions: AgentMessageWithActions = {
+          ...savedAssistant,
+          actions_taken: (data.actions_taken || []) as ActionTaken[],
+        };
+        setMessages((prev) => [...prev, messageWithActions]);
       }
 
-      // Check for memory suggestions (auto-learn)
+      // Auto-learn: surface memory suggestions to parent
       if (agent.auto_learn) {
         const memorySuggestions = parseMemorySuggestions(data.message);
         if (memorySuggestions.length > 0) {
@@ -169,13 +143,14 @@ export default function ChatPanel({ agent, onMemorySuggestion }: ChatPanelProps)
       }
     } catch (error) {
       console.error('Chat error:', error);
-      const errorMsg: AgentMessage = {
+      const errorMsg: AgentMessageWithActions = {
         id: 'error-' + Date.now(),
         conversation_id: conversation.id,
         user_id: '',
         role: 'assistant',
         content: 'Sorry, I encountered an error. Please try again.',
         created_at: new Date().toISOString(),
+        actions_taken: [],
       };
       setMessages((prev) => [...prev, errorMsg]);
     }
@@ -183,7 +158,6 @@ export default function ChatPanel({ agent, onMemorySuggestion }: ChatPanelProps)
     setSending(false);
   }
 
-  // Handle Enter key
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -191,7 +165,6 @@ export default function ChatPanel({ agent, onMemorySuggestion }: ChatPanelProps)
     }
   }
 
-  // Start a new conversation
   async function handleNewConversation() {
     const newConvo = await createConversation(agent.id, 'New conversation');
     if (newConvo) {
@@ -200,58 +173,17 @@ export default function ChatPanel({ agent, onMemorySuggestion }: ChatPanelProps)
     }
   }
 
-  // Render message content with event suggestion cards
-  function renderMessageContent(content: string) {
-    const suggestions = parseSuggestedEvents(content);
-    // Remove event blocks and memory suggestion blocks from display
-    const cleanContent = content
-      .replace(/```event\s*\n[\s\S]*?```/g, '')
+  // Render assistant message — strip memory blocks, show action summary strip
+  function renderMessageContent(msg: AgentMessageWithActions) {
+    const cleanContent = msg.content
       .replace(/<memory_suggestion>\s*\n[\s\S]*?<\/memory_suggestion>/g, '')
       .trim();
 
     return (
       <>
         <div className="whitespace-pre-wrap text-sm leading-relaxed">{cleanContent}</div>
-
-        {suggestions.length > 0 && (
-          <div className="mt-3 space-y-2">
-            {suggestions.map((suggestion, i) => {
-              const colors = CATEGORY_COLORS[suggestion.category] || CATEGORY_COLORS.product;
-              return (
-                <div key={i} className="border rounded-lg p-3 bg-white shadow-sm">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="font-medium text-sm">{suggestion.title}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        {suggestion.event_date}
-                        {suggestion.event_time && ` at ${suggestion.event_time}`}
-                      </p>
-                      {suggestion.description && (
-                        <p className="text-xs text-gray-400 mt-1">{suggestion.description}</p>
-                      )}
-                      <div className="flex gap-1 mt-2">
-                        <Badge variant="outline" className={cn('text-xs', colors.bg, colors.text)}>
-                          {CATEGORY_LABELS[suggestion.category]}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs">
-                          {suggestion.priority}
-                        </Badge>
-                      </div>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="shrink-0"
-                      onClick={() => handleAddSuggested(suggestion)}
-                    >
-                      <CalendarPlus className="h-3 w-3 mr-1" />
-                      Add
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+        {msg.actions_taken && msg.actions_taken.length > 0 && (
+          <ActionsSummary actions={msg.actions_taken} />
         )}
       </>
     );
@@ -259,6 +191,7 @@ export default function ChatPanel({ agent, onMemorySuggestion }: ChatPanelProps)
 
   return (
     <div className="flex flex-col h-full">
+
       {/* Chat header */}
       <div className="flex items-center justify-between px-4 py-3 border-b bg-white">
         <div className="flex items-center gap-2">
@@ -297,9 +230,9 @@ export default function ChatPanel({ agent, onMemorySuggestion }: ChatPanelProps)
             </p>
             <div className="flex flex-wrap gap-2 justify-center mt-4">
               {[
-                'Help me plan a product launch',
-                'What milestones should I set?',
-                'Review my calendar events',
+                'Am I on track for launch?',
+                "What's on my calendar this week?",
+                "I'm flying to Bali Tuesday 10pm — block it out",
               ].map((prompt) => (
                 <button
                   key={prompt}
@@ -335,7 +268,7 @@ export default function ChatPanel({ agent, onMemorySuggestion }: ChatPanelProps)
                   )}
                 >
                   {msg.role === 'assistant'
-                    ? renderMessageContent(msg.content)
+                    ? renderMessageContent(msg)
                     : <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                   }
                 </div>
@@ -385,6 +318,48 @@ export default function ChatPanel({ agent, onMemorySuggestion }: ChatPanelProps)
           Press Enter to send, Shift+Enter for new line
         </p>
       </div>
+
+    </div>
+  );
+}
+
+// ── ActionsSummary ─────────────────────────────────────────────────────────────
+// Compact strip showing what the assistant did autonomously in this turn
+function ActionsSummary({ actions }: { actions: ActionTaken[] }) {
+  if (!actions || actions.length === 0) return null;
+
+  function actionLabel(action: ActionTaken): string {
+    const input  = action.input;
+    const result = action.result;
+
+    if (!result.success) return `⚠️ Failed: ${action.tool}`;
+
+    if (action.tool === 'create_calendar_event') {
+      return `✅ Created "${input.title}" — ${input.event_date}${input.event_time ? ` at ${input.event_time}` : ''}`;
+    }
+    if (action.tool === 'update_calendar_event') {
+      const parts: string[] = [];
+      if (input.event_date) parts.push(`→ ${input.event_date}`);
+      if (input.status)     parts.push(`status: ${input.status}`);
+      return `✅ Updated event${parts.length > 0 ? ' ' + parts.join(', ') : ''}`;
+    }
+    if (action.tool === 'delete_calendar_event') {
+      return `🗑️ Deleted event`;
+    }
+    if (action.tool === 'get_calendar_events') {
+      const events = (result.events as unknown[]) || [];
+      return `📅 Fetched ${events.length} event${events.length !== 1 ? 's' : ''}`;
+    }
+    return `✅ ${action.tool}`;
+  }
+
+  return (
+    <div className="mt-2 bg-indigo-50 border border-indigo-100 rounded-lg p-2 space-y-1">
+      {actions.map((action, i) => (
+        <p key={i} className="text-xs text-indigo-700">
+          {actionLabel(action)}
+        </p>
+      ))}
     </div>
   );
 }
