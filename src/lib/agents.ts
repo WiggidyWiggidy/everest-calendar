@@ -90,14 +90,33 @@ export async function ensureSystemAnalyst(): Promise<Agent | null> {
   });
 }
 
-// Create the default Personal Assistant if user has no agents
+// Create the default Personal Assistant if user has no agents,
+// and always sync to the latest DEFAULT_AGENT_PROMPT on load
 export async function ensureDefaultAgent(): Promise<Agent | null> {
-  const agents = await getAgents();
-  if (agents.length > 0) return agents[0];
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data: existing } = await supabase
+    .from('agents')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('agent_type', 'chat')
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .single();
+
+  if (existing) {
+    // Sync to latest DEFAULT_AGENT_PROMPT on every app load
+    await supabase
+      .from('agents')
+      .update({ system_prompt: DEFAULT_AGENT_PROMPT })
+      .eq('id', existing.id);
+    return existing;
+  }
 
   return createAgent({
     name: 'Personal Assistant',
-    description: 'Your AI assistant for product launch planning. Gets smarter as you use it.',
+    description: 'Your AI calendar assistant. Acts immediately on your instructions.',
     icon: '🧠',
     system_prompt: DEFAULT_AGENT_PROMPT,
     auto_learn: true,
