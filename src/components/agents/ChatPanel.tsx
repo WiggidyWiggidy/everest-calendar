@@ -357,6 +357,10 @@ function ActionsSummary({ actions }: { actions: ActionTaken[] }) {
     if (action.tool === 'update_launch_task') {
       return `✅ "${result.title}" marked ${result.new_status}`;
     }
+    if (action.tool === 'batch_update_calendar_events') {
+      const count = result.updated as number;
+      return `✅ ${count} event${count !== 1 ? 's' : ''} marked ${result.new_status}`;
+    }
     return `✅ ${action.tool}`;
   }
 
