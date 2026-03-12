@@ -4,10 +4,13 @@
 // Runs an agentic loop: Claude calls calendar tools autonomously
 // until stop_reason === 'end_turn', then returns the final message
 // and a list of all actions taken.
+// Slash command preprocessing: strips /dump /feature /schedule /erins
+// prefixes and injects per-category context into the system prompt.
 // ============================================
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { ActionTaken } from '@/types';
+import { parseSlashCommand, CATEGORY_CONTEXT, SlashCategory } from '@/lib/slashCommands';
 
 const MAX_ITERATIONS = 5;
 
@@ -150,6 +153,43 @@ const TOOLS = [
       required: ['title_match', 'status'],
     },
   },
+  {
+    name: 'batch_update_calendar_events',
+    description: "Update the status of multiple calendar events at once. Use when the user asks to complete, mark done, or update several events in bulk — e.g. \"mark all today's tasks done\", \"complete everything before 2pm\", \"mark all Big Movers done\".",
+    input_schema: {
+      type: 'object',
+      properties: {
+        filter: {
+          type: 'object',
+          description: 'Filter criteria to select which events to update',
+          properties: {
+            date: {
+              type: 'string',
+              description: 'ISO date string YYYY-MM-DD. If provided, only update events on this date.',
+            },
+            before_time: {
+              type: 'string',
+              description: 'HH:MM format. If provided, only update events with event_time before this time.',
+            },
+            is_big_mover: {
+              type: 'boolean',
+              description: 'If true, only update events flagged as Big Movers.',
+            },
+            status_from: {
+              type: 'string',
+              description: 'Only update events currently in this status. E.g. "planned" to avoid re-updating already done events.',
+            },
+          },
+        },
+        new_status: {
+          type: 'string',
+          enum: ['planned', 'in-progress', 'done'],
+          description: 'The status to set on all matched events.',
+        },
+      },
+      required: ['filter', 'new_status'],
+    },
+  },
 ];
 
 async function executeTool(
@@ -181,12 +221,12 @@ async function executeTool(
   if (toolName === 'update_calendar_event') {
     const { event_id, ...fields } = input;
     const updateFields: Record<string, unknown> = {};
-    if (fields.title       !== undefined) updateFields.title        = fields.title;
-    if (fields.event_date  !== undefined) updateFields.event_date   = fields.event_date;
-    if (fields.event_time  !== undefined) updateFields.event_time   = fields.event_time;
-    if (fields.status      !== undefined) updateFields.status       = fields.status;
-    if (fields.priority    !== undefined) updateFields.priority     = fields.priority;
-    if (fields.description !== undefined) updateFields.description  = fields.description;
+    if (fields.title        !== undefined) updateFields.title        = fields.title;
+    if (fields.event_date   !== undefined) updateFields.event_date   = fields.event_date;
+    if (fields.event_time   !== undefined) updateFields.event_time   = fields.event_time;
+    if (fields.status       !== undefined) updateFields.status       = fields.status;
+    if (fields.priority     !== undefined) updateFields.priority     = fields.priority;
+    if (fields.description  !== undefined) updateFields.description  = fields.description;
     if (fields.is_big_mover !== undefined) updateFields.is_big_mover = fields.is_big_mover;
 
     const { error } = await supabase
@@ -270,6 +310,58 @@ async function executeTool(
     return { success: true, task_id: match.id, title: match.title, new_status: newStatus };
   }
 
+  if (toolName === 'batch_update_calendar_events') {
+    const filter = input.filter as {
+      date?: string;
+      before_time?: string;
+      is_big_mover?: boolean;
+      status_from?: string;
+    };
+
+    let query = supabase
+      .from('calendar_events')
+      .select('id, title, status, event_time, is_big_mover')
+      .eq('user_id', userId);
+
+    if (filter.date)        query = query.eq('event_date', filter.date);
+    if (filter.is_big_mover !== undefined) query = query.eq('is_big_mover', filter.is_big_mover);
+    if (filter.status_from) query = query.eq('status', filter.status_from);
+
+    const { data: candidates, error: fetchError } = await query;
+    if (fetchError) return { success: false, error: fetchError.message };
+    if (!candidates || candidates.length === 0) {
+      return { success: true, updated: 0, message: 'No matching events found.' };
+    }
+
+    // Apply before_time filter in code (simpler than Supabase time comparison)
+    let targets: Array<{ id: string; title: string; status: string; event_time?: string | null }> = candidates;
+    if (filter.before_time) {
+      targets = candidates.filter((e: { event_time?: string | null }) => {
+        if (!e.event_time) return false;
+        return e.event_time.slice(0, 5) < filter.before_time!;
+      });
+    }
+
+    if (targets.length === 0) {
+      return { success: true, updated: 0, message: 'No events matched the time filter.' };
+    }
+
+    const ids = targets.map((e: { id: string }) => e.id);
+    const { error: updateError } = await supabase
+      .from('calendar_events')
+      .update({ status: input.new_status })
+      .in('id', ids)
+      .eq('user_id', userId);
+
+    if (updateError) return { success: false, error: updateError.message };
+    return {
+      success: true,
+      updated: targets.length,
+      titles: targets.map((e: { title: string }) => e.title),
+      new_status: input.new_status,
+    };
+  }
+
   return { success: false, error: `Unknown tool: ${toolName}` };
 }
 
@@ -284,7 +376,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'messages and agent_id are required' }, { status: 400 });
     }
 
-    const systemPrompt = await buildSystemPrompt(supabase, agent_id);
+    // ── Slash command preprocessing ──────────────────────────────────────────
+    // Parse the last user message for a slash command prefix.
+    // Strip the slash from the content and inject category-specific context
+    // into the system prompt so Claude knows what mode it's operating in.
+    let conversationCategory: SlashCategory = 'general';
+    const lastUserMessage = messages[messages.length - 1] as { role: string; content: string };
+    const rawContent = typeof lastUserMessage?.content === 'string' ? lastUserMessage.content : '';
+    const parsed = parseSlashCommand(rawContent);
+
+    if (parsed.hasSlashCommand) {
+      conversationCategory = parsed.category;
+      // Replace content in the messages array with the stripped version
+      messages[messages.length - 1] = {
+        ...lastUserMessage,
+        content: parsed.cleanContent,
+      };
+    }
+
+    let systemPrompt = await buildSystemPrompt(supabase, agent_id);
+
+    // Inject per-category context after the main system prompt
+    const categoryContext = CATEGORY_CONTEXT[conversationCategory];
+    if (categoryContext) {
+      systemPrompt = systemPrompt + '\n\n' + categoryContext;
+    }
+
     const actionsTaken: ActionTaken[] = [];
 
     let anthropicMessages = messages.map((m: { role: string; content: string }) => ({
@@ -367,7 +484,11 @@ export async function POST(request: NextRequest) {
       ];
     }
 
-    return NextResponse.json({ message: finalMessage, actions_taken: actionsTaken });
+    return NextResponse.json({
+      message: finalMessage,
+      actions_taken: actionsTaken,
+      category: conversationCategory,
+    });
   } catch (error) {
     console.error('assistant route: unexpected error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
