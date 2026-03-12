@@ -361,6 +361,9 @@ function ActionsSummary({ actions }: { actions: ActionTaken[] }) {
       const count = result.updated as number;
       return `✅ ${count} event${count !== 1 ? 's' : ''} marked ${result.new_status}`;
     }
+    if (action.tool === 'save_raw_thought') {
+      return `🧠 Brain dump saved for Analyst`;
+    }
     return `✅ ${action.tool}`;
   }
 

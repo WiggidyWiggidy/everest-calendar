@@ -221,7 +221,7 @@ Your memory notes about this user:
 export interface ActionTaken {
   tool: 'create_calendar_event' | 'update_calendar_event' | 'delete_calendar_event'
       | 'get_calendar_events' | 'get_launch_tasks' | 'update_launch_task'
-      | 'batch_update_calendar_events';
+      | 'batch_update_calendar_events' | 'save_raw_thought';
   input: Record<string, unknown>;
   result: Record<string, unknown>;
 }
