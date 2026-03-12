@@ -154,7 +154,7 @@ export default function CommandCentre() {
         onClick={() => setIsOpen(false)}
       />
 
-      {/* Panel — bottom sheet on mobile, floating card on desktop */}
+      {/* Panel */}
       <div className={cn(
         'fixed z-50',
         'bottom-0 inset-x-0',
