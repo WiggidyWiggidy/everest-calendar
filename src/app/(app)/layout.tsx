@@ -30,10 +30,8 @@ export default async function AppLayout({
         <div className="p-6 lg:p-8 pt-16 lg:pt-8 pb-40 lg:pb-8">
           {children}
         </div>
-        {/* Desktop floating mic — hidden on mobile (MobileCommandBar takes over) */}
-        <div className="hidden lg:block">
-          <VoiceCapture />
-        </div>
+        {/* Command Centre — visible on all screen sizes */}
+        <VoiceCapture />
         {/* Mobile sticky command bar — hidden on desktop */}
         <MobileCommandBar />
       </main>
