@@ -219,7 +219,8 @@ Your memory notes about this user:
 
 // Represents a single calendar tool call made by the assistant
 export interface ActionTaken {
-  tool: 'create_calendar_event' | 'update_calendar_event' | 'delete_calendar_event' | 'get_calendar_events';
+  tool: 'create_calendar_event' | 'update_calendar_event' | 'delete_calendar_event'
+      | 'get_calendar_events' | 'get_launch_tasks' | 'update_launch_task';
   input: Record<string, unknown>;
   result: Record<string, unknown>;
 }

@@ -117,6 +117,39 @@ const TOOLS = [
       required: [],
     },
   },
+  {
+    name: 'get_launch_tasks',
+    description: 'Fetch all open launch dependency tasks. Use this when the user asks about launch status, dependencies, or what is still outstanding.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        include_done: {
+          type: 'boolean',
+          description: 'If true, include completed tasks. Default false.',
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'update_launch_task',
+    description: 'Mark a launch dependency task as done or pending. Match by title (case-insensitive, partial match acceptable).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        title_match: {
+          type: 'string',
+          description: 'Partial title to match against — finds the closest task',
+        },
+        status: {
+          type: 'string',
+          enum: ['done', 'pending'],
+          description: 'New status to set',
+        },
+      },
+      required: ['title_match', 'status'],
+    },
+  },
 ];
 
 async function executeTool(
@@ -188,6 +221,53 @@ async function executeTool(
     const { data, error } = await query;
     if (error) return { success: false, error: error.message };
     return { success: true, events: data || [] };
+  }
+
+  if (toolName === 'get_launch_tasks') {
+    let query = supabase
+      .from('task_backlog')
+      .select('id, title, status, due_date')
+      .eq('user_id', userId)
+      .eq('is_launch_task', true)
+      .neq('status', 'dismissed')
+      .order('due_date', { ascending: true, nullsFirst: false });
+    if (!input.include_done) {
+      query = query.neq('status', 'done');
+    }
+    const { data, error } = await query;
+    if (error) return { success: false, error: error.message };
+    return { success: true, tasks: data || [] };
+  }
+
+  if (toolName === 'update_launch_task') {
+    const { data: tasks, error: fetchError } = await supabase
+      .from('task_backlog')
+      .select('id, title, status')
+      .eq('user_id', userId)
+      .eq('is_launch_task', true)
+      .neq('status', 'dismissed');
+    if (fetchError) return { success: false, error: fetchError.message };
+    if (!tasks || tasks.length === 0) return { success: false, error: 'No launch tasks found' };
+
+    const searchTerm = (input.title_match as string).toLowerCase();
+    const match = tasks.find((t: { id: string; title: string; status: string }) =>
+      t.title.toLowerCase().includes(searchTerm)
+    );
+    if (!match) {
+      return {
+        success: false,
+        error: `No task found matching "${input.title_match}". Available: ${tasks.map((t: { title: string }) => t.title).join(', ')}`,
+      };
+    }
+
+    const newStatus = input.status === 'done' ? 'done' : 'pending';
+    const { error: updateError } = await supabase
+      .from('task_backlog')
+      .update({ status: newStatus })
+      .eq('id', match.id)
+      .eq('user_id', userId);
+    if (updateError) return { success: false, error: updateError.message };
+    return { success: true, task_id: match.id, title: match.title, new_status: newStatus };
   }
 
   return { success: false, error: `Unknown tool: ${toolName}` };

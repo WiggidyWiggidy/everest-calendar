@@ -422,17 +422,52 @@ export default function DashboardPage() {
                 <div className="space-y-2">
                   {stats.upcoming.map((event) => {
                     const colors = CATEGORY_COLORS[event.category];
+                    const isDone = event.status === 'done';
+                    async function handleToggle(e: React.MouseEvent) {
+                      e.stopPropagation();
+                      await updateEvent(event.id, {
+                        title:        event.title,
+                        description:  event.description || '',
+                        event_date:   event.event_date,
+                        event_time:   event.event_time || '',
+                        category:     event.category,
+                        priority:     event.priority,
+                        status:       isDone ? 'planned' : 'done',
+                        is_big_mover: event.is_big_mover ?? false,
+                      });
+                    }
                     return (
-                      <button
+                      <div
                         key={event.id}
-                        className="w-full text-left flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 hover:border-indigo-200 transition-colors group"
-                        onClick={() => setEventToEdit(event)}
+                        className={cn(
+                          'flex items-center gap-3 p-3 rounded-lg border transition-colors group',
+                          isDone
+                            ? 'bg-green-50 border-green-100 opacity-70'
+                            : 'hover:bg-gray-50 hover:border-indigo-200'
+                        )}
                       >
+                        {/* Checkbox — one-tap complete */}
+                        <button
+                          onClick={handleToggle}
+                          className={cn(
+                            'h-5 w-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors',
+                            isDone
+                              ? 'bg-green-500 border-green-500'
+                              : 'border-gray-300 hover:border-indigo-500'
+                          )}
+                        >
+                          {isDone && <Check className="h-3 w-3 text-white" />}
+                        </button>
+                        {/* Colour dot */}
                         <div className={cn('w-2 h-10 rounded-full shrink-0', colors.dot)} />
-                        <div className="flex-1 min-w-0">
+                        {/* Title + date — clicking opens edit dialog */}
+                        <button
+                          className="flex-1 min-w-0 text-left"
+                          onClick={() => setEventToEdit(event)}
+                        >
                           <p className={cn(
                             'font-medium text-sm text-gray-900 truncate',
-                            event.status === 'done' && 'line-through text-gray-400'
+                            isDone && 'line-through text-gray-400'
                           )}>
                             {event.title}
                           </p>
@@ -440,7 +475,7 @@ export default function DashboardPage() {
                             {format(new Date(event.event_date + 'T00:00:00'), 'EEE, MMM d')}
                             {event.event_time && ` at ${event.event_time.slice(0, 5)}`}
                           </p>
-                        </div>
+                        </button>
                         <Badge variant="outline" className={cn('text-xs shrink-0', colors.bg, colors.text)}>
                           {CATEGORY_LABELS[event.category]}
                         </Badge>
@@ -455,8 +490,13 @@ export default function DashboardPage() {
                         >
                           {event.priority}
                         </Badge>
-                        <Pencil className="h-3.5 w-3.5 text-gray-300 group-hover:text-indigo-400 shrink-0 transition-colors" />
-                      </button>
+                        <button
+                          onClick={() => setEventToEdit(event)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Pencil className="h-3.5 w-3.5 text-gray-400 hover:text-indigo-500" />
+                        </button>
+                      </div>
                     );
                   })}
                 </div>

@@ -350,6 +350,13 @@ function ActionsSummary({ actions }: { actions: ActionTaken[] }) {
       const events = (result.events as unknown[]) || [];
       return `📅 Fetched ${events.length} event${events.length !== 1 ? 's' : ''}`;
     }
+    if (action.tool === 'get_launch_tasks') {
+      const tasks = (result.tasks as unknown[]) || [];
+      return `📋 Fetched ${tasks.length} open launch task${tasks.length !== 1 ? 's' : ''}`;
+    }
+    if (action.tool === 'update_launch_task') {
+      return `✅ "${result.title}" marked ${result.new_status}`;
+    }
     return `✅ ${action.tool}`;
   }
 

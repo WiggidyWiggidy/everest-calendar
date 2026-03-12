@@ -84,7 +84,7 @@ export default function CalendarGrid({
               )}
               onClick={() => onDayClick(day)}
             >
-              {/* Day number */}
+              {/* Day number + X/Y completion ratio */}
               <div className="flex items-center justify-between mb-1">
                 <span
                   className={cn(
@@ -96,6 +96,11 @@ export default function CalendarGrid({
                 >
                   {format(day, 'd')}
                 </span>
+                {dayEvents.length > 0 && (
+                  <span className="text-xs text-gray-400">
+                    {dayEvents.filter(e => e.status === 'done').length}/{dayEvents.length}
+                  </span>
+                )}
               </div>
 
               {/* Event pills (show up to 3, then "+N more") — big movers sorted first */}
@@ -112,23 +117,33 @@ export default function CalendarGrid({
                           <button
                             key={event.id}
                             className={cn(
-                              'w-full text-left text-xs px-1.5 py-0.5 rounded truncate font-medium',
+                              'w-full text-left text-xs px-1.5 py-0.5 rounded truncate font-medium transition-opacity',
                               colors.bg,
                               colors.text,
-                              event.status === 'done' && 'line-through opacity-60',
-                              event.is_big_mover && 'border-l-2 border-amber-500'
+                              event.status === 'done'
+                                ? 'opacity-40 line-through'
+                                : 'opacity-100',
+                              event.is_big_mover
+                                ? 'border-l-[3px] border-amber-500 pl-1'
+                                : 'border-l-0'
                             )}
                             onClick={(e) => {
-                              e.stopPropagation(); // Don't trigger day click
+                              e.stopPropagation();
                               onEventClick(event);
                             }}
                           >
                             {event.event_time && (
-                              <span className="opacity-70">
-                                {event.event_time.slice(0, 5)}{' '}
+                              <span className="opacity-60 mr-0.5">
+                                {event.event_time.slice(0, 5)}
                               </span>
                             )}
-                            {event.is_big_mover ? '⭐ ' : ''}{event.title}
+                            {event.is_big_mover && (
+                              <span className="mr-0.5">🎯</span>
+                            )}
+                            {event.title}
+                            {event.status === 'done' && (
+                              <span className="ml-1 opacity-60">✓</span>
+                            )}
                           </button>
                         );
                       })}

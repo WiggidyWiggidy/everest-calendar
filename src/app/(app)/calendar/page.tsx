@@ -3,14 +3,16 @@
 // ============================================
 // Calendar Page
 // Monthly/weekly calendar with event management
+// Day click opens DayPanel slide panel instead of directly opening the dialog
 // ============================================
-import { useState } from 'react';
-import { format, addMonths, subMonths, addWeeks, subWeeks } from 'date-fns';
+import { useState, useEffect } from 'react';
+import { format, addMonths, subMonths, addWeeks, subWeeks, parseISO } from 'date-fns';
 import { ChevronLeft, ChevronRight, Plus, CalendarDays, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import CalendarGrid from '@/components/calendar/CalendarGrid';
 import WeekView from '@/components/calendar/WeekView';
 import EventDialog from '@/components/calendar/EventDialog';
+import DayPanel from '@/components/calendar/DayPanel';
 import { useEvents } from '@/lib/hooks/useEvents';
 import { CalendarEvent, EventFormData } from '@/types';
 
@@ -19,12 +21,22 @@ export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<'month' | 'week'>('month');
 
-  // Dialog state
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
-  const [defaultDate, setDefaultDate] = useState<string>('');
+  // Day panel state
+  const [dayPanelDate, setDayPanelDate] = useState<Date | null>(null);
 
-  // Navigation handlers
+  // Launch date (from localStorage, same as dashboard)
+  const [launchDate, setLaunchDate] = useState<Date | null>(null);
+  useEffect(() => {
+    const stored = localStorage.getItem('everest_launch_date');
+    if (stored) setLaunchDate(parseISO(stored));
+  }, []);
+
+  // Dialog state (create / edit)
+  const [dialogOpen, setDialogOpen]     = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [defaultDate, setDefaultDate]   = useState<string>('');
+
+  // Navigation
   function goNext() {
     setCurrentDate(view === 'month' ? addMonths(currentDate, 1) : addWeeks(currentDate, 1));
   }
@@ -35,15 +47,27 @@ export default function CalendarPage() {
     setCurrentDate(new Date());
   }
 
-  // Open dialog to create a new event on a specific day
+  // Clicking a day opens the slide panel
   function handleDayClick(date: Date) {
-    setSelectedEvent(null);
-    setDefaultDate(format(date, 'yyyy-MM-dd'));
+    setDayPanelDate(date);
+  }
+
+  // Clicking an event from CalendarGrid / WeekView opens edit dialog
+  function handleEventClick(event: CalendarEvent) {
+    setSelectedEvent(event);
+    setDefaultDate('');
     setDialogOpen(true);
   }
 
-  // Open dialog to edit an existing event
-  function handleEventClick(event: CalendarEvent) {
+  // "Add Event" button in the panel header opens the create dialog pre-filled
+  function handleAddFromPanel(date: string) {
+    setSelectedEvent(null);
+    setDefaultDate(date);
+    setDialogOpen(true);
+  }
+
+  // "Edit Event" from DayPanel opens edit dialog
+  function handleEditFromPanel(event: CalendarEvent) {
     setSelectedEvent(event);
     setDefaultDate('');
     setDialogOpen(true);
@@ -67,7 +91,7 @@ export default function CalendarPage() {
 
   return (
     <div>
-      {/* Header with navigation and view toggle */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Calendar</h1>
@@ -108,7 +132,7 @@ export default function CalendarPage() {
             <ChevronRight className="h-4 w-4" />
           </Button>
 
-          {/* Add event */}
+          {/* Add event — opens dialog directly, today's date */}
           <Button
             size="sm"
             onClick={() => {
@@ -142,6 +166,26 @@ export default function CalendarPage() {
           onDayClick={handleDayClick}
           onEventClick={handleEventClick}
         />
+      )}
+
+      {/* Day Panel — slides in from right when a day is clicked */}
+      {dayPanelDate && (
+        <>
+          {/* Mobile backdrop */}
+          <div
+            className="fixed inset-0 bg-black/20 z-40 sm:hidden"
+            onClick={() => setDayPanelDate(null)}
+          />
+          <DayPanel
+            date={dayPanelDate}
+            events={events}
+            launchDate={launchDate}
+            onClose={() => setDayPanelDate(null)}
+            onUpdateEvent={async (id, data) => { await updateEvent(id, data); }}
+            onEditEvent={handleEditFromPanel}
+            onAddEvent={handleAddFromPanel}
+          />
+        </>
       )}
 
       {/* Event create/edit dialog */}
