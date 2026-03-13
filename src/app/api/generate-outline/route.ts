@@ -21,7 +21,7 @@ function getCwdContext(): string {
 
   // 2. Existing file tree
   try {
-    function walk(dir: string, prefix = ''): string[] {
+    const walk = (dir: string, prefix = ''): string[] => {
       const entries = fs.readdirSync(dir, { withFileTypes: true });
       const out: string[] = [];
       for (const e of entries) {
@@ -31,7 +31,7 @@ function getCwdContext(): string {
         if (e.isDirectory()) out.push(...walk(path.join(dir, e.name), rel));
       }
       return out;
-    }
+    };
     const tree = walk(path.join(cwd, 'src'));
     lines.push('## Existing source files (check these before creating anything new)\n' + tree.join('\n'));
   } catch (_) {}
