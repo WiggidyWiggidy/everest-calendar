@@ -105,3 +105,68 @@ export async function addLaunchTask(
   if (error) { console.error('addLaunchTask error:', error); return false; }
   return true;
 }
+
+// ---- Build Queue ----
+
+// Fetch all build tasks ordered by priority_score descending
+export async function getBuildQueue(): Promise<TaskBacklog[]> {
+  const { data, error } = await supabase
+    .from('task_backlog')
+    .select('*')
+    .eq('task_type', 'build')
+    .neq('status', 'dismissed')
+    .order('priority_score', { ascending: false });
+
+  if (error) { console.error('getBuildQueue error:', error); return []; }
+  return data || [];
+}
+
+// Create a new build task (from assistant /feature capture or direct request)
+export async function createBuildTask(
+  title: string,
+  description: string,
+  category: string,
+  priority_score: number,
+  build_context?: string
+): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { error } = await supabase.from('task_backlog').insert({
+    user_id: user.id,
+    title: title.trim(),
+    description: description.trim(),
+    category,
+    priority_score: Math.min(10, Math.max(1, priority_score)),
+    status: 'pending',
+    source_thought_ids: [],
+    task_type: 'build',
+    source: 'assistant',
+    build_context: build_context || null,
+  });
+
+  if (error) { console.error('createBuildTask error:', error); return false; }
+  return true;
+}
+
+// Update the priority score on any task
+export async function updateBuildTaskPriority(id: string, priority_score: number): Promise<boolean> {
+  const { error } = await supabase
+    .from('task_backlog')
+    .update({ priority_score: Math.min(10, Math.max(1, priority_score)) })
+    .eq('id', id);
+
+  if (error) { console.error('updateBuildTaskPriority error:', error); return false; }
+  return true;
+}
+
+// Save (or overwrite) the execution outline for a build task
+export async function saveExecutionOutline(id: string, outline: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('task_backlog')
+    .update({ execution_outline: outline })
+    .eq('id', id);
+
+  if (error) { console.error('saveExecutionOutline error:', error); return false; }
+  return true;
+}

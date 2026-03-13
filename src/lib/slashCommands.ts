@@ -42,7 +42,7 @@ export const CATEGORY_CONTEXT: Record<SlashCategory, string> = {
   dump:
     'The user is doing a brain dump. Acknowledge it, ask clarifying questions if needed, and confirm it has been captured for the Analyst to process.',
   feature:
-    'The user is logging a feature request. Acknowledge the request, restate it clearly, and confirm it will be added to the development pipeline.',
+    'The user is logging a feature or build request. Call create_build_task immediately with a clear title, description, appropriate category, and priority_score. Do not ask for confirmation first. After the tool call, confirm the task was added to the build queue and restate the title.',
   schedule:
     'The user wants to schedule something. Use your calendar tools to create the event immediately. Confirm what was created.',
   erins:

@@ -20,7 +20,7 @@ import { createClient } from '@/lib/supabase/server';
 import { ActionTaken } from '@/types';
 import { parseSlashCommand, CATEGORY_CONTEXT, SlashCategory } from '@/lib/slashCommands';
 
-const MAX_ITERATIONS = 5;
+const MAX_ITERATIONS = 8;
 
 async function buildSystemPrompt(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -212,6 +212,66 @@ const TOOLS = [
       required: ['content'],
     },
   },
+  {
+    name: 'create_build_task',
+    description: "Add a feature or build task to the development build queue. Use this whenever the user sends a /feature command, mentions something they want built, or asks to log a development task. Call it immediately — don't ask for more info unless the title is completely unclear.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', description: 'Short, clear title for the build task' },
+        description: { type: 'string', description: 'One or two sentences describing what needs to be built' },
+        category: {
+          type: 'string',
+          enum: ['product', 'marketing', 'operations', 'content'],
+          description: 'Category for this task',
+        },
+        priority_score: {
+          type: 'integer',
+          description: 'Priority from 1 (low) to 10 (critical)',
+          minimum: 1,
+          maximum: 10,
+        },
+        build_context: {
+          type: 'string',
+          description: "Optional extra context the developer will need — e.g. 'user said it should work like Notion blocks'",
+        },
+      },
+      required: ['title', 'description', 'category', 'priority_score'],
+    },
+  },
+  {
+    name: 'get_build_queue',
+    description: 'Fetch the current build queue (tasks with task_type=build). Use when the user asks what is in the build pipeline, what features are queued, or to review development priorities.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        status: {
+          type: 'string',
+          enum: ['pending', 'in-progress', 'done'],
+          description: 'Filter by status. Omit to return all non-dismissed build tasks.',
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'update_task_priority',
+    description: 'Update the priority score on a task in the backlog. Use when the user re-prioritises a feature or task.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        task_id: { type: 'string', description: 'UUID of the task to update. Use when you already know the ID.' },
+        title_match: { type: 'string', description: 'Partial title to fuzzy-match against if you do not have the ID.' },
+        priority_score: {
+          type: 'integer',
+          description: 'New priority from 1 (low) to 10 (critical)',
+          minimum: 1,
+          maximum: 10,
+        },
+      },
+      required: ['priority_score'],
+    },
+  },
 ];
 
 async function executeTool(
@@ -392,6 +452,76 @@ async function executeTool(
       });
     if (error) return { success: false, error: error.message };
     return { success: true, message: 'Thought saved for Analyst processing.' };
+  }
+
+  if (toolName === 'create_build_task') {
+    const { data, error } = await supabase
+      .from('task_backlog')
+      .insert({
+        user_id: userId,
+        title: (input.title as string).trim(),
+        description: (input.description as string || '').trim(),
+        category: input.category as string || 'product',
+        priority_score: Math.min(10, Math.max(1, input.priority_score as number)),
+        status: 'pending',
+        source_thought_ids: [],
+        task_type: 'build',
+        source: 'assistant',
+        build_context: (input.build_context as string) || null,
+      })
+      .select('id, title')
+      .single();
+    if (error) return { success: false, error: error.message };
+    return { success: true, task_id: data.id, title: data.title };
+  }
+
+  if (toolName === 'get_build_queue') {
+    let query = supabase
+      .from('task_backlog')
+      .select('id, title, description, priority_score, status, build_context, execution_outline')
+      .eq('user_id', userId)
+      .eq('task_type', 'build')
+      .neq('status', 'dismissed')
+      .order('priority_score', { ascending: false });
+
+    if (input.status) {
+      query = query.eq('status', input.status as string);
+    }
+
+    const { data, error } = await query;
+    if (error) return { success: false, error: error.message };
+    return { success: true, tasks: data || [], count: (data || []).length };
+  }
+
+  if (toolName === 'update_task_priority') {
+    let taskId = input.task_id as string | undefined;
+    let title = '';
+
+    if (!taskId && input.title_match) {
+      const { data: allTasks } = await supabase
+        .from('task_backlog')
+        .select('id, title')
+        .eq('user_id', userId)
+        .neq('status', 'dismissed');
+
+      const match = (allTasks || []).find((t: { id: string; title: string }) =>
+        t.title.toLowerCase().includes((input.title_match as string).toLowerCase())
+      );
+      if (!match) {
+        return { success: false, error: `No task found matching "${input.title_match}"` };
+      }
+      taskId = match.id;
+      title = match.title;
+    }
+
+    const { error } = await supabase
+      .from('task_backlog')
+      .update({ priority_score: Math.min(10, Math.max(1, input.priority_score as number)) })
+      .eq('id', taskId as string)
+      .eq('user_id', userId);
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, task_id: taskId, title, priority_score: input.priority_score };
   }
 
   return { success: false, error: `Unknown tool: ${toolName}` };
