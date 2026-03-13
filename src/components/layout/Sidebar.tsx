@@ -15,16 +15,18 @@ import {
   Mountain,
   Menu,
   X,
+  Target,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 
 // Navigation items
 const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/calendar',  label: 'Calendar',  icon: Calendar },
-  { href: '/agents',    label: 'Agents',    icon: Bot },
-  { href: '/settings',  label: 'Settings',  icon: Settings },
+  { href: '/dashboard',       label: 'Dashboard',   icon: LayoutDashboard },
+  { href: '/dashboard/focus', label: 'Daily Focus', icon: Target },
+  { href: '/calendar',        label: 'Calendar',    icon: Calendar },
+  { href: '/agents',          label: 'Agents',      icon: Bot },
+  { href: '/settings',        label: 'Settings',    icon: Settings },
 ];
 
 interface SidebarProps {
