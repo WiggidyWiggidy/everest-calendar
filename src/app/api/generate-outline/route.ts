@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     // Fetch the task
     const { data: task, error: taskError } = await supabase
       .from('task_backlog')
-      .select('id, title, description, build_context')
+      .select('id, title, description, build_context, conversation_id')
       .eq('id', task_id)
       .eq('user_id', user.id)
       .single();
@@ -33,15 +33,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
+    // Fetch conversation thread if linked
+    let conversationThread = '';
+    if (task.conversation_id) {
+      const { data: messages } = await supabase
+        .from('agent_messages')
+        .select('role, content')
+        .eq('conversation_id', task.conversation_id)
+        .order('created_at', { ascending: true })
+        .limit(20);
+
+      if (messages && messages.length > 0) {
+        conversationThread = messages
+          .map((m: { role: string; content: string }) => `${m.role.toUpperCase()}: ${m.content}`)
+          .join('\n\n');
+      }
+    }
+
     // Build the user message
     const parts = [
-      `Title: ${task.title}`,
-      `Description: ${task.description || '(none)'}`,
+      `TASK TITLE: ${task.title}`,
+      `DESCRIPTION: ${task.description || '(none)'}`,
     ];
     if (task.build_context) {
-      parts.push(`Context: ${task.build_context}`);
+      parts.push(`WHAT THE USER SAID: ${task.build_context}`);
     }
-    const userMessage = parts.join('\n');
+    if (conversationThread) {
+      parts.push(`FULL CONVERSATION:\n${conversationThread}`);
+    }
+    const userMessage = parts.join('\n\n');
 
     // Call Claude
     const response = await fetch('https://api.anthropic.com/v1/messages', {

@@ -321,13 +321,32 @@ const TOOLS = [
       required: [],
     },
   },
+  {
+    name: 'save_execution_outline',
+    description: 'Save an execution outline to a build task. Use when you have generated or updated an implementation plan for a specific build task.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        task_id: {
+          type: 'string',
+          description: 'The UUID of the build task to attach the outline to',
+        },
+        outline: {
+          type: 'string',
+          description: 'The full execution outline text (markdown numbered list)',
+        },
+      },
+      required: ['task_id', 'outline'],
+    },
+  },
 ];
 
 async function executeTool(
   toolName: string,
   input: Record<string, unknown>,
   supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string
+  userId: string,
+  conversationId: string | null
 ): Promise<Record<string, unknown>> {
   if (toolName === 'create_calendar_event') {
     const { data, error } = await supabase
@@ -517,11 +536,24 @@ async function executeTool(
         task_type: 'build',
         source: 'assistant',
         build_context: (input.build_context as string) || null,
+        conversation_id: conversationId || null,
       })
-      .select('id, title')
+      .select('id, title, priority_score')
       .single();
     if (error) return { success: false, error: error.message };
-    return { success: true, task_id: data.id, title: data.title };
+
+    // Fire-and-forget: generate outline in the background
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+    fetch(`${siteUrl}/api/generate-outline`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task_id: data.id }),
+    }).catch((err: unknown) => {
+      console.error('auto-outline background fetch failed:', err);
+    });
+
+    return { success: true, task_id: data.id, title: data.title, priority_score: data.priority_score, outline_generating: true };
   }
 
   if (toolName === 'get_build_queue') {
@@ -697,6 +729,16 @@ async function executeTool(
     };
   }
 
+  if (toolName === 'save_execution_outline') {
+    const { error } = await supabase
+      .from('task_backlog')
+      .update({ execution_outline: input.outline as string })
+      .eq('id', input.task_id as string)
+      .eq('user_id', userId);
+    if (error) return { success: false, error: error.message };
+    return { success: true, task_id: input.task_id, message: 'Execution outline saved.' };
+  }
+
   return { success: false, error: `Unknown tool: ${toolName}` };
 }
 
@@ -852,7 +894,8 @@ export async function POST(request: NextRequest) {
           toolUse.name,
           toolUse.input as Record<string, unknown>,
           supabase,
-          user.id
+          user.id,
+          resolvedConversationId
         );
 
         actionsTaken.push({
