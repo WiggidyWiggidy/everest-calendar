@@ -13,6 +13,7 @@ import { Agent, TaskBacklog, AnalystConfig } from '@/types';
 import { getUnprocessedCount } from '@/lib/thoughts';
 import { getTasks, updateTaskStatus } from '@/lib/task-backlog';
 import { getAnalystConfig, updateAnalystConfig } from '@/lib/analyst-config';
+import { createClient } from '@/lib/supabase/client';
 import TaskCard from './TaskCard';
 import PromptSettingsModal from './PromptSettingsModal';
 import {
@@ -26,6 +27,7 @@ import {
   Copy,
   Check,
   ExternalLink,
+  Play,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -47,6 +49,7 @@ export default function AnalystDashboard({ agent }: AnalystDashboardProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [generatingOutlineId, setGeneratingOutlineId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [queueingId, setQueueingId] = useState<string | null>(null);
 
   // Load all data on mount
   useEffect(() => {
@@ -129,6 +132,29 @@ export default function AnalystDashboard({ agent }: AnalystDashboardProps) {
     navigator.clipboard.writeText(outline);
     setCopiedId(taskId);
     setTimeout(() => setCopiedId(null), 2000);
+  }
+
+  // Set build_status = 'queued' — this is the human gate that fires the watcher
+  async function handleQueueForBuild(taskId: string) {
+    setQueueingId(taskId);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('task_backlog')
+        .update({ build_status: 'queued' })
+        .eq('id', taskId);
+      if (error) {
+        alert('Failed to queue task. Try again.');
+      } else {
+        setTasks((prev) =>
+          prev.map((t) => t.id === taskId ? { ...t, build_status: 'queued' } : t)
+        );
+      }
+    } catch {
+      alert('Failed to queue task. Check your connection.');
+    } finally {
+      setQueueingId(null);
+    }
   }
 
   // Derived lists
@@ -263,8 +289,10 @@ export default function AnalystDashboard({ agent }: AnalystDashboardProps) {
                       onDismiss={handleDismissTask}
                       onGenerateOutline={handleGenerateOutline}
                       onCopyOutline={handleCopyOutline}
+                      onQueueForBuild={handleQueueForBuild}
                       generatingOutlineId={generatingOutlineId}
                       copiedId={copiedId}
+                      queueingId={queueingId}
                     />
                   ) : (
                     <TaskCard
@@ -322,18 +350,23 @@ function BuildTaskCard({
   onDismiss,
   onGenerateOutline,
   onCopyOutline,
+  onQueueForBuild,
   generatingOutlineId,
   copiedId,
+  queueingId,
 }: {
   task: TaskBacklog;
   onDismiss: (id: string) => void;
   onGenerateOutline: (id: string) => void;
   onCopyOutline: (id: string, outline: string) => void;
+  onQueueForBuild: (id: string) => void;
   generatingOutlineId: string | null;
   copiedId: string | null;
+  queueingId: string | null;
 }) {
   const isGenerating = generatingOutlineId === task.id;
   const isCopied     = copiedId === task.id;
+  const isQueuing    = queueingId === task.id;
 
   return (
     <div className="bg-white rounded-xl border border-indigo-100 p-4 space-y-3">
@@ -418,7 +451,7 @@ function BuildTaskCard({
               {task.execution_outline}
             </pre>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <button
               onClick={() => onCopyOutline(task.id, task.execution_outline!)}
               className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors font-medium"
@@ -436,6 +469,19 @@ function BuildTaskCard({
             >
               {isGenerating ? 'Regenerating…' : 'Regenerate'}
             </button>
+            {!task.build_status && (
+              <button
+                onClick={() => onQueueForBuild(task.id)}
+                disabled={isQueuing}
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors font-medium disabled:opacity-50"
+              >
+                {isQueuing ? (
+                  <><Loader2 className="w-3 h-3 animate-spin" />Queuing…</>
+                ) : (
+                  <><Play className="w-3 h-3" />Queue for build</>
+                )}
+              </button>
+            )}
           </div>
         </div>
       ) : (
