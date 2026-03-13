@@ -15,16 +15,18 @@ import {
   Mountain,
   Menu,
   X,
+  Rocket,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 
 // Navigation items
 const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/calendar',  label: 'Calendar',  icon: Calendar },
-  { href: '/agents',    label: 'Agents',    icon: Bot },
-  { href: '/settings',  label: 'Settings',  icon: Settings },
+  { href: '/dashboard',         label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/dashboard/launch',  label: 'Launch',    icon: Rocket },
+  { href: '/calendar',          label: 'Calendar',  icon: Calendar },
+  { href: '/agents',            label: 'Agents',    icon: Bot },
+  { href: '/settings',          label: 'Settings',  icon: Settings },
 ];
 
 interface SidebarProps {
@@ -59,7 +61,9 @@ export default function Sidebar({ userEmail }: SidebarProps) {
       {/* Navigation links */}
       <nav className="flex-1 px-3 space-y-1">
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = item.href === '/dashboard'
+            ? pathname === '/dashboard'
+            : pathname === item.href || pathname.startsWith(item.href + '/');
           return (
             <a
               key={item.href}
