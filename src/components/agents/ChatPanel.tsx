@@ -365,7 +365,11 @@ function ActionsSummary({ actions }: { actions: ActionTaken[] }) {
       return `🧠 Brain dump saved for Analyst`;
     }
     if (action.tool === 'create_build_task') {
-      return `🔨 Build task "${result.title || input.title}" added to queue`;
+      const suffix = result.outline_generating ? ' · outline generating' : '';
+      return `⚡ Build task captured: "${result.title || input.title}" (priority: ${result.priority_score ?? input.priority_score}/10)${suffix}`;
+    }
+    if (action.tool === 'save_execution_outline') {
+      return `💾 Execution outline saved to build task`;
     }
     if (action.tool === 'get_build_queue') {
       const count = (result.tasks as unknown[])?.length ?? 0;
