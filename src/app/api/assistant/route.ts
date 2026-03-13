@@ -272,6 +272,55 @@ const TOOLS = [
       required: ['priority_score'],
     },
   },
+  {
+    name: 'get_raw_thoughts',
+    description: 'Read brain dumps from raw_thoughts. Use when user asks what they have captured, what is unprocessed, or wants to know what is sitting in the inbox waiting for the Analyst.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        status: {
+          type: 'string',
+          description: 'Filter by status. One of: unprocessed, processed, archived. Default: unprocessed.',
+        },
+        limit: {
+          type: 'number',
+          description: 'Max results. Default 10.',
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'get_task_backlog',
+    description: 'Read tasks from task_backlog. Use when user asks about pending tasks, what is in the backlog, top priorities, or what business vs build tasks exist.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        task_type: {
+          type: 'string',
+          description: 'Filter by task_type. One of: business, build. Omit for all.',
+        },
+        status: {
+          type: 'string',
+          description: 'Filter by status. One of: pending, approved, in-progress, done, dismissed. Omit to exclude dismissed only.',
+        },
+        limit: {
+          type: 'number',
+          description: 'Max results. Default 10.',
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'get_system_state',
+    description: 'Get a full snapshot of current system state. Use when user asks "what is my system state", "where are things at", "what should I focus on", or any broad status question. Returns counts and top items across raw_thoughts, task_backlog, and calendar.',
+    input_schema: {
+      type: 'object',
+      properties: {},
+      required: [],
+    },
+  },
 ];
 
 async function executeTool(
@@ -522,6 +571,130 @@ async function executeTool(
 
     if (error) return { success: false, error: error.message };
     return { success: true, task_id: taskId, title, priority_score: input.priority_score };
+  }
+
+  if (toolName === 'get_raw_thoughts') {
+    const status = input.status ? String(input.status) : 'unprocessed';
+    const limit = input.limit ? Math.min(Number(input.limit), 20) : 10;
+
+    const { data, error } = await supabase
+      .from('raw_thoughts')
+      .select('id, text, status, created_at')
+      .eq('user_id', userId)
+      .eq('status', status)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) return { success: false, error: error.message };
+    return {
+      success: true,
+      status_filter: status,
+      count: (data || []).length,
+      thoughts: (data || []).map((t: { id: string; text: string; status: string; created_at: string }) => ({
+        id: t.id,
+        text: t.text,
+        status: t.status,
+        created_at: t.created_at,
+      })),
+    };
+  }
+
+  if (toolName === 'get_task_backlog') {
+    const limit = input.limit ? Math.min(Number(input.limit), 20) : 10;
+
+    let query = supabase
+      .from('task_backlog')
+      .select('id, title, description, category, priority_score, status, task_type, source, is_launch_task, due_date, created_at')
+      .eq('user_id', userId)
+      .neq('status', 'dismissed')
+      .order('priority_score', { ascending: false })
+      .limit(limit);
+
+    if (input.task_type) query = query.eq('task_type', String(input.task_type));
+    if (input.status)    query = query.eq('status', String(input.status));
+
+    const { data, error } = await query;
+    if (error) return { success: false, error: error.message };
+    return { success: true, count: (data || []).length, tasks: data || [] };
+  }
+
+  if (toolName === 'get_system_state') {
+    const today = new Date().toISOString().split('T')[0];
+    const in7Days = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    const [
+      { count: unprocessedCount },
+      { count: pendingBusinessCount },
+      { count: pendingBuildCount },
+      { count: inProgressCount },
+      { data: topBuildTasks },
+      { data: overdueLaunchTasks },
+      { data: upcomingBigMovers },
+    ] = await Promise.all([
+      supabase
+        .from('raw_thoughts')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('status', 'unprocessed'),
+      supabase
+        .from('task_backlog')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('task_type', 'business')
+        .eq('status', 'pending'),
+      supabase
+        .from('task_backlog')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('task_type', 'build')
+        .neq('status', 'dismissed'),
+      supabase
+        .from('task_backlog')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('status', 'in-progress'),
+      supabase
+        .from('task_backlog')
+        .select('id, title, priority_score, source')
+        .eq('user_id', userId)
+        .eq('task_type', 'build')
+        .neq('status', 'dismissed')
+        .order('priority_score', { ascending: false })
+        .limit(3),
+      supabase
+        .from('task_backlog')
+        .select('id, title, due_date, status')
+        .eq('user_id', userId)
+        .eq('is_launch_task', true)
+        .neq('status', 'done')
+        .neq('status', 'dismissed')
+        .lt('due_date', today)
+        .not('due_date', 'is', null),
+      supabase
+        .from('calendar_events')
+        .select('id, title, event_date, event_time')
+        .eq('user_id', userId)
+        .eq('is_big_mover', true)
+        .neq('status', 'done')
+        .gte('event_date', today)
+        .lte('event_date', in7Days)
+        .order('event_date', { ascending: true })
+        .limit(3),
+    ]);
+
+    return {
+      success: true,
+      snapshot: {
+        unprocessed_thoughts: unprocessedCount ?? 0,
+        pending_business_tasks: pendingBusinessCount ?? 0,
+        pending_build_tasks: pendingBuildCount ?? 0,
+        in_progress_tasks: inProgressCount ?? 0,
+        top_build_items: topBuildTasks || [],
+        overdue_launch_tasks: overdueLaunchTasks || [],
+        upcoming_big_movers: upcomingBigMovers || [],
+        generated_at: new Date().toISOString(),
+      },
+    };
   }
 
   return { success: false, error: `Unknown tool: ${toolName}` };
