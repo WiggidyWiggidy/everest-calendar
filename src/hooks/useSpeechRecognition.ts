@@ -40,6 +40,11 @@ interface UseSpeechRecognitionReturn {
   speechSupported: boolean | null; // null while detecting
   startRecording: () => void;
   stopRecording: () => void;
+  // Extended API for voice interface
+  isListening: boolean;     // alias for isRecording
+  transcript: string;       // full transcript including interim text
+  error: string | null;     // last error message, or null
+  confidence: number;       // confidence of last final result (0–1)
 }
 
 const DEFAULT_MAX_CHARS    = 2000;
@@ -57,6 +62,8 @@ export function useSpeechRecognition({
   const [segments, setSegments] = useState<string[]>([]);
   const [interimText, setInterimText] = useState('');
   const [speechSupported, setSpeechSupported] = useState<boolean | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [confidence, setConfidence] = useState(0);
 
   // Refs — stable across renders, safe to read inside event callbacks
   const recognitionRef     = useRef<SpeechRecognition | null>(null);
@@ -144,6 +151,9 @@ export function useSpeechRecognition({
         const updated = [...segmentsRef.current, finalTranscript.trim()];
         segmentsRef.current = updated;
         setSegments(updated);
+        // Track confidence of most recent final result
+        const lastResult = event.results[event.results.length - 1];
+        if (lastResult?.isFinal) setConfidence(lastResult[0].confidence ?? 0);
 
         // Auto-stop when the character limit is reached
         if (updated.join(' ').length >= maxChars) {
@@ -193,10 +203,13 @@ export function useSpeechRecognition({
       // Permission denied — show error briefly, then return to idle
       if (event.error === 'not-allowed') {
         recognitionRef.current = null;
+        setError('Microphone access denied.');
         setStateInner('error');
-        setTimeout(() => setStateInner('idle'), 2000);
+        setTimeout(() => { setStateInner('idle'); setError(null); }, 2000);
         return;
       }
+
+      setError(event.error);
 
       // Any other error (audio-capture, network…) — deliver what we have
       deliverTranscript(recognition);
@@ -231,6 +244,7 @@ export function useSpeechRecognition({
   const isRecording      = state === 'recording' || state === 'paused-between-segments';
   const fullLength       = segments.join(' ').length + interimText.length;
   const progressPct      = Math.min(100, (fullLength / maxChars) * 100);
+  const transcript       = [segments.join(' '), interimText].filter(Boolean).join(' ').trim();
 
   return {
     state,
@@ -241,5 +255,10 @@ export function useSpeechRecognition({
     speechSupported,
     startRecording,
     stopRecording,
+    // Extended API
+    isListening: isRecording,
+    transcript,
+    error,
+    confidence,
   };
 }
