@@ -653,13 +653,16 @@ async function executeTool(
   if (toolName === 'get_system_state') {
     const today = new Date().toISOString().split('T')[0];
     const in7Days = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const LAUNCH_DATE = '2026-03-29';
+    const daysUntilLaunch = Math.ceil((new Date(LAUNCH_DATE).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 
     const [
       { count: unprocessedCount },
       { count: pendingBusinessCount },
       { count: pendingBuildCount },
       { count: inProgressCount },
-      { data: topBuildTasks },
+      { data: priorityBuilds },
+      { data: activeBuilds },
       { data: overdueLaunchTasks },
       { data: upcomingBigMovers },
     ] = await Promise.all([
@@ -685,14 +688,22 @@ async function executeTool(
         .select('*', { count: 'exact', head: true })
         .eq('user_id', userId)
         .eq('status', 'in-progress'),
+      // Top priority builds — surfaces the pre-launch flagged items first
       supabase
         .from('task_backlog')
-        .select('id, title, priority_score, source')
+        .select('id, title, priority_score, build_status, build_context')
         .eq('user_id', userId)
         .eq('task_type', 'build')
         .neq('status', 'dismissed')
         .order('priority_score', { ascending: false })
-        .limit(3),
+        .limit(5),
+      // Active/in-flight builds
+      supabase
+        .from('task_backlog')
+        .select('id, title, build_status, branch_name')
+        .eq('user_id', userId)
+        .in('build_status', ['queued', 'building', 'pr_raised'])
+        .neq('status', 'dismissed'),
       supabase
         .from('task_backlog')
         .select('id, title, due_date, status')
@@ -717,11 +728,14 @@ async function executeTool(
     return {
       success: true,
       snapshot: {
+        days_until_launch: daysUntilLaunch,
+        launch_date: LAUNCH_DATE,
         unprocessed_thoughts: unprocessedCount ?? 0,
         pending_business_tasks: pendingBusinessCount ?? 0,
         pending_build_tasks: pendingBuildCount ?? 0,
         in_progress_tasks: inProgressCount ?? 0,
-        top_build_items: topBuildTasks || [],
+        top_build_items: priorityBuilds || [],
+        active_builds: activeBuilds || [],
         overdue_launch_tasks: overdueLaunchTasks || [],
         upcoming_big_movers: upcomingBigMovers || [],
         generated_at: new Date().toISOString(),
