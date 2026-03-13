@@ -374,6 +374,17 @@ function ActionsSummary({ actions }: { actions: ActionTaken[] }) {
     if (action.tool === 'update_task_priority') {
       return `✅ Priority updated → ${result.priority_score}/10`;
     }
+    if (action.tool === 'get_raw_thoughts') {
+      const count = result.count ?? 0;
+      return `🧠 Read ${count} raw thought${count !== 1 ? 's' : ''} (${result.status_filter})`;
+    }
+    if (action.tool === 'get_task_backlog') {
+      const count = result.count ?? 0;
+      return `📋 Read ${count} task${count !== 1 ? 's' : ''} from backlog`;
+    }
+    if (action.tool === 'get_system_state') {
+      return `📡 System state snapshot retrieved`;
+    }
     return `✅ ${action.tool}`;
   }
 

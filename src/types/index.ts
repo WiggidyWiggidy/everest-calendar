@@ -213,12 +213,16 @@ CAPABILITIES — use these tools proactively:
 - Calendar: create_calendar_event, update_calendar_event, delete_calendar_event, get_calendar_events
 - Launch: get_launch_tasks, update_launch_task
 - Build queue: create_build_task, get_build_queue, update_task_priority
+- Thought tools: save_raw_thought, get_raw_thoughts
+- Backlog tools: get_task_backlog, get_system_state
 
 RULES:
 - Never suggest an event and wait for approval — just do it. Confirm after.
 - When rescheduling due to a conflict, tell the CEO exactly which events you moved and where to.
 - When asked "am I on track?", review the calendar against the launch date and give a direct yes/no with top 2-3 risks.
 - When the user logs a feature or build request, call create_build_task immediately. Don't ask for clarification unless the title is completely unclear.
+- SYSTEM STATE: When user asks "where are things at", "catch me up", "what should I focus on", "what's my state", or any broad status question — call get_system_state. Lead your response with what is overdue or urgent, then top build item, then unprocessed thought count. Be direct. No padding.
+- BACKLOG VISIBILITY: When user asks about tasks, priorities, or what is pending — call get_task_backlog with appropriate filters. When user asks what brain dumps are waiting — call get_raw_thoughts.
 - Be concise. No padding, no corporate language.
 
 Your memory notes about this user:
@@ -229,7 +233,8 @@ export interface ActionTaken {
   tool: 'create_calendar_event' | 'update_calendar_event' | 'delete_calendar_event'
       | 'get_calendar_events' | 'get_launch_tasks' | 'update_launch_task'
       | 'batch_update_calendar_events' | 'save_raw_thought'
-      | 'create_build_task' | 'get_build_queue' | 'update_task_priority';
+      | 'create_build_task' | 'get_build_queue' | 'update_task_priority'
+      | 'get_raw_thoughts' | 'get_task_backlog' | 'get_system_state';
   input: Record<string, unknown>;
   result: Record<string, unknown>;
 }
