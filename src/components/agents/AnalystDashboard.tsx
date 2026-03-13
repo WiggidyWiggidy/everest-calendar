@@ -25,6 +25,7 @@ import {
   Code2,
   Copy,
   Check,
+  ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -357,6 +358,37 @@ function BuildTaskCard({
               <span className="text-[10px] text-gray-400 capitalize">{task.source}</span>
             )}
           </div>
+          {task.build_status && (
+            <div className="mt-1 mb-1 flex items-center gap-2 flex-wrap">
+              <span className={cn(
+                'text-xs px-2 py-0.5 rounded-full font-medium',
+                task.build_status === 'queued'    && 'bg-yellow-50 text-yellow-700',
+                task.build_status === 'building'  && 'bg-blue-50 text-blue-700 animate-pulse',
+                task.build_status === 'pr_raised' && 'bg-purple-50 text-purple-700',
+                task.build_status === 'approved'  && 'bg-green-50 text-green-700',
+                task.build_status === 'rejected'  && 'bg-red-50 text-red-700',
+                task.build_status === 'failed'    && 'bg-red-50 text-red-700',
+              )}>
+                {task.build_status === 'queued'    && '⏳ Queued for build'}
+                {task.build_status === 'building'  && '⚙️ Building...'}
+                {task.build_status === 'pr_raised' && '🔀 PR raised — awaiting review'}
+                {task.build_status === 'approved'  && '✅ Merged to main'}
+                {task.build_status === 'rejected'  && '✗ Rejected'}
+                {task.build_status === 'failed'    && '⚠️ Build failed'}
+              </span>
+              {task.pr_url && task.build_status === 'pr_raised' && (
+                <a
+                  href={task.pr_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-purple-600 hover:underline"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  View PR &amp; Preview
+                </a>
+              )}
+            </div>
+          )}
           <h4 className="font-semibold text-gray-900 text-sm leading-snug">{task.title}</h4>
         </div>
         <button
