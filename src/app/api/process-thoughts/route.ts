@@ -140,6 +140,8 @@ export async function POST() {
       priority_score: Math.min(10, Math.max(1, Math.round(Number(task.priority_score)))),
       status: 'pending',
       source_thought_ids: thoughtIds,
+      task_type: 'business',
+      source: 'analyst',
     }));
 
     const { error: insertError } = await supabase

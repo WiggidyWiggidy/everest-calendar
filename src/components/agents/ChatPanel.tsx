@@ -364,6 +364,16 @@ function ActionsSummary({ actions }: { actions: ActionTaken[] }) {
     if (action.tool === 'save_raw_thought') {
       return `🧠 Brain dump saved for Analyst`;
     }
+    if (action.tool === 'create_build_task') {
+      return `🔨 Build task "${result.title || input.title}" added to queue`;
+    }
+    if (action.tool === 'get_build_queue') {
+      const count = (result.tasks as unknown[])?.length ?? 0;
+      return `⚙️ Fetched ${count} build task${count !== 1 ? 's' : ''}`;
+    }
+    if (action.tool === 'update_task_priority') {
+      return `✅ Priority updated → ${result.priority_score}/10`;
+    }
     return `✅ ${action.tool}`;
   }
 
