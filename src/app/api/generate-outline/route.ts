@@ -91,10 +91,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Claude returned an empty outline' }, { status: 500 });
     }
 
-    // Save outline to task
+    // Save outline to task and auto-queue the build
     const { error: updateError } = await supabase
       .from('task_backlog')
-      .update({ execution_outline: outline })
+      .update({ execution_outline: outline, build_status: 'queued' })
       .eq('id', task_id)
       .eq('user_id', user.id);
 
