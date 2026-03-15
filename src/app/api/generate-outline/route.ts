@@ -772,17 +772,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Claude returned an empty outline' }, { status: 500 });
     }
 
-    // Log token usage (fire-and-forget)
+    // Log token usage (fire-and-forget with logging)
+    console.log('[generate-outline] Anthropic response usage:', aiData.usage);
     const inTok  = aiData.usage?.input_tokens  || 0;
     const outTok = aiData.usage?.output_tokens || 0;
     const costUsd = (inTok / 1_000_000) * 3.0 + (outTok / 1_000_000) * 15.0;
-    void supabase.from('ai_usage_log').insert({
-      user_id:       user.id,
-      operation:     'outline_generation',
-      input_tokens:  inTok,
-      output_tokens: outTok,
-      cost_usd:      costUsd,
-    });
+    void (async () => {
+      try {
+        const { error } = await supabase.from('ai_usage_log').insert({
+          user_id:       user.id,
+          operation:     'outline_generation',
+          input_tokens:  inTok,
+          output_tokens: outTok,
+          cost_usd:      costUsd,
+        });
+        if (error) {
+          console.error('[generate-outline] token usage insert error:', error);
+        } else {
+          console.log('[generate-outline] token usage logged:', { inTok, outTok, costUsd });
+        }
+      } catch (err) {
+        console.error('[generate-outline] token usage logging failed:', err);
+      }
+    })();
 
     const { error: updateError } = await supabase
       .from('task_backlog')
