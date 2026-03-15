@@ -353,6 +353,128 @@ export default function DashboardPage() {
 
       </div>
 
+      {/* Launch Risk Dashboard ─────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-red-600" />
+              At-Risk Launch Tasks
+            </CardTitle>
+            <p className="text-xs text-gray-500 mt-1">Tasks due soon or overdue</p>
+          </CardHeader>
+          <CardContent>
+            {sortedLaunchTasks.length === 0 ? (
+              <p className="text-gray-400 text-sm py-8 text-center">No launch tasks. Great!</p>
+            ) : (
+              <div className="space-y-2">
+                {sortedLaunchTasks.map((task) => {
+                  const daysUntilDue = task.due_date
+                    ? Math.ceil((new Date(task.due_date + 'T00:00:00').getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+                    : null;
+                  
+                  let urgencyColor = 'text-gray-500';
+                  let urgencyBg = 'bg-gray-50';
+                  let urgencyLabel = 'No due date';
+                  
+                  if (task.status === 'done') {
+                    urgencyColor = 'text-green-600';
+                    urgencyBg = 'bg-green-50';
+                    urgencyLabel = '✓ Done';
+                  } else if (daysUntilDue !== null) {
+                    if (daysUntilDue < 0) {
+                      urgencyColor = 'text-red-600';
+                      urgencyBg = 'bg-red-50';
+                      urgencyLabel = '🚨 Overdue';
+                    } else if (daysUntilDue <= 3) {
+                      urgencyColor = 'text-amber-600';
+                      urgencyBg = 'bg-amber-50';
+                      urgencyLabel = `⚠️ ${daysUntilDue}d`;
+                    } else if (daysUntilDue <= 7) {
+                      urgencyColor = 'text-blue-600';
+                      urgencyBg = 'bg-blue-50';
+                      urgencyLabel = `📅 ${daysUntilDue}d`;
+                    }
+                  }
+
+                  return (
+                    <div key={task.id} className={cn(urgencyBg, 'p-3 rounded-lg border flex items-center gap-3 group')}>
+                      <button
+                        onClick={() => handleCompleteLaunchTask(task.id)}
+                        disabled={task.status === 'done'}
+                        className={cn(
+                          'h-5 w-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors',
+                          task.status === 'done'
+                            ? 'bg-green-500 border-green-500 cursor-default'
+                            : 'border-gray-300 hover:border-green-500'
+                        )}
+                      >
+                        {task.status === 'done' && <Check className="h-3 w-3 text-white" />}
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <p className={cn(
+                          'text-sm font-medium truncate',
+                          task.status === 'done' && 'line-through text-gray-400'
+                        )}>
+                          {task.title}
+                        </p>
+                      </div>
+                      <span className={cn('text-xs font-medium shrink-0', urgencyColor)}>
+                        {urgencyLabel}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Launch Readiness</CardTitle>
+            <p className="text-xs text-gray-500 mt-1">{daysUntilLaunch !== null ? `${daysUntilLaunch} days to go` : 'Launch date not set'}</p>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {launchTasks.length > 0 && (
+                <>
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <p className="text-sm font-medium text-gray-700">Launch Task Completion</p>
+                      <p className="text-sm font-bold text-gray-900">{launchTasksDone}/{launchTasks.length}</p>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div
+                        className="bg-indigo-600 h-2.5 rounded-full transition-all"
+                        style={{ width: `${(launchTasksDone / launchTasks.length) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="pt-2 border-t">
+                    <p className="text-xs text-gray-500 mb-2">Status breakdown</p>
+                    <div className="space-y-1 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">✓ Done</span>
+                        <span className="font-medium text-green-600">{launchTasksDone}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">📋 Pending</span>
+                        <span className="font-medium text-amber-600">{launchTasks.filter(t => t.status === 'pending').length}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">⏳ In Progress</span>
+                        <span className="font-medium text-blue-600">{launchTasks.filter(t => t.status === 'in-progress').length}</span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Fix 4: Today's Big Movers — actionable list (plural) ─────────────────── */}
       {todaysBigMovers.length > 0 && (
         <div className="bg-amber-50 border border-amber-300 rounded-xl px-5 py-4 mb-6">
