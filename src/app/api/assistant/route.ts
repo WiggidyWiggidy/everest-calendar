@@ -542,18 +542,7 @@ async function executeTool(
       .single();
     if (error) return { success: false, error: error.message };
 
-    // Fire-and-forget: generate outline in the background
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ||
-      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
-    fetch(`${siteUrl}/api/generate-outline`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ task_id: data.id }),
-    }).catch((err: unknown) => {
-      console.error('auto-outline background fetch failed:', err);
-    });
-
-    return { success: true, task_id: data.id, title: data.title, priority_score: data.priority_score, outline_generating: true };
+    return { success: true, task_id: data.id, title: data.title, priority_score: data.priority_score };
   }
 
   if (toolName === 'get_build_queue') {

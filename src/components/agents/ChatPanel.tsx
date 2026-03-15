@@ -365,8 +365,7 @@ function ActionsSummary({ actions }: { actions: ActionTaken[] }) {
       return `🧠 Brain dump saved for Analyst`;
     }
     if (action.tool === 'create_build_task') {
-      const suffix = result.outline_generating ? ' · outline generating' : '';
-      return `⚡ Build task captured: "${result.title || input.title}" (priority: ${result.priority_score ?? input.priority_score}/10)${suffix}`;
+      return `⚡ Build task captured: "${result.title || input.title}" (priority: ${result.priority_score ?? input.priority_score}/10) · click Generate Outline when ready`;
     }
     if (action.tool === 'save_execution_outline') {
       return `💾 Execution outline saved to build task`;

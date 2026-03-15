@@ -94,6 +94,14 @@ supabase/
 - `daily_focus_sessions` — focus dashboard sessions
 - `focus_tasks` — focus dashboard tasks
 - `voice_conversations` — voice interface logs
+- `ai_usage_log` — per-build API cost tracking (columns: user_id, operation, input_tokens, output_tokens, cost_usd, created_at)
+- `agent_conversations` — agent conversation threads
+- `agent_messages` — individual messages within agent conversations (columns: id, conversation_id, role [user|assistant], content, created_at)
+
+## task_backlog build_status values (CHECK CONSTRAINT — only these are valid)
+`queued` | `building` | `pr_raised` | `approved` | `rejected` | `failed`
+
+⚠️ Never use any other value (e.g. "dismissed", "complete", "done") — the check constraint will reject it with a Postgres error.
 
 ## Existing Types (src/types/index.ts)
 - `EventCategory`: product | marketing | content | meeting | deadline
