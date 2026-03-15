@@ -772,6 +772,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Claude returned an empty outline' }, { status: 500 });
     }
 
+    // Log token usage (fire-and-forget)
+    const inTok  = aiData.usage?.input_tokens  || 0;
+    const outTok = aiData.usage?.output_tokens || 0;
+    const costUsd = (inTok / 1_000_000) * 3.0 + (outTok / 1_000_000) * 15.0;
+    void supabase.from('ai_usage_log').insert({
+      user_id:       user.id,
+      operation:     'outline_generation',
+      input_tokens:  inTok,
+      output_tokens: outTok,
+      cost_usd:      costUsd,
+    });
+
     const { error: updateError } = await supabase
       .from('task_backlog')
       .update({ execution_outline: outline, build_status: 'queued' })

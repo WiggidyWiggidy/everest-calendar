@@ -864,6 +864,8 @@ export async function POST(request: NextRequest) {
     const actionsTaken: ActionTaken[] = [];
     let finalMessage = '';
     let iterations = 0;
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
 
     while (iterations < MAX_ITERATIONS) {
       iterations++;
@@ -892,6 +894,12 @@ export async function POST(request: NextRequest) {
       }
 
       const aiData = await response.json();
+
+      // Accumulate tokens across loop iterations
+      if (aiData.usage) {
+        totalInputTokens  += aiData.usage.input_tokens  || 0;
+        totalOutputTokens += aiData.usage.output_tokens || 0;
+      }
 
       const textBlocks = aiData.content.filter((b: { type: string }) => b.type === 'text');
       if (textBlocks.length > 0) {
@@ -930,6 +938,18 @@ export async function POST(request: NextRequest) {
         { role: 'assistant', content: aiData.content },
         { role: 'user', content: toolResults },
       ];
+    }
+
+    // ── Log token usage (fire-and-forget) ──────────────────────────────────────
+    if (totalInputTokens > 0 || totalOutputTokens > 0) {
+      const costUsd = (totalInputTokens / 1_000_000) * 3.0 + (totalOutputTokens / 1_000_000) * 15.0;
+      void supabase.from('ai_usage_log').insert({
+        user_id:       user.id,
+        operation:     'assistant',
+        input_tokens:  totalInputTokens,
+        output_tokens: totalOutputTokens,
+        cost_usd:      costUsd,
+      });
     }
 
     // ── Persist assistant reply (CommandCentre only) ──────────────────────────
