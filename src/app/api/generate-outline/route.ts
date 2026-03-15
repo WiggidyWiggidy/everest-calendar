@@ -17,7 +17,7 @@ function getCwdContext(): string {
     const pkg = JSON.parse(fs.readFileSync(path.join(cwd, 'package.json'), 'utf8'));
     const deps = Object.keys(pkg.dependencies || {});
     lines.push('## Installed packages (use ONLY these — never npm install anything new)\n' + deps.join(', '));
-  } catch (_) {}
+  } catch {}
 
   // 2. Existing file tree
   try {
@@ -34,13 +34,13 @@ function getCwdContext(): string {
     };
     const tree = walk(path.join(cwd, 'src'));
     lines.push('## Existing source files (check these before creating anything new)\n' + tree.join('\n'));
-  } catch (_) {}
+  } catch {}
 
   // 3. Core types
   try {
     const types = fs.readFileSync(path.join(cwd, 'src/types/index.ts'), 'utf8');
     lines.push('## src/types/index.ts (existing types — do NOT redefine these)\n' + types);
-  } catch (_) {}
+  } catch {}
 
   // 4. Existing migrations
   try {
@@ -50,21 +50,21 @@ function getCwdContext(): string {
       try {
         const sql = fs.readFileSync(path.join(cwd, 'supabase/migrations', m), 'utf8');
         lines.push(`### ${m}\n${sql}`);
-      } catch (_) {}
+      } catch {}
     }
-  } catch (_) {}
+  } catch {}
 
   // 5. Example page pattern (for structural consistency)
   try {
     const example = fs.readFileSync(path.join(cwd, 'src/app/(app)/dashboard/page.tsx'), 'utf8');
     lines.push('## Example page pattern (src/app/(app)/dashboard/page.tsx) — follow this structure\n' + example);
-  } catch (_) {}
+  } catch {}
 
   // 6. Sidebar (to understand navigation structure for adding new routes)
   try {
     const sidebar = fs.readFileSync(path.join(cwd, 'src/components/layout/Sidebar.tsx'), 'utf8');
     lines.push('## Sidebar.tsx (add new routes here if needed)\n' + sidebar);
-  } catch (_) {}
+  } catch {}
 
   return lines.join('\n\n---\n\n');
 }
@@ -771,6 +771,30 @@ export async function POST(request: NextRequest) {
     if (!outline) {
       return NextResponse.json({ error: 'Claude returned an empty outline' }, { status: 500 });
     }
+
+    // Log token usage (fire-and-forget with logging)
+    console.log('[generate-outline] Anthropic response usage:', aiData.usage);
+    const inTok  = aiData.usage?.input_tokens  || 0;
+    const outTok = aiData.usage?.output_tokens || 0;
+    const costUsd = (inTok / 1_000_000) * 3.0 + (outTok / 1_000_000) * 15.0;
+    void (async () => {
+      try {
+        const { error } = await supabase.from('ai_usage_log').insert({
+          user_id:       user.id,
+          operation:     'outline_generation',
+          input_tokens:  inTok,
+          output_tokens: outTok,
+          cost_usd:      costUsd,
+        });
+        if (error) {
+          console.error('[generate-outline] token usage insert error:', error);
+        } else {
+          console.log('[generate-outline] token usage logged:', { inTok, outTok, costUsd });
+        }
+      } catch (err) {
+        console.error('[generate-outline] token usage logging failed:', err);
+      }
+    })();
 
     const { error: updateError } = await supabase
       .from('task_backlog')

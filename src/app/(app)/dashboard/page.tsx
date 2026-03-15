@@ -26,6 +26,7 @@ import {
   Loader2,
   Check,
   Pencil,
+  DollarSign,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -61,6 +62,21 @@ export default function DashboardPage() {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDueDate, setNewTaskDueDate] = useState('');
   const [addingTask, setAddingTask]     = useState(false);
+
+  // ── AI usage state ──────────────────────────────────────────────────────────
+  const [aiUsage, setAiUsage] = useState<{
+    total_cost: number;
+    total_input_tokens: number;
+    total_output_tokens: number;
+    total_calls: number;
+  } | null>(null);
+
+  useEffect(() => {
+    fetch('/api/ai-usage')
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data) setAiUsage(data); })
+      .catch(() => {});
+  }, []);
 
   // ── Refs ─────────────────────────────────────────────────────────────────────
   const launchDepsRef      = useRef<HTMLDivElement>(null);
@@ -352,6 +368,34 @@ export default function DashboardPage() {
         </Card>
 
       </div>
+
+      {/* Today's AI Cost ──────────────────────────────────────────────────────── */}
+      <Card className="mb-6">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 bg-violet-100 rounded-lg flex items-center justify-center shrink-0">
+                <DollarSign className="h-4 w-4 text-violet-600" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Today&apos;s AI Cost</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {aiUsage ? `$${aiUsage.total_cost.toFixed(4)}` : '—'}
+                </p>
+              </div>
+            </div>
+            {aiUsage && aiUsage.total_calls > 0 && (
+              <div className="text-right text-xs text-gray-400 space-y-0.5">
+                <p>{(aiUsage.total_input_tokens).toLocaleString()} in · {(aiUsage.total_output_tokens).toLocaleString()} out</p>
+                <p>{aiUsage.total_calls} API call{aiUsage.total_calls !== 1 ? 's' : ''}</p>
+              </div>
+            )}
+            {aiUsage && aiUsage.total_calls === 0 && (
+              <p className="text-xs text-gray-400">No API calls logged today yet</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Fix 4: Today's Big Movers — actionable list (plural) ─────────────────── */}
       {todaysBigMovers.length > 0 && (

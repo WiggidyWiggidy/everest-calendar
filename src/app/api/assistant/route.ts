@@ -864,6 +864,8 @@ export async function POST(request: NextRequest) {
     const actionsTaken: ActionTaken[] = [];
     let finalMessage = '';
     let iterations = 0;
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
 
     while (iterations < MAX_ITERATIONS) {
       iterations++;
@@ -892,6 +894,15 @@ export async function POST(request: NextRequest) {
       }
 
       const aiData = await response.json();
+
+      // Accumulate tokens across loop iterations
+      if (aiData.usage) {
+        totalInputTokens  += aiData.usage.input_tokens  || 0;
+        totalOutputTokens += aiData.usage.output_tokens || 0;
+        console.log('[assistant] iteration', iterations, 'tokens:', aiData.usage);
+      } else {
+        console.warn('[assistant] iteration', iterations, 'no usage data in response');
+      }
 
       const textBlocks = aiData.content.filter((b: { type: string }) => b.type === 'text');
       if (textBlocks.length > 0) {
@@ -930,6 +941,29 @@ export async function POST(request: NextRequest) {
         { role: 'assistant', content: aiData.content },
         { role: 'user', content: toolResults },
       ];
+    }
+
+    // ── Log token usage (fire-and-forget with logging) ───────────────────────
+    if (totalInputTokens > 0 || totalOutputTokens > 0) {
+      const costUsd = (totalInputTokens / 1_000_000) * 3.0 + (totalOutputTokens / 1_000_000) * 15.0;
+      void (async () => {
+        try {
+          const { error } = await supabase.from('ai_usage_log').insert({
+            user_id:       user.id,
+            operation:     'assistant',
+            input_tokens:  totalInputTokens,
+            output_tokens: totalOutputTokens,
+            cost_usd:      costUsd,
+          });
+          if (error) {
+            console.error('[assistant] token usage insert error:', error);
+          } else {
+            console.log('[assistant] token usage logged:', { totalInputTokens, totalOutputTokens, costUsd });
+          }
+        } catch (err) {
+          console.error('[assistant] token usage logging failed:', err);
+        }
+      })();
     }
 
     // ── Persist assistant reply (CommandCentre only) ──────────────────────────
