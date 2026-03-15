@@ -240,6 +240,88 @@ RULES:
 Your memory notes about this user:
 {memory_notes}`;
 
+// ── Marketing Command Station ──────────────────────────────────────────────
+
+export interface MarketingMetricDaily {
+  id: string;
+  user_id: string;
+  date: string;
+  shopify_revenue: number | null;
+  shopify_orders: number | null;
+  shopify_aov: number | null;
+  shopify_sessions: number | null;
+  shopify_conversion_rate: number | null;
+  shopify_add_to_cart_rate: number | null;
+  shopify_checkout_rate: number | null;
+  meta_spend: number | null;
+  meta_impressions: number | null;
+  meta_clicks: number | null;
+  meta_ctr: number | null;
+  meta_cpm: number | null;
+  meta_cpc: number | null;
+  meta_roas: number | null;
+  meta_purchases: number | null;
+  meta_cost_per_purchase: number | null;
+  ga_sessions: number | null;
+  ga_users: number | null;
+  ga_new_users: number | null;
+  ga_bounce_rate: number | null;
+  ga_avg_session_duration: number | null;
+  ga_conversion_rate: number | null;
+  clarity_engagement_score: number | null;
+  clarity_rage_clicks: number | null;
+  clarity_dead_clicks: number | null;
+  clarity_avg_scroll_depth: number | null;
+  customers_acquired: number | null;
+  gross_profit: number | null;
+  profit_per_customer: number | null;
+  notes: string | null;
+  data_source: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ExperimentType = 'landing_page' | 'creative' | 'copy' | 'offer' | 'audience' | 'email';
+export type ExperimentStatus = 'draft' | 'running' | 'paused' | 'completed' | 'archived';
+export type ExperimentResult = 'winner' | 'loser' | 'inconclusive' | null;
+
+export interface MarketingExperiment {
+  id: string;
+  user_id: string;
+  name: string;
+  type: ExperimentType;
+  hypothesis: string | null;
+  status: ExperimentStatus;
+  start_date: string | null;
+  end_date: string | null;
+  primary_metric: string | null;
+  baseline_value: number | null;
+  result_value: number | null;
+  lift_percent: number | null;
+  result: ExperimentResult;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type AssetType = 'creative' | 'copy' | 'landing_page' | 'video' | 'email';
+export type AssetStatus = 'draft' | 'in_review' | 'approved' | 'live' | 'archived' | 'rejected';
+
+export interface MarketingAsset {
+  id: string;
+  user_id: string;
+  experiment_id: string | null;
+  type: AssetType;
+  title: string;
+  url: string | null;
+  thumbnail_url: string | null;
+  status: AssetStatus;
+  approval_notes: string | null;
+  approved_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // Represents a single tool call made by the assistant
 export interface ActionTaken {
   tool: 'create_calendar_event' | 'update_calendar_event' | 'delete_calendar_event'
