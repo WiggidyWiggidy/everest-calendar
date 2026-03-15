@@ -54,16 +54,18 @@ function getCwdContext(): string {
     }
   } catch {}
 
-  // 5. Example page pattern (for structural consistency)
+  // 5. Example page pattern — first 40 lines only (imports + component structure)
   try {
-    const example = fs.readFileSync(path.join(cwd, 'src/app/(app)/dashboard/page.tsx'), 'utf8');
-    lines.push('## Example page pattern (src/app/(app)/dashboard/page.tsx) — follow this structure\n' + example);
+    const example = fs.readFileSync(path.join(cwd, 'src/app/(app)/dashboard/page.tsx'), 'utf8')
+      .split('\n').slice(0, 40).join('\n');
+    lines.push('## Example page pattern — first 40 lines (imports + structure only)\n' + example);
   } catch {}
 
-  // 6. Sidebar (to understand navigation structure for adding new routes)
+  // 6. Sidebar nav items — first 40 lines only (route list)
   try {
-    const sidebar = fs.readFileSync(path.join(cwd, 'src/components/layout/Sidebar.tsx'), 'utf8');
-    lines.push('## Sidebar.tsx (add new routes here if needed)\n' + sidebar);
+    const sidebar = fs.readFileSync(path.join(cwd, 'src/components/layout/Sidebar.tsx'), 'utf8')
+      .split('\n').slice(0, 40).join('\n');
+    lines.push('## Sidebar.tsx — first 40 lines (nav routes)\n' + sidebar);
   } catch {}
 
   return lines.join('\n\n---\n\n');
