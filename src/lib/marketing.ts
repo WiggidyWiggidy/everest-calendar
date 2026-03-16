@@ -1,5 +1,8 @@
 import { createClient } from '@/lib/supabase/client';
-import type { MarketingMetricDaily, MarketingExperiment, MarketingAsset, ExperimentStatus } from '@/types';
+import type {
+  MarketingMetricDaily, MarketingExperiment, MarketingAsset, ExperimentStatus,
+  LandingPage, PageProposal, MediaAsset, MediaAssetCategory, AssetRequest,
+} from '@/types';
 
 // ── Metrics ────────────────────────────────────────────────────────────────
 
@@ -81,4 +84,122 @@ export async function getAssets(): Promise<MarketingAsset[]> {
     .order('created_at', { ascending: false });
   if (error) throw error;
   return (data ?? []) as MarketingAsset[];
+}
+
+// ── Landing Pages ──────────────────────────────────────────────────────────
+
+export async function getLandingPages(): Promise<LandingPage[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('landing_pages')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as LandingPage[];
+}
+
+export async function createLandingPage(
+  input: Pick<LandingPage, 'name' | 'shopify_url'> & { notes?: string }
+): Promise<LandingPage> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+  const { data, error } = await supabase
+    .from('landing_pages')
+    .insert({ ...input, user_id: user.id })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as LandingPage;
+}
+
+export async function updateLandingPage(
+  id: string,
+  updates: Partial<Pick<LandingPage, 'name' | 'shopify_url' | 'status' | 'notes' | 'shopify_page_id'>>
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('landing_pages')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+// ── Page Proposals ─────────────────────────────────────────────────────────
+
+export async function getProposals(landing_page_id: string): Promise<PageProposal[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('page_proposals')
+    .select('*')
+    .eq('landing_page_id', landing_page_id)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as PageProposal[];
+}
+
+export async function updateProposal(
+  id: string,
+  updates: Partial<Pick<PageProposal, 'status' | 'user_plan' | 'approved_at'>>
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('page_proposals')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+// ── Media Assets ────────────────────────────────────────────────────────────
+
+export async function getMediaAssets(category?: MediaAssetCategory): Promise<MediaAsset[]> {
+  const supabase = createClient();
+  let query = supabase
+    .from('media_assets')
+    .select('*')
+    .eq('status', 'active')
+    .order('created_at', { ascending: false });
+  if (category) query = query.eq('ai_category', category);
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []) as MediaAsset[];
+}
+
+export async function archiveMediaAsset(id: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('media_assets')
+    .update({ status: 'archived', updated_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+// ── Asset Requests ─────────────────────────────────────────────────────────
+
+export async function getAssetRequests(): Promise<AssetRequest[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('asset_requests')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as AssetRequest[];
+}
+
+export async function createAssetRequest(
+  input: Pick<AssetRequest, 'description' | 'asset_type'> & {
+    landing_page_id?: string;
+    notes?: string;
+  }
+): Promise<AssetRequest> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+  const { data, error } = await supabase
+    .from('asset_requests')
+    .insert({ ...input, user_id: user.id })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as AssetRequest;
 }

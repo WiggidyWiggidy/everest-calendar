@@ -3,14 +3,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { MarketingMetricDaily, MarketingExperiment, ExperimentType } from '@/types';
+import type { MarketingMetricDaily, MarketingExperiment, ExperimentType, LandingPage } from '@/types';
 import { OverviewTab } from './OverviewTab';
 import { ExperimentsTab } from './ExperimentsTab';
 import { InsightsTab } from './InsightsTab';
 import { AssetsTab } from './AssetsTab';
 import { SourcesTab } from './SourcesTab';
+import { PagesTab } from './PagesTab';
+import { AnalystTab } from './AnalystTab';
+import { PageBuilderTab } from './PageBuilderTab';
 
-type Tab = 'overview' | 'experiments' | 'insights' | 'assets' | 'sources';
+type Tab = 'overview' | 'pages' | 'analyst' | 'assets' | 'page_builder' | 'experiments' | 'insights' | 'sources';
 
 interface SourceStatus { connected: boolean; missing: string[] }
 interface SourcesData {
@@ -18,6 +21,10 @@ interface SourcesData {
   meta: SourceStatus;
   google_analytics: SourceStatus;
   clarity: SourceStatus;
+}
+
+interface PageWithProposal extends LandingPage {
+  latest_proposal: { id: string; status: string } | null;
 }
 
 export function MarketingDashboard() {
@@ -28,19 +35,24 @@ export function MarketingDashboard() {
   const [experiments, setExperiments] = useState<MarketingExperiment[]>([]);
   const [sources, setSources] = useState<SourcesData | null>(null);
   const [prefillExpType, setPrefillExpType] = useState<ExperimentType | null>(null);
+  const [pages, setPages] = useState<PageWithProposal[]>([]);
+  const [analystPageId, setAnalystPageId] = useState<string | null>(null);
+  const [builderPageId, setBuilderPageId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const [metricsRes, experimentsRes, sourcesRes] = await Promise.all([
+      const [metricsRes, experimentsRes, sourcesRes, pagesRes] = await Promise.all([
         fetch('/api/marketing/metrics?days=30'),
         fetch('/api/marketing/experiments'),
         fetch('/api/marketing/sources'),
+        fetch('/api/marketing/landing-pages'),
       ]);
 
-      const [metricsData, experimentsData, sourcesData] = await Promise.all([
+      const [metricsData, experimentsData, sourcesData, pagesData] = await Promise.all([
         metricsRes.json(),
         experimentsRes.json(),
         sourcesRes.json(),
+        pagesRes.json(),
       ]);
 
       const rows: MarketingMetricDaily[] = metricsData.metrics ?? [];
@@ -50,6 +62,7 @@ export function MarketingDashboard() {
       setToday(rows.find(r => r.date === todayStr) ?? null);
       setExperiments(experimentsData.experiments ?? []);
       setSources(sourcesData.sources ?? null);
+      setPages(pagesData.pages ?? []);
     } catch (err) {
       console.error('MarketingDashboard load error:', err);
     } finally {
@@ -64,11 +77,34 @@ export function MarketingDashboard() {
     setActiveTab('experiments');
   }
 
+  function handleAnalysePage(pageId: string) {
+    setAnalystPageId(pageId);
+    setActiveTab('analyst');
+  }
+
+  function handleBuildPage(pageId: string) {
+    setBuilderPageId(pageId);
+    setActiveTab('page_builder');
+  }
+
+  function handlePageCreated(page: LandingPage) {
+    setPages(prev => [{ ...page, latest_proposal: null }, ...prev]);
+  }
+
+  function handlePageUpdated(id: string, updates: Partial<LandingPage>) {
+    setPages(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+  }
+
+  const shopifyConnected = !!(sources?.shopify?.connected);
+
   const tabs: { key: Tab; label: string }[] = [
     { key: 'overview', label: 'Overview' },
+    { key: 'pages', label: `Pages${pages.length > 0 ? ` (${pages.length})` : ''}` },
+    { key: 'analyst', label: 'Analyst' },
+    { key: 'assets', label: 'Assets' },
+    { key: 'page_builder', label: 'Page Builder' },
     { key: 'experiments', label: `Experiments${experiments.filter(e => e.status === 'running').length > 0 ? ` (${experiments.filter(e => e.status === 'running').length})` : ''}` },
     { key: 'insights', label: 'Insights' },
-    { key: 'assets', label: 'Assets' },
     { key: 'sources', label: 'Sources' },
   ];
 
@@ -81,11 +117,11 @@ export function MarketingDashboard() {
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 p-4 sm:p-6 max-w-4xl mx-auto w-full">
+    <div className="flex-1 flex flex-col min-h-0 p-4 sm:p-6 max-w-5xl mx-auto w-full">
       {/* Header */}
       <div className="mb-5">
         <h1 className="text-xl font-bold text-gray-900">Marketing</h1>
-        <p className="text-sm text-gray-400 mt-0.5">All sources in one place — track, diagnose, and act.</p>
+        <p className="text-sm text-gray-400 mt-0.5">Track, diagnose, and test — all in one place.</p>
       </div>
 
       {/* Tab nav */}
@@ -109,31 +145,37 @@ export function MarketingDashboard() {
       {/* Tab content */}
       <div className="flex-1 overflow-y-auto">
         {activeTab === 'overview' && (
-          <OverviewTab
+          <OverviewTab today={today} history={history} onMetricsSaved={load} />
+        )}
+        {activeTab === 'pages' && (
+          <PagesTab
+            pages={pages}
             today={today}
-            history={history}
-            onMetricsSaved={load}
+            onPageCreated={handlePageCreated}
+            onPageUpdated={handlePageUpdated}
+            onAnalyse={handleAnalysePage}
+            onBuild={handleBuildPage}
+          />
+        )}
+        {activeTab === 'analyst' && (
+          <AnalystTab pages={pages} preselectedPageId={analystPageId} />
+        )}
+        {activeTab === 'assets' && <AssetsTab pages={pages} />}
+        {activeTab === 'page_builder' && (
+          <PageBuilderTab
+            pages={pages}
+            preselectedPageId={builderPageId}
+            shopifyConnected={shopifyConnected}
           />
         )}
         {activeTab === 'experiments' && (
-          <ExperimentsTab
-            experiments={experiments}
-            onRefresh={load}
-            prefillType={prefillExpType}
-          />
+          <ExperimentsTab experiments={experiments} onRefresh={load} prefillType={prefillExpType} />
         )}
         {activeTab === 'insights' && (
-          <InsightsTab
-            today={today}
-            onCreateExperiment={handleCreateExperiment}
-          />
+          <InsightsTab today={today} onCreateExperiment={handleCreateExperiment} />
         )}
-        {activeTab === 'assets' && <AssetsTab />}
         {activeTab === 'sources' && (
-          <SourcesTab
-            sources={sources}
-            onMockLoaded={load}
-          />
+          <SourcesTab sources={sources} onMockLoaded={load} />
         )}
       </div>
     </div>

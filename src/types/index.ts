@@ -322,6 +322,95 @@ export interface MarketingAsset {
   updated_at: string;
 }
 
+// ── Landing Page Builder ────────────────────────────────────────────────────
+
+export type LandingPageStatus = 'monitoring' | 'testing' | 'paused' | 'archived';
+export type ProposalStatus = 'pending' | 'approved' | 'user_written' | 'building' | 'live' | 'rejected';
+export type MediaAssetCategory = 'product_hero' | 'lifestyle' | 'feature' | 'social_proof' | 'packaging' | 'ingredient' | 'other';
+export type SectionType = 'hero' | 'key_benefits' | 'how_it_works' | 'science_proof' | 'social_proof' | 'comparison' | 'faq' | 'cta_banner';
+
+export interface LandingPage {
+  id: string;
+  user_id: string;
+  name: string;
+  shopify_url: string;
+  shopify_page_id: string | null;
+  status: LandingPageStatus;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProposedSection {
+  type: SectionType;
+  headline: string;
+  body: string;
+  cta_text?: string;
+  notes?: string; // AI rationale for including this section
+}
+
+export interface PageProposal {
+  id: string;
+  user_id: string;
+  landing_page_id: string;
+  diagnosis: string | null;
+  proposed_sections: ProposedSection[] | null;
+  user_plan: string | null;
+  status: ProposalStatus;
+  approved_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MediaAsset {
+  id: string;
+  user_id: string;
+  storage_path: string;
+  public_url: string;
+  filename: string;
+  file_size: number | null;
+  mime_type: string | null;
+  width: number | null;
+  height: number | null;
+  ai_category: MediaAssetCategory | null;
+  ai_description: string | null;
+  ai_tags: string[] | null;
+  ai_suitable_for: string[] | null;
+  status: 'active' | 'archived';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AssetRequest {
+  id: string;
+  user_id: string;
+  landing_page_id: string | null;
+  description: string;
+  asset_type: 'image' | 'video';
+  status: 'requested' | 'in_progress' | 'done';
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PageSection {
+  type: SectionType;
+  headline: string;
+  body: string;
+  image_url?: string;
+  cta_text?: string;
+  cta_url?: string;
+}
+
+export interface AnalystProposalPayload {
+  diagnosis: string;
+  root_causes: string[];
+  proposed_sections: ProposedSection[];
+  priority: 'high' | 'medium';
+  expected_lift: string;
+  key_metrics: string[];
+}
+
 // Represents a single tool call made by the assistant
 export interface ActionTaken {
   tool: 'create_calendar_event' | 'update_calendar_event' | 'delete_calendar_event'
