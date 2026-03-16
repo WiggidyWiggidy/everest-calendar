@@ -327,7 +327,7 @@ export interface MarketingAsset {
 export type LandingPageStatus = 'monitoring' | 'testing' | 'paused' | 'archived';
 export type ProposalStatus = 'pending' | 'approved' | 'user_written' | 'building' | 'live' | 'rejected';
 export type MediaAssetCategory = 'product_hero' | 'lifestyle' | 'feature' | 'social_proof' | 'packaging' | 'ingredient' | 'other';
-export type SectionType = 'hero' | 'key_benefits' | 'how_it_works' | 'science_proof' | 'social_proof' | 'comparison' | 'faq' | 'cta_banner';
+export type SectionType = 'hero' | 'key_benefits' | 'how_it_works' | 'science_proof' | 'social_proof' | 'comparison' | 'faq' | 'cta_banner' | 'setup_3col';
 
 export interface LandingPage {
   id: string;
