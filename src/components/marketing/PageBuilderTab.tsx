@@ -451,7 +451,7 @@ export function PageBuilderTab({ pages, preselectedPageId, shopifyConnected }: P
                     <div className="bg-amber-50 border border-amber-100 rounded-xl p-5 text-center">
                       <p className="text-sm font-medium text-amber-800">No pages pushed to Shopify yet</p>
                       <p className="text-xs text-amber-600 mt-1">
-                        Use "Build from scratch" to create the first version, then come back here to generate AI variations of it.
+                        Use &quot;Build from scratch&quot; to create the first version, then come back here to generate AI variations of it.
                       </p>
                     </div>
                   ) : (
