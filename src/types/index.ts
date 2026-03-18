@@ -411,6 +411,49 @@ export interface AnalystProposalPayload {
   key_metrics: string[];
 }
 
+// ============================================
+// Upwork Candidate Pipeline
+// ============================================
+
+export type CandidateTier = 'top' | 'maybe' | 'reject';
+export type CandidateStatus = 'new' | 'messaged' | 'trialled' | 'hired' | 'rejected';
+
+export interface UpworkCandidate {
+  id: string;
+  user_id: string;
+  name: string;
+  upwork_profile_url?: string | null;
+  hourly_rate?: number | null;
+  job_success_score?: number | null;
+  location?: string | null;
+  score?: number | null;
+  tier: CandidateTier;
+  status: CandidateStatus;
+  proposal_snippet?: string | null;
+  strengths?: string[] | null;
+  weaknesses?: string[] | null;
+  manufacturing_experience?: string | null;
+  cad_software?: string[] | null;
+  enclosures_count?: number | null;
+  evaluator_notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const CANDIDATE_TIER_COLORS: Record<CandidateTier, { bg: string; text: string; dot: string }> = {
+  top:    { bg: 'bg-green-100',  text: 'text-green-700',  dot: 'bg-green-500' },
+  maybe:  { bg: 'bg-yellow-100', text: 'text-yellow-700', dot: 'bg-yellow-500' },
+  reject: { bg: 'bg-red-100',    text: 'text-red-700',    dot: 'bg-red-500' },
+};
+
+export const CANDIDATE_STATUS_LABELS: Record<CandidateStatus, string> = {
+  new:      'New',
+  messaged: 'Messaged',
+  trialled: 'Trialled',
+  hired:    'Hired',
+  rejected: 'Rejected',
+};
+
 // Represents a single tool call made by the assistant
 export interface ActionTaken {
   tool: 'create_calendar_event' | 'update_calendar_event' | 'delete_calendar_event'

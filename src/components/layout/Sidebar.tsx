@@ -17,18 +17,20 @@ import {
   X,
   Rocket,
   TrendingUp,
+  Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 
 // Navigation items
 const navItems = [
-  { href: '/dashboard',         label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/dashboard/launch',  label: 'Launch',    icon: Rocket },
-  { href: '/calendar',          label: 'Calendar',  icon: Calendar },
-  { href: '/marketing',         label: 'Marketing', icon: TrendingUp },
-  { href: '/agents',            label: 'Agents',    icon: Bot },
-  { href: '/settings',          label: 'Settings',  icon: Settings },
+  { href: '/dashboard',         label: 'Dashboard',  icon: LayoutDashboard },
+  { href: '/dashboard/launch',  label: 'Launch',     icon: Rocket },
+  { href: '/calendar',          label: 'Calendar',   icon: Calendar },
+  { href: '/marketing',         label: 'Marketing',  icon: TrendingUp },
+  { href: '/candidates',        label: 'Candidates', icon: Users },
+  { href: '/agents',            label: 'Agents',     icon: Bot },
+  { href: '/settings',          label: 'Settings',   icon: Settings },
 ];
 
 interface SidebarProps {
