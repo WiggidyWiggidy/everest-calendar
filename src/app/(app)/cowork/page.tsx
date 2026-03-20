@@ -9,7 +9,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { CoworkMessage } from '@/types';
 import { cn } from '@/lib/utils';
-import { MessageSquare, Send, Trash2, RefreshCw, Edit2, Check, X } from 'lucide-react';
+import { MessageSquare, Send, Trash2, RefreshCw, Edit2, Check, X, FileText, ChevronDown, ChevronUp, BookOpen } from 'lucide-react';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function formatTime(iso: string) {
@@ -33,6 +33,92 @@ function DateSeparator({ label }: { label: string }) {
       <div className="flex-1 h-px bg-slate-200" />
       <span className="text-xs text-slate-400 font-medium px-2">{label}</span>
       <div className="flex-1 h-px bg-slate-200" />
+    </div>
+  );
+}
+
+// ── Design Brief panel ────────────────────────────────────────────────────────
+function DesignBriefPanel() {
+  const [brief, setBrief]       = useState('');
+  const [draft, setDraft]       = useState('');
+  const [open, setOpen]         = useState(false);
+  const [saving, setSaving]     = useState(false);
+  const [saved, setSaved]       = useState(false);
+
+  useEffect(() => {
+    fetch('/api/cowork/context?contact_key=cad_designer')
+      .then((r) => r.json())
+      .then(({ brief: b }) => { setBrief(b ?? ''); setDraft(b ?? ''); })
+      .catch(() => {});
+  }, []);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const res = await fetch('/api/cowork/context', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brief: draft, contact_key: 'cad_designer' }),
+      });
+      if (res.ok) {
+        const { brief: b } = await res.json();
+        setBrief(b);
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const isDirty = draft !== brief;
+
+  return (
+    <div className="mb-3 shrink-0 border border-slate-200 rounded-xl bg-white overflow-hidden">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <BookOpen className="h-4 w-4 text-indigo-500" />
+          <span>Design Brief</span>
+          {brief && (
+            <span className="text-xs bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded-full font-normal">
+              {brief.length > 60 ? brief.slice(0, 60) + '…' : brief}
+            </span>
+          )}
+          {!brief && (
+            <span className="text-xs text-slate-400 font-normal">
+              Add context — Claude reads this before every draft reply
+            </span>
+          )}
+        </div>
+        {open ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+      </button>
+
+      {open && (
+        <div className="border-t border-slate-200 p-3">
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder={`Describe the current design state — revision number, what's agreed, what's still outstanding.\n\nExample: "Rev 4 — corner radius agreed 3mm, material 1.5mm 5052-H32. Outstanding: ventilation cutout position (lower-rear panel), cable grommet size."`}
+            rows={5}
+            className="w-full text-sm text-slate-800 placeholder-slate-400 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
+          />
+          <div className="flex items-center justify-between mt-2">
+            <p className="text-xs text-slate-400">
+              Injected into Claude&apos;s context before every reply draft.
+            </p>
+            <button
+              onClick={handleSave}
+              disabled={saving || !isDirty}
+              className="flex items-center gap-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40"
+            >
+              {saving ? 'Saving…' : saved ? <><Check className="h-3.5 w-3.5" /> Saved</> : 'Save brief'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -94,7 +180,7 @@ function MessageBubble({
           )}
         >
           {/* Image attachment */}
-          {message.media_url && (
+          {message.media_url && message.media_type?.startsWith('image/') && (
             <a href={message.media_url} target="_blank" rel="noopener noreferrer" className="block mb-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -102,6 +188,23 @@ function MessageBubble({
                 alt="Attachment"
                 className="rounded-lg max-w-full max-h-64 object-contain"
               />
+            </a>
+          )}
+          {message.media_url && message.media_type && !message.media_type.startsWith('image/') && (
+            <a
+              href={message.media_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                'flex items-center gap-2 mb-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors',
+                isInbound
+                  ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  : 'bg-white/20 hover:bg-white/30 text-inherit'
+              )}
+            >
+              <FileText className="h-4 w-4 shrink-0" />
+              <span className="truncate">{message.content.replace(/^\[File: /, '').replace(/\]$/, '')}</span>
+              <span className="shrink-0 opacity-60">↗</span>
             </a>
           )}
           {editing ? (
@@ -112,7 +215,7 @@ function MessageBubble({
               autoFocus
             />
           ) : (
-            message.content !== '[Image]' && (
+            !message.content.startsWith('[') && (
               <p className="whitespace-pre-wrap">{message.content}</p>
             )
           )}
@@ -329,6 +432,9 @@ export default function CoworkPage() {
           Refresh
         </button>
       </div>
+
+      {/* Design Brief */}
+      <DesignBriefPanel />
 
       {/* Thread */}
       <div className="flex-1 bg-slate-50 rounded-xl border border-slate-200 overflow-y-auto p-4 min-h-0">

@@ -5,10 +5,11 @@
 // ?secret= query param (WHATSAPP_WEBHOOK_SECRET).
 // Flow:
 //   1. Validate secret
-//   2. Parse Green API payload (text + image messages)
+//   2. Parse Green API payload (text + image + document messages)
 //   3. Filter to COWORK_CAD_PHONE only
 //   4. Download image → upload to Supabase Storage (if image)
-//   5. Fetch conversation history for Claude context
+//      Log document URL directly (if file/doc)
+//   5. Fetch conversation history + design brief for Claude context
 //   6. Call Claude to generate a draft reply (with vision if image)
 //   7. Auto-send via Green API if COWORK_AUTO_SEND=true
 //   8. Save inbound + draft/sent via SECURITY DEFINER RPC
@@ -52,9 +53,10 @@ export async function POST(request: NextRequest) {
     const msgType = body.messageData?.typeMessage;
     const isText  = msgType === 'textMessage';
     const isImage = msgType === 'imageMessage';
+    const isDoc   = msgType === 'documentMessage';
 
-    if (!isText && !isImage) {
-      return NextResponse.json({ ok: true }); // skip voice, docs, stickers, etc.
+    if (!isText && !isImage && !isDoc) {
+      return NextResponse.json({ ok: true }); // skip voice, stickers, etc.
     }
 
     // ── 3. Filter to CAD designer only ────────────────────────────────────
@@ -77,6 +79,13 @@ export async function POST(request: NextRequest) {
 
     if (isText) {
       inboundText = body.messageData?.textMessageData?.textMessage ?? '';
+    } else if (isDoc) {
+      // Documents (STEP, DXF, PDF, etc.) — log metadata, don't re-upload
+      const fileData = body.messageData?.fileMessageData;
+      const fileName = fileData?.fileName ?? 'attachment';
+      inboundText = fileData?.caption?.trim() || `[File: ${fileName}]`;
+      mediaType   = fileData?.mimeType ?? 'application/octet-stream';
+      mediaUrl    = fileData?.downloadUrl ?? null; // store direct link
     } else {
       const fileData = body.messageData?.fileMessageData;
       inboundText = fileData?.caption?.trim() || '[Image]';
@@ -115,27 +124,39 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    // ── 5. Fetch conversation history ─────────────────────────────────────
+    // ── 5. Fetch conversation history + design brief ──────────────────────
     const supabase = createAnonClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
     let historyMessages: Array<{ role: 'user' | 'assistant'; content: string }> = [];
-    try {
-      const { data: history } = await supabase.rpc('get_cowork_history', { p_limit: 20 });
-      if (Array.isArray(history)) {
-        historyMessages = history
-          .filter((m: { direction: string; content: string }) => m.content && m.content !== '[Image]')
-          .map((m: { direction: string; content: string }) => ({
-            role:    (m.direction === 'inbound' ? 'user' : 'assistant') as 'user' | 'assistant',
-            content: m.content,
-          }));
-      }
-    } catch (histErr) {
-      console.error('/api/webhooks/whatsapp history fetch error:', histErr);
-      // non-fatal — Claude still replies without context
-    }
+    let designBrief = '';
+
+    await Promise.all([
+      // Conversation history
+      Promise.resolve(supabase.rpc('get_cowork_history', { p_limit: 20 })).then(({ data: history }) => {
+        if (Array.isArray(history)) {
+          historyMessages = history
+            .filter((m: { direction: string; content: string }) => m.content && !m.content.startsWith('['))
+            .map((m: { direction: string; content: string }) => ({
+              role:    (m.direction === 'inbound' ? 'user' : 'assistant') as 'user' | 'assistant',
+              content: m.content,
+            }));
+        }
+      }).catch((err: unknown) => console.error('/api/webhooks/whatsapp history error:', err)),
+      // Design brief
+      Promise.resolve(supabase.rpc('get_cowork_context', { p_contact_key: 'cad_designer' })).then(({ data }) => {
+        if (typeof data === 'string' && data.trim()) {
+          designBrief = data.trim();
+        }
+      }).catch((err: unknown) => console.error('/api/webhooks/whatsapp brief error:', err)),
+    ]);
+
+    // Build system prompt — inject design brief if set
+    const systemPrompt = designBrief
+      ? `${CAD_AGENT_SYSTEM_PROMPT}\n\n## Current design state (Tom's notes)\n${designBrief}`
+      : CAD_AGENT_SYSTEM_PROMPT;
 
     // ── 6. Call Claude ────────────────────────────────────────────────────
     let draftContent: string | null = null;
@@ -174,7 +195,7 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify({
           model:      'claude-sonnet-4-20250514',
           max_tokens: 256,
-          system:     CAD_AGENT_SYSTEM_PROMPT,
+          system:     systemPrompt,
           messages:   claudeMessages,
         }),
       });
