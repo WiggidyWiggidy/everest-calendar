@@ -469,6 +469,8 @@ export interface CoworkMessage {
   sender_name: string | null;
   content:     string;
   parent_id:   string | null;
+  media_url:   string | null;
+  media_type:  string | null;
   sent_at:     string | null;
   created_at:  string;
   updated_at:  string;

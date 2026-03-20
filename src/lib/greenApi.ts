@@ -1,7 +1,27 @@
 // ============================================
-// Green API — WhatsApp send helper
-// Shared by /api/cowork and /api/cowork/[id]
+// Green API — WhatsApp send + media download helpers
+// Shared by /api/cowork, /api/cowork/[id], and webhooks/whatsapp
 // ============================================
+
+// Download an image from a Green API media URL.
+// Returns { buffer, mimeType } or null on failure.
+export async function downloadGreenApiMedia(
+  downloadUrl: string
+): Promise<{ buffer: ArrayBuffer; mimeType: string } | null> {
+  try {
+    const res = await fetch(downloadUrl);
+    if (!res.ok) {
+      console.error('Green API media download error:', res.status, await res.text());
+      return null;
+    }
+    const mimeType = res.headers.get('content-type') ?? 'image/jpeg';
+    const buffer   = await res.arrayBuffer();
+    return { buffer, mimeType };
+  } catch (err) {
+    console.error('Green API media download failed:', err);
+    return null;
+  }
+}
 
 export async function sendViaGreenApi(text: string): Promise<string | null> {
   const instanceId = process.env.GREEN_API_INSTANCE_ID;

@@ -93,6 +93,17 @@ function MessageBubble({
                 : 'bg-indigo-600 text-white rounded-tr-sm shadow-sm'
           )}
         >
+          {/* Image attachment */}
+          {message.media_url && (
+            <a href={message.media_url} target="_blank" rel="noopener noreferrer" className="block mb-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={message.media_url}
+                alt="Attachment"
+                className="rounded-lg max-w-full max-h-64 object-contain"
+              />
+            </a>
+          )}
           {editing ? (
             <textarea
               value={editText}
@@ -101,7 +112,9 @@ function MessageBubble({
               autoFocus
             />
           ) : (
-            <p className="whitespace-pre-wrap">{message.content}</p>
+            message.content !== '[Image]' && (
+              <p className="whitespace-pre-wrap">{message.content}</p>
+            )
           )}
         </div>
 
