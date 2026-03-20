@@ -454,6 +454,28 @@ export const CANDIDATE_STATUS_LABELS: Record<CandidateStatus, string> = {
   rejected: 'Rejected',
 };
 
+// ============================================
+// WhatsApp Cowork Thread
+// ============================================
+
+export type CoworkMessageStatus    = 'received' | 'draft' | 'sent';
+export type CoworkMessageDirection = 'inbound' | 'outbound';
+
+export interface CoworkMessage {
+  id:          string;
+  user_id:     string;
+  status:      CoworkMessageStatus;
+  direction:   CoworkMessageDirection;
+  sender_name: string | null;
+  content:     string;
+  parent_id:   string | null;
+  media_url:   string | null;
+  media_type:  string | null;
+  sent_at:     string | null;
+  created_at:  string;
+  updated_at:  string;
+}
+
 // Represents a single tool call made by the assistant
 export interface ActionTaken {
   tool: 'create_calendar_event' | 'update_calendar_event' | 'delete_calendar_event'

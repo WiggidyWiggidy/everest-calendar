@@ -18,6 +18,7 @@ import {
   Rocket,
   TrendingUp,
   Users,
+  MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -29,6 +30,7 @@ const navItems = [
   { href: '/calendar',          label: 'Calendar',   icon: Calendar },
   { href: '/marketing',         label: 'Marketing',  icon: TrendingUp },
   { href: '/candidates',        label: 'Candidates', icon: Users },
+  { href: '/cowork',            label: 'Cowork',     icon: MessageSquare },
   { href: '/agents',            label: 'Agents',     icon: Bot },
   { href: '/settings',          label: 'Settings',   icon: Settings },
 ];
