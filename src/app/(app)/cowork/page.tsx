@@ -9,7 +9,14 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { CoworkMessage } from '@/types';
 import { cn } from '@/lib/utils';
-import { MessageSquare, Send, Trash2, RefreshCw, Edit2, Check, X, FileText, ChevronDown, ChevronUp, BookOpen } from 'lucide-react';
+import { MessageSquare, Send, Trash2, RefreshCw, Edit2, Check, X, FileText, ChevronDown, ChevronUp, BookOpen, Users } from 'lucide-react';
+
+interface CoworkContact {
+  id: string;
+  key: string;
+  display_name: string;
+  phone: string | null;
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function formatTime(iso: string) {
@@ -38,7 +45,7 @@ function DateSeparator({ label }: { label: string }) {
 }
 
 // ── Design Brief panel ────────────────────────────────────────────────────────
-function DesignBriefPanel() {
+function DesignBriefPanel({ contactKey }: { contactKey: string }) {
   const [brief, setBrief]       = useState('');
   const [draft, setDraft]       = useState('');
   const [open, setOpen]         = useState(false);
@@ -46,11 +53,12 @@ function DesignBriefPanel() {
   const [saved, setSaved]       = useState(false);
 
   useEffect(() => {
-    fetch('/api/cowork/context?contact_key=cad_designer')
+    setBrief(''); setDraft('');
+    fetch(`/api/cowork/context?contact_key=${encodeURIComponent(contactKey)}`)
       .then((r) => r.json())
       .then(({ brief: b }) => { setBrief(b ?? ''); setDraft(b ?? ''); })
       .catch(() => {});
-  }, []);
+  }, [contactKey]);
 
   async function handleSave() {
     setSaving(true);
@@ -58,7 +66,7 @@ function DesignBriefPanel() {
       const res = await fetch('/api/cowork/context', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ brief: draft, contact_key: 'cad_designer' }),
+        body: JSON.stringify({ brief: draft, contact_key: contactKey }),
       });
       if (res.ok) {
         const { brief: b } = await res.json();
@@ -292,15 +300,25 @@ function MessageBubble({
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function CoworkPage() {
+  const [contacts, setContacts]   = useState<CoworkContact[]>([{ id: 'default', key: 'cad_designer', display_name: 'CAD Designer', phone: null }]);
+  const [activeKey, setActiveKey] = useState('cad_designer');
   const [messages, setMessages]   = useState<CoworkMessage[]>([]);
   const [loading, setLoading]     = useState(true);
   const [compose, setCompose]     = useState('');
   const [composing, setComposing] = useState(false);
   const bottomRef                 = useRef<HTMLDivElement>(null);
 
+  // Load contacts once
+  useEffect(() => {
+    fetch('/api/cowork/contacts')
+      .then((r) => r.json())
+      .then(({ contacts: c }) => { if (c?.length) setContacts(c); })
+      .catch(() => {});
+  }, []);
+
   const fetchMessages = useCallback(async () => {
     try {
-      const res = await fetch('/api/cowork');
+      const res = await fetch(`/api/cowork?contact_key=${encodeURIComponent(activeKey)}`);
       const json = await res.json();
       if (json.messages) setMessages(json.messages);
     } catch (err) {
@@ -308,15 +326,16 @@ export default function CoworkPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeKey]);
 
-  useEffect(() => { fetchMessages(); }, [fetchMessages]);
+  // Refetch when contact tab changes
+  useEffect(() => { setLoading(true); setMessages([]); fetchMessages(); }, [fetchMessages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Poll every 15 seconds for new messages from the CAD designer
+  // Poll every 15 seconds
   useEffect(() => {
     const interval = setInterval(fetchMessages, 15_000);
     return () => clearInterval(interval);
@@ -367,7 +386,7 @@ export default function CoworkPage() {
       const res = await fetch('/api/cowork', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: compose.trim(), send_immediately: true }),
+        body: JSON.stringify({ content: compose.trim(), send_immediately: true, contact_key: activeKey }),
       });
       if (res.ok) {
         const { message } = await res.json();
@@ -404,10 +423,12 @@ export default function CoworkPage() {
     );
   });
 
+  const activeContact = contacts.find((c) => c.key === activeKey) ?? contacts[0];
+
   return (
     <div className="flex flex-col h-[calc(100vh-3rem)]">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4 shrink-0">
+      <div className="flex items-center justify-between mb-3 shrink-0">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-green-100 rounded-lg">
             <MessageSquare className="h-5 w-5 text-green-600" />
@@ -415,7 +436,7 @@ export default function CoworkPage() {
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Cowork</h1>
             <p className="text-sm text-slate-500">
-              WhatsApp thread · CAD designer
+              WhatsApp threads
               {draftCount > 0 && (
                 <span className="ml-2 bg-amber-100 text-amber-700 text-xs font-semibold px-2 py-0.5 rounded-full">
                   {draftCount} draft{draftCount !== 1 ? 's' : ''} to review
@@ -433,8 +454,29 @@ export default function CoworkPage() {
         </button>
       </div>
 
+      {/* Contact tabs */}
+      {contacts.length > 0 && (
+        <div className="flex items-center gap-1 mb-3 shrink-0 overflow-x-auto pb-1">
+          <Users className="h-4 w-4 text-slate-400 mr-1 shrink-0" />
+          {contacts.map((c) => (
+            <button
+              key={c.key}
+              onClick={() => setActiveKey(c.key)}
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap',
+                activeKey === c.key
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              )}
+            >
+              {c.display_name}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Design Brief */}
-      <DesignBriefPanel />
+      <DesignBriefPanel contactKey={activeContact?.key ?? 'cad_designer'} />
 
       {/* Thread */}
       <div className="flex-1 bg-slate-50 rounded-xl border border-slate-200 overflow-y-auto p-4 min-h-0">

@@ -59,16 +59,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true }); // skip voice, stickers, etc.
     }
 
-    // ── 3. Filter to CAD designer only ────────────────────────────────────
-    const cadPhone = process.env.COWORK_CAD_PHONE;
-    if (cadPhone) {
-      const senderPhone = (body.senderData?.chatId as string)?.split('@')[0];
-      if (senderPhone !== cadPhone) {
-        return NextResponse.json({ ok: true });
+    // ── 3. Resolve contact by phone (falls back to CAD designer) ─────────
+    const senderPhone = (body.senderData?.chatId as string)?.split('@')[0] ?? '';
+    const senderName: string | null = body.senderData?.senderName ?? null;
+
+    // Try to match against a registered contact via DB
+    let contactKey  = 'cad_designer';
+    let contactSystemPromptOverride: string | null = null;
+
+    const tempSupabase = createAnonClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    const { data: contactData } = await tempSupabase.rpc('get_contact_by_phone', { p_phone: senderPhone });
+    if (contactData && typeof contactData === 'object') {
+      const contact = contactData as { key: string; system_prompt?: string };
+      contactKey = contact.key;
+      contactSystemPromptOverride = contact.system_prompt ?? null;
+    } else {
+      // Fall back to env var allowlist: if COWORK_CAD_PHONE is set, only accept that number
+      const cadPhone = process.env.COWORK_CAD_PHONE;
+      if (cadPhone && senderPhone !== cadPhone) {
+        return NextResponse.json({ ok: true }); // unknown number — ignore
       }
     }
-
-    const senderName: string | null = body.senderData?.senderName ?? null;
 
     // ── Extract text and image data ───────────────────────────────────────
     let inboundText = '';
@@ -135,7 +149,7 @@ export async function POST(request: NextRequest) {
 
     await Promise.all([
       // Conversation history
-      Promise.resolve(supabase.rpc('get_cowork_history', { p_limit: 20 })).then(({ data: history }) => {
+      Promise.resolve(supabase.rpc('get_cowork_history', { p_limit: 20, p_contact_key: contactKey })).then(({ data: history }) => {
         if (Array.isArray(history)) {
           historyMessages = history
             .filter((m: { direction: string; content: string }) => m.content && !m.content.startsWith('['))
@@ -146,17 +160,18 @@ export async function POST(request: NextRequest) {
         }
       }).catch((err: unknown) => console.error('/api/webhooks/whatsapp history error:', err)),
       // Design brief
-      Promise.resolve(supabase.rpc('get_cowork_context', { p_contact_key: 'cad_designer' })).then(({ data }) => {
+      Promise.resolve(supabase.rpc('get_cowork_context', { p_contact_key: contactKey })).then(({ data }) => {
         if (typeof data === 'string' && data.trim()) {
           designBrief = data.trim();
         }
       }).catch((err: unknown) => console.error('/api/webhooks/whatsapp brief error:', err)),
     ]);
 
-    // Build system prompt — inject design brief if set
+    // Build system prompt — use contact override if set, else default; inject design brief on top
+    const baseSystemPrompt = contactSystemPromptOverride ?? CAD_AGENT_SYSTEM_PROMPT;
     const systemPrompt = designBrief
-      ? `${CAD_AGENT_SYSTEM_PROMPT}\n\n## Current design state (Tom's notes)\n${designBrief}`
-      : CAD_AGENT_SYSTEM_PROMPT;
+      ? `${baseSystemPrompt}\n\n## Current design state (Tom's notes)\n${designBrief}`
+      : baseSystemPrompt;
 
     // ── 6. Call Claude ────────────────────────────────────────────────────
     let draftContent: string | null = null;
@@ -231,6 +246,7 @@ export async function POST(request: NextRequest) {
       p_media_url:       mediaUrl,
       p_media_type:      mediaType,
       p_auto_send:       didAutoSend,
+      p_contact_key:     contactKey,
     });
 
     if (rpcError) {
