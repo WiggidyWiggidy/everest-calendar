@@ -339,6 +339,82 @@ const TOOLS = [
       required: ['task_id', 'outline'],
     },
   },
+  {
+    name: 'get_candidates',
+    description: 'Fetch Upwork engineering candidates. Use when asked about hiring status, candidate pipeline, who the top candidates are, or engineer recruitment progress.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        tier: {
+          type: 'string',
+          enum: ['top', 'maybe', 'reject'],
+          description: 'Filter by tier. Omit to return all.',
+        },
+        status: {
+          type: 'string',
+          enum: ['new', 'messaged', 'trialled', 'hired', 'rejected'],
+          description: 'Filter by pipeline status. Omit to return all.',
+        },
+        limit: { type: 'number', description: 'Max results. Default 10.' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'update_candidate_status',
+    description: 'Update the pipeline status or tier of an engineering candidate. Use when Tom says a candidate has been messaged, trialled, hired, or rejected.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        candidate_id: { type: 'string', description: 'UUID of the candidate. Use when you already have it from get_candidates.' },
+        name_match:   { type: 'string', description: 'Partial name to fuzzy-match if you do not have the ID.' },
+        status: {
+          type: 'string',
+          enum: ['new', 'messaged', 'trialled', 'hired', 'rejected'],
+          description: 'New pipeline status',
+        },
+        tier: {
+          type: 'string',
+          enum: ['top', 'maybe', 'reject'],
+          description: 'New tier (optional — only update if explicitly changing tier)',
+        },
+        evaluator_notes: { type: 'string', description: 'Optional notes to append' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'get_cowork_thread',
+    description: 'Fetch recent messages from the CAD designer WhatsApp thread. Use when asked about design progress, what the CAD designer said, outstanding design issues, or cowork status.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        limit: { type: 'number', description: 'Number of recent messages to return. Default 10.' },
+        status: {
+          type: 'string',
+          enum: ['received', 'draft', 'sent'],
+          description: 'Filter by message status. Omit to return all.',
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'get_manufacturers',
+    description: 'Fetch manufacturer contacts and their pipeline status. Use when asked about manufacturer sourcing, quotes, lead times, or production partner status.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        status: {
+          type: 'string',
+          enum: ['prospecting', 'contacted', 'quoting', 'quoted', 'approved', 'rejected'],
+          description: 'Filter by status. Omit to return all.',
+        },
+        limit: { type: 'number', description: 'Max results. Default 10.' },
+      },
+      required: [],
+    },
+  },
 ];
 
 async function executeTool(
@@ -654,6 +730,10 @@ async function executeTool(
       { data: activeBuilds },
       { data: overdueLaunchTasks },
       { data: upcomingBigMovers },
+      { data: candidateSummary },
+      { count: coworkDraftCount },
+      { data: lastCadMessage },
+      { data: manufacturerSummary },
     ] = await Promise.all([
       supabase
         .from('raw_thoughts')
@@ -677,7 +757,6 @@ async function executeTool(
         .select('*', { count: 'exact', head: true })
         .eq('user_id', userId)
         .eq('status', 'in-progress'),
-      // Top priority builds — surfaces the pre-launch flagged items first
       supabase
         .from('task_backlog')
         .select('id, title, priority_score, build_status, build_context')
@@ -686,7 +765,6 @@ async function executeTool(
         .neq('status', 'dismissed')
         .order('priority_score', { ascending: false })
         .limit(5),
-      // Active/in-flight builds
       supabase
         .from('task_backlog')
         .select('id, title, build_status, branch_name')
@@ -712,21 +790,75 @@ async function executeTool(
         .lte('event_date', in7Days)
         .order('event_date', { ascending: true })
         .limit(3),
+      // Candidate pipeline summary
+      supabase
+        .from('upwork_candidates')
+        .select('tier, status')
+        .eq('user_id', userId),
+      // Unreviewed cowork drafts
+      supabase
+        .from('cowork_messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('status', 'draft'),
+      // Last inbound CAD message
+      supabase
+        .from('cowork_messages')
+        .select('content, created_at')
+        .eq('user_id', userId)
+        .eq('direction', 'inbound')
+        .order('created_at', { ascending: false })
+        .limit(1),
+      // Manufacturer pipeline
+      supabase
+        .from('manufacturers')
+        .select('status')
+        .eq('user_id', userId),
     ]);
+
+    // Summarise candidate pipeline
+    const candTier = { top: 0, maybe: 0, reject: 0 };
+    const candStatus: Record<string, number> = {};
+    (candidateSummary || []).forEach((c: { tier: string; status: string }) => {
+      if (c.tier in candTier) candTier[c.tier as keyof typeof candTier]++;
+      candStatus[c.status] = (candStatus[c.status] || 0) + 1;
+    });
+
+    // Summarise manufacturer pipeline
+    const mfrStatus: Record<string, number> = {};
+    (manufacturerSummary || []).forEach((m: { status: string }) => {
+      mfrStatus[m.status] = (mfrStatus[m.status] || 0) + 1;
+    });
 
     return {
       success: true,
       snapshot: {
-        days_until_launch: daysUntilLaunch,
-        launch_date: LAUNCH_DATE,
-        unprocessed_thoughts: unprocessedCount ?? 0,
+        days_until_launch:      daysUntilLaunch,
+        launch_date:            LAUNCH_DATE,
+        unprocessed_thoughts:   unprocessedCount ?? 0,
         pending_business_tasks: pendingBusinessCount ?? 0,
-        pending_build_tasks: pendingBuildCount ?? 0,
-        in_progress_tasks: inProgressCount ?? 0,
-        top_build_items: priorityBuilds || [],
-        active_builds: activeBuilds || [],
-        overdue_launch_tasks: overdueLaunchTasks || [],
-        upcoming_big_movers: upcomingBigMovers || [],
+        pending_build_tasks:    pendingBuildCount ?? 0,
+        in_progress_tasks:      inProgressCount ?? 0,
+        top_build_items:        priorityBuilds || [],
+        active_builds:          activeBuilds || [],
+        overdue_launch_tasks:   overdueLaunchTasks || [],
+        upcoming_big_movers:    upcomingBigMovers || [],
+        // Hiring pipeline
+        engineering_candidates: {
+          total:          (candidateSummary || []).length,
+          tier_breakdown: candTier,
+          status_breakdown: candStatus,
+        },
+        // CAD designer thread
+        cowork: {
+          pending_drafts_to_review: coworkDraftCount ?? 0,
+          last_inbound_message:     lastCadMessage?.[0] ?? null,
+        },
+        // Manufacturer sourcing
+        manufacturers: {
+          total:            (manufacturerSummary || []).length,
+          status_breakdown: mfrStatus,
+        },
         generated_at: new Date().toISOString(),
       },
     };
@@ -740,6 +872,104 @@ async function executeTool(
       .eq('user_id', userId);
     if (error) return { success: false, error: error.message };
     return { success: true, task_id: input.task_id, message: 'Execution outline saved.' };
+  }
+
+  if (toolName === 'get_candidates') {
+    const limit = input.limit ? Math.min(Number(input.limit), 20) : 10;
+    let query = supabase
+      .from('upwork_candidates')
+      .select('id, name, tier, status, score, hourly_rate, job_success_score, strengths, weaknesses, evaluator_notes, upwork_profile_url')
+      .eq('user_id', userId)
+      .order('score', { ascending: false, nullsFirst: false })
+      .limit(limit);
+    if (input.tier)   query = query.eq('tier', String(input.tier));
+    if (input.status) query = query.eq('status', String(input.status));
+    const { data, error } = await query;
+    if (error) return { success: false, error: error.message };
+
+    const { data: allCandidates } = await supabase
+      .from('upwork_candidates')
+      .select('tier, status')
+      .eq('user_id', userId);
+
+    const tierSummary = { top: 0, maybe: 0, reject: 0 };
+    const statusSummary: Record<string, number> = {};
+    (allCandidates || []).forEach((c: { tier: string; status: string }) => {
+      if (c.tier in tierSummary) tierSummary[c.tier as keyof typeof tierSummary]++;
+      statusSummary[c.status] = (statusSummary[c.status] || 0) + 1;
+    });
+
+    return {
+      success:        true,
+      candidates:     data || [],
+      count:          (data || []).length,
+      tier_summary:   tierSummary,
+      status_summary: statusSummary,
+    };
+  }
+
+  if (toolName === 'update_candidate_status') {
+    let candidateId = input.candidate_id as string | undefined;
+
+    if (!candidateId && input.name_match) {
+      const { data: all } = await supabase
+        .from('upwork_candidates')
+        .select('id, name')
+        .eq('user_id', userId);
+      const match = (all || []).find((c: { id: string; name: string }) =>
+        c.name.toLowerCase().includes((input.name_match as string).toLowerCase())
+      );
+      if (!match) return { success: false, error: `No candidate found matching "${input.name_match}"` };
+      candidateId = match.id;
+    }
+    if (!candidateId) return { success: false, error: 'Provide candidate_id or name_match' };
+
+    const updateFields: Record<string, unknown> = {};
+    if (input.status)          updateFields.status          = input.status;
+    if (input.tier)            updateFields.tier            = input.tier;
+    if (input.evaluator_notes) updateFields.evaluator_notes = input.evaluator_notes;
+
+    const { data, error } = await supabase
+      .from('upwork_candidates')
+      .update(updateFields)
+      .eq('id', candidateId)
+      .eq('user_id', userId)
+      .select('id, name, tier, status')
+      .single();
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, candidate: data };
+  }
+
+  if (toolName === 'get_cowork_thread') {
+    const limit = input.limit ? Math.min(Number(input.limit), 20) : 10;
+    let query = supabase
+      .from('cowork_messages')
+      .select('id, direction, status, sender_name, content, media_url, media_type, created_at, sent_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (input.status) query = query.eq('status', String(input.status));
+    const { data, error } = await query;
+    if (error) return { success: false, error: error.message };
+
+    const messages = (data || []).reverse(); // chronological order
+    const draftCount = messages.filter((m: { status: string }) => m.status === 'draft').length;
+    return { success: true, messages, count: messages.length, pending_drafts: draftCount };
+  }
+
+  if (toolName === 'get_manufacturers') {
+    const limit = input.limit ? Math.min(Number(input.limit), 20) : 10;
+    let query = supabase
+      .from('manufacturers')
+      .select('id, company_name, contact_name, location, status, quoted_price_usd, lead_time_days, min_order_qty, notes')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: true })
+      .limit(limit);
+    if (input.status) query = query.eq('status', String(input.status));
+    const { data, error } = await query;
+    if (error) return { success: false, error: error.message };
+    return { success: true, manufacturers: data || [], count: (data || []).length };
   }
 
   return { success: false, error: `Unknown tool: ${toolName}` };

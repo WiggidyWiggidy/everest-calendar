@@ -483,7 +483,10 @@ export interface ActionTaken {
       | 'batch_update_calendar_events' | 'save_raw_thought'
       | 'create_build_task' | 'get_build_queue' | 'update_task_priority'
       | 'get_raw_thoughts' | 'get_task_backlog' | 'get_system_state'
-      | 'save_execution_outline';
+      | 'save_execution_outline'
+      | 'get_candidates' | 'update_candidate_status'
+      | 'get_cowork_thread'
+      | 'get_manufacturers';
   input: Record<string, unknown>;
   result: Record<string, unknown>;
 }
