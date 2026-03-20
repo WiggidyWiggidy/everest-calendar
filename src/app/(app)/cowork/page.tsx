@@ -10,6 +10,12 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { CoworkMessage } from '@/types';
 import { cn } from '@/lib/utils';
 import { MessageSquare, Send, Trash2, RefreshCw, Edit2, Check, X } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+const PushNotificationButton = dynamic(
+  () => import('@/components/global/PushNotificationButton'),
+  { ssr: false }
+);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function formatTime(iso: string) {
@@ -321,13 +327,16 @@ export default function CoworkPage() {
             </p>
           </div>
         </div>
-        <button
-          onClick={fetchMessages}
-          className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-900 px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors"
-        >
-          <RefreshCw className="h-4 w-4" />
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <PushNotificationButton />
+          <button
+            onClick={fetchMessages}
+            className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-900 px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* Thread */}
