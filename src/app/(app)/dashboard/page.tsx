@@ -27,6 +27,8 @@ import {
   Check,
   Pencil,
   DollarSign,
+  ShieldAlert,
+  ExternalLink,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -76,6 +78,26 @@ export default function DashboardPage() {
       .then((r) => r.ok ? r.json() : null)
       .then((data) => { if (data) setAiUsage(data); })
       .catch(() => {});
+  }, []);
+
+  // ── Critical path state ──────────────────────────────────────────────────────
+  const [criticalPath, setCriticalPath] = useState<{
+    topCandidatesUnmessaged: number;
+    pendingCoworkDrafts: number;
+    loading: boolean;
+  }>({ topCandidatesUnmessaged: 0, pendingCoworkDrafts: 0, loading: true });
+
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/candidates?tier=top&status=new').then((r) => r.ok ? r.json() : { candidates: [] }),
+      fetch('/api/cowork?status=draft').then((r) => r.ok ? r.json() : { messages: [] }),
+    ]).then(([cands, cowork]) => {
+      setCriticalPath({
+        topCandidatesUnmessaged: (cands.candidates ?? []).length,
+        pendingCoworkDrafts:     (cowork.messages ?? []).length,
+        loading: false,
+      });
+    }).catch(() => setCriticalPath((p) => ({ ...p, loading: false })));
   }, []);
 
   // ── Refs ─────────────────────────────────────────────────────────────────────
@@ -397,6 +419,96 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
+      {/* ── Critical Path Panel ─────────────────────────────────────────────── */}
+      {!criticalPath.loading && (
+        (() => {
+          const items: { label: string; href: string; severity: 'red' | 'amber' | 'blue' }[] = [];
+
+          if (stats.overdue > 0) {
+            items.push({
+              label:    `${stats.overdue} overdue calendar event${stats.overdue !== 1 ? 's' : ''}`,
+              href:     '/calendar',
+              severity: 'red',
+            });
+          }
+          if (incompleteLaunchTasks > 0) {
+            const overdueLaunchTasks = sortedLaunchTasks.filter(
+              (t) => t.status !== 'done' && t.due_date &&
+              isBefore(new Date(t.due_date + 'T00:00:00'), startOfDay(new Date()))
+            ).length;
+            if (overdueLaunchTasks > 0) {
+              items.push({
+                label:    `${overdueLaunchTasks} overdue launch task${overdueLaunchTasks !== 1 ? 's' : ''}`,
+                href:     '#launch-deps',
+                severity: 'red',
+              });
+            }
+          }
+          if (criticalPath.pendingCoworkDrafts > 0) {
+            items.push({
+              label:    `${criticalPath.pendingCoworkDrafts} cowork draft${criticalPath.pendingCoworkDrafts !== 1 ? 's' : ''} waiting to send`,
+              href:     '/cowork',
+              severity: 'amber',
+            });
+          }
+          if (criticalPath.topCandidatesUnmessaged > 0) {
+            items.push({
+              label:    `${criticalPath.topCandidatesUnmessaged} top candidate${criticalPath.topCandidatesUnmessaged !== 1 ? 's' : ''} not yet messaged`,
+              href:     '/candidates',
+              severity: 'blue',
+            });
+          }
+          if (daysUntilLaunch !== null && daysUntilLaunch <= 14 && daysUntilLaunch >= 0) {
+            items.push({
+              label:    `${daysUntilLaunch} days to launch — final sprint`,
+              href:     '/dashboard/launch',
+              severity: daysUntilLaunch <= 7 ? 'red' : 'amber',
+            });
+          }
+
+          if (items.length === 0) {
+            return (
+              <Card className="mb-6 bg-green-50 border-green-200">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
+                  <p className="text-sm font-medium text-green-800">No critical blockers — you&apos;re on track.</p>
+                </CardContent>
+              </Card>
+            );
+          }
+
+          return (
+            <Card className="mb-6 border-red-200 bg-red-50">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <ShieldAlert className="h-5 w-5 text-red-600 shrink-0" />
+                  <span className="text-sm font-bold text-red-800 uppercase tracking-wide">
+                    Critical Path — {items.length} item{items.length !== 1 ? 's' : ''} need attention
+                  </span>
+                </div>
+                <div className="space-y-1.5">
+                  {items.map((item, i) => (
+                    <a
+                      key={i}
+                      href={item.href}
+                      className={cn(
+                        'flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                        item.severity === 'red'   && 'bg-red-100 text-red-800 hover:bg-red-200',
+                        item.severity === 'amber' && 'bg-amber-100 text-amber-800 hover:bg-amber-200',
+                        item.severity === 'blue'  && 'bg-blue-100 text-blue-800 hover:bg-blue-200',
+                      )}
+                    >
+                      <span>{item.label}</span>
+                      <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-60" />
+                    </a>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()
+      )}
+
       {/* Fix 4: Today's Big Movers — actionable list (plural) ─────────────────── */}
       {todaysBigMovers.length > 0 && (
         <div className="bg-amber-50 border border-amber-300 rounded-xl px-5 py-4 mb-6">
@@ -601,7 +713,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Fix 5: Launch Dependencies with auto-focus ref ───────────────────── */}
-      <div ref={launchDepsRef}>
+      <div ref={launchDepsRef} id="launch-deps">
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Launch Dependencies</CardTitle>
