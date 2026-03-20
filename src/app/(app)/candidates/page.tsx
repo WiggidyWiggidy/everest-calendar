@@ -16,17 +16,6 @@ import {
 import { cn } from '@/lib/utils';
 import { Users, ChevronDown, ChevronUp, ExternalLink, RefreshCw } from 'lucide-react';
 
-// ── Tier badge ──────────────────────────────────────────────────────────────
-function TierBadge({ tier }: { tier: CandidateTier }) {
-  const colors = CANDIDATE_TIER_COLORS[tier];
-  return (
-    <span className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold', colors.bg, colors.text)}>
-      <span className={cn('w-1.5 h-1.5 rounded-full', colors.dot)} />
-      {tier.charAt(0).toUpperCase() + tier.slice(1)}
-    </span>
-  );
-}
-
 // ── Score bar ───────────────────────────────────────────────────────────────
 function ScoreBar({ score }: { score: number | null | undefined }) {
   if (score == null) return <span className="text-slate-400 text-sm">—</span>;
