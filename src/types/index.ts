@@ -476,6 +476,65 @@ export interface CoworkMessage {
   updated_at:  string;
 }
 
+// ============================================
+// Manufacturer Pipeline
+// ============================================
+
+export type ManufacturerStatus =
+  | 'prospecting'
+  | 'contacted'
+  | 'sample_requested'
+  | 'sample_received'
+  | 'quoting'
+  | 'quoted'
+  | 'trialling'
+  | 'selected'
+  | 'rejected';
+
+export interface Manufacturer {
+  id:               string;
+  user_id:          string;
+  company_name:     string;
+  contact_name:     string | null;
+  phone:            string | null;
+  email:            string | null;
+  location:         string | null;
+  website:          string | null;
+  status:           ManufacturerStatus;
+  quoted_price_usd: number | null;
+  lead_time_days:   number | null;
+  min_order_qty:    number | null;
+  strengths:        string | null;
+  concerns:         string | null;
+  notes:            string | null;
+  created_at:       string;
+  updated_at:       string;
+}
+
+export const MANUFACTURER_STATUS_LABELS: Record<ManufacturerStatus, string> = {
+  prospecting:      'Prospecting',
+  contacted:        'Contacted',
+  sample_requested: 'Sample Requested',
+  sample_received:  'Sample Received',
+  quoting:          'Quoting',
+  quoted:           'Quoted',
+  trialling:        'Trialling',
+  selected:         'Selected',
+  rejected:         'Rejected',
+};
+
+export const MANUFACTURER_STATUS_COLORS: Record<ManufacturerStatus, { bg: string; text: string }> = {
+  prospecting:      { bg: 'bg-slate-100',   text: 'text-slate-600'  },
+  contacted:        { bg: 'bg-blue-100',    text: 'text-blue-700'   },
+  sample_requested: { bg: 'bg-indigo-100',  text: 'text-indigo-700' },
+  sample_received:  { bg: 'bg-purple-100',  text: 'text-purple-700' },
+  quoting:          { bg: 'bg-yellow-100',  text: 'text-yellow-700' },
+  quoted:           { bg: 'bg-orange-100',  text: 'text-orange-700' },
+  trialling:        { bg: 'bg-cyan-100',    text: 'text-cyan-700'   },
+  selected:         { bg: 'bg-green-100',   text: 'text-green-700'  },
+  rejected:         { bg: 'bg-red-100',     text: 'text-red-700'    },
+};
+
 // Represents a single tool call made by the assistant
 export interface ActionTaken {
   tool: 'create_calendar_event' | 'update_calendar_event' | 'delete_calendar_event'
@@ -483,7 +542,8 @@ export interface ActionTaken {
       | 'batch_update_calendar_events' | 'save_raw_thought'
       | 'create_build_task' | 'get_build_queue' | 'update_task_priority'
       | 'get_raw_thoughts' | 'get_task_backlog' | 'get_system_state'
-      | 'save_execution_outline';
+      | 'save_execution_outline' | 'get_candidates' | 'update_candidate_status'
+      | 'get_cowork_thread' | 'get_manufacturers';
   input: Record<string, unknown>;
   result: Record<string, unknown>;
 }
