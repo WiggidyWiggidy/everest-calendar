@@ -39,7 +39,11 @@ export async function updateSession(request: NextRequest) {
   const isAuthPage = request.nextUrl.pathname.startsWith('/login') ||
                      request.nextUrl.pathname.startsWith('/signup');
 
-  if (!user && !isAuthPage) {
+  // API routes that use X-API-Key auth (not session) must be exempt from redirect
+  const isApiKeyRoute = request.nextUrl.pathname.startsWith('/api/candidates') &&
+                        request.method === 'POST';
+
+  if (!user && !isAuthPage && !isApiKeyRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
