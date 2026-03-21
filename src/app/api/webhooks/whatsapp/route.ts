@@ -14,6 +14,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createAnonClient } from '@supabase/supabase-js';
 import { downloadGreenApiMedia, sendViaGreenApi } from '@/lib/greenApi';
+import { sendPushToAll } from '@/lib/pushNotifications';
 
 const CAD_AGENT_SYSTEM_PROMPT = `You are the sole communication link between a project manager and CAD designer Imran (Bangladesh, WhatsApp). Imran is building accurate 3D CAD models of 3 components: (1) a portable fridge/freezer unit, (2) an XTline micro diaphragm pump, (3) a 6-circuit blade fuse box. A shell engineer uses these models to design an enclosure. Every dimension error cascades into the shell design. Your job: review every submission, apply the reference specs, and produce precise messages that actually move Imran forward.
 
@@ -151,6 +152,7 @@ export async function POST(request: NextRequest) {
     const msgType = body.messageData?.typeMessage;
     const isText  = msgType === 'textMessage';
     const isImage = msgType === 'imageMessage';
+<<<<<<< feature/decision-queue
     if (!isText && !isImage) return NextResponse.json({ ok: true });
 
     // 3. Filter to CAD phone only
@@ -160,6 +162,41 @@ export async function POST(request: NextRequest) {
 
     const senderName: string | null = body.senderData?.senderName ?? null;
     let inboundText           = '';
+=======
+    const isDoc   = msgType === 'documentMessage';
+
+    if (!isText && !isImage && !isDoc) {
+      return NextResponse.json({ ok: true }); // skip voice, stickers, etc.
+    }
+
+    // ── 3. Resolve contact by phone (falls back to CAD designer) ─────────
+    const senderPhone = (body.senderData?.chatId as string)?.split('@')[0] ?? '';
+    const senderName: string | null = body.senderData?.senderName ?? null;
+
+    // Try to match against a registered contact via DB
+    let contactKey  = 'cad_designer';
+    let contactSystemPromptOverride: string | null = null;
+
+    const tempSupabase = createAnonClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    const { data: contactData } = await tempSupabase.rpc('get_contact_by_phone', { p_phone: senderPhone });
+    if (contactData && typeof contactData === 'object') {
+      const contact = contactData as { key: string; system_prompt?: string };
+      contactKey = contact.key;
+      contactSystemPromptOverride = contact.system_prompt ?? null;
+    } else {
+      // Fall back to env var allowlist: if COWORK_CAD_PHONE is set, only accept that number
+      const cadPhone = process.env.COWORK_CAD_PHONE;
+      if (cadPhone && senderPhone !== cadPhone) {
+        return NextResponse.json({ ok: true }); // unknown number — ignore
+      }
+    }
+
+    // ── Extract text and image data ───────────────────────────────────────
+    let inboundText = '';
+>>>>>>> main
     let mediaUrl: string | null = null;
     let mediaType: string | null = null;
     let imageBase64: string | null = null;
@@ -168,6 +205,13 @@ export async function POST(request: NextRequest) {
     // 4. Download image if present
     if (isText) {
       inboundText = body.messageData?.textMessageData?.textMessage ?? '';
+    } else if (isDoc) {
+      // Documents (STEP, DXF, PDF, etc.) — log metadata, don't re-upload
+      const fileData = body.messageData?.fileMessageData;
+      const fileName = fileData?.fileName ?? 'attachment';
+      inboundText = fileData?.caption?.trim() || `[File: ${fileName}]`;
+      mediaType   = fileData?.mimeType ?? 'application/octet-stream';
+      mediaUrl    = fileData?.downloadUrl ?? null; // store direct link
     } else {
       const fileData = body.messageData?.fileMessageData;
       inboundText = fileData?.caption?.trim() || '[Image]';
@@ -197,13 +241,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
+<<<<<<< feature/decision-queue
     if (!inboundText.trim() && !imageBase64) return NextResponse.json({ ok: true });
 
+=======
+    if (!inboundText.trim() && !imageBase64) {
+      return NextResponse.json({ ok: true });
+    }
+
+    // ── 5. Fetch conversation history + design brief ──────────────────────
+>>>>>>> main
     const supabase = createAnonClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
+<<<<<<< feature/decision-queue
     // 5. Fetch conversation history
     let historyMessages: Array<{ role: 'user' | 'assistant'; content: string }> = [];
     try {
@@ -279,6 +332,38 @@ export async function POST(request: NextRequest) {
     }
 
     // ── TIER 1-3: Opus draft + inbox item ────────────────────────────────────
+=======
+    let historyMessages: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+    let designBrief = '';
+
+    await Promise.all([
+      // Conversation history
+      Promise.resolve(supabase.rpc('get_cowork_history', { p_limit: 20, p_contact_key: contactKey })).then(({ data: history }) => {
+        if (Array.isArray(history)) {
+          historyMessages = history
+            .filter((m: { direction: string; content: string }) => m.content && !m.content.startsWith('['))
+            .map((m: { direction: string; content: string }) => ({
+              role:    (m.direction === 'inbound' ? 'user' : 'assistant') as 'user' | 'assistant',
+              content: m.content,
+            }));
+        }
+      }).catch((err: unknown) => console.error('/api/webhooks/whatsapp history error:', err)),
+      // Design brief
+      Promise.resolve(supabase.rpc('get_cowork_context', { p_contact_key: contactKey })).then(({ data }) => {
+        if (typeof data === 'string' && data.trim()) {
+          designBrief = data.trim();
+        }
+      }).catch((err: unknown) => console.error('/api/webhooks/whatsapp brief error:', err)),
+    ]);
+
+    // Build system prompt — use contact override if set, else default; inject design brief on top
+    const baseSystemPrompt = contactSystemPromptOverride ?? CAD_AGENT_SYSTEM_PROMPT;
+    const systemPrompt = designBrief
+      ? `${baseSystemPrompt}\n\n## Current design state (Tom's notes)\n${designBrief}`
+      : baseSystemPrompt;
+
+    // ── 6. Call Claude ────────────────────────────────────────────────────
+>>>>>>> main
     let draftContent: string | null = null;
     try {
       const currentContent: ClaudeContentBlock[] = [];
@@ -306,6 +391,7 @@ export async function POST(request: NextRequest) {
       const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
+<<<<<<< feature/decision-queue
           'Content-Type': 'application/json',
           'x-api-key': process.env.ANTHROPIC_API_KEY!,
           'anthropic-version': '2023-06-01',
@@ -330,11 +416,41 @@ export async function POST(request: NextRequest) {
 
     // Always save as draft for Tier 1-3 — never auto-send regardless of COWORK_AUTO_SEND
     const { data: rpcData, error: rpcError } = await supabase.rpc('process_whatsapp_inbound', {
+=======
+          'Content-Type':      'application/json',
+          'x-api-key':         process.env.ANTHROPIC_API_KEY!,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model:      'claude-sonnet-4-20250514',
+          max_tokens: 256,
+          system:     systemPrompt,
+          messages:   claudeMessages,
+        }),
+      });
+      if (claudeRes.ok) { const claudeJson = await claudeRes.json(); draftContent = (claudeJson.content?.[0]?.text as string) ?? null; }
+      else console.error('/api/webhooks/whatsapp Claude error:', await claudeRes.text());
+    } catch (err) { console.error('/api/webhooks/whatsapp Claude failed:', err); }
+    const autoSend = process.env.COWORK_AUTO_SEND === 'true';
+    let didAutoSend = false;
+    if (autoSend && draftContent) {
+      const sendError = await sendViaGreenApi(draftContent);
+      if (!sendError) {
+        didAutoSend = true;
+      } else {
+        console.error('/api/webhooks/whatsapp auto-send error:', sendError);
+      }
+    }
+
+    // ── 8. Save via SECURITY DEFINER RPC ──────────────────────────────────
+    const { error: rpcError } = await supabase.rpc('process_whatsapp_inbound', {
+>>>>>>> main
       p_inbound_content: inboundText,
       p_sender_name:     senderName,
       p_draft_content:   draftContent,
       p_media_url:       mediaUrl,
       p_media_type:      mediaType,
+<<<<<<< feature/decision-queue
       p_auto_send:       false,
     });
     if (rpcError) console.error('/api/webhooks/whatsapp RPC error:', rpcError);
@@ -359,6 +475,19 @@ export async function POST(request: NextRequest) {
     } catch (inboxErr) {
       console.error('/api/webhooks/whatsapp inbox item error:', inboxErr);
     }
+=======
+      p_auto_send:       didAutoSend,
+      p_contact_key:     contactKey,
+    });
+
+    // 9. Send push notification (non-blocking — fire and forget)
+    const pushBody = inboundText && inboundText !== '[Image]'
+      ? inboundText.slice(0, 100) + (inboundText.length > 100 ? '…' : '')
+      : '📷 Image received';
+    const pushName = senderName ? `${senderName} (WhatsApp)` : 'WhatsApp message';
+    sendPushToAll({ title: pushName, body: pushBody, url: '/cowork', tag: 'cowork-inbound' })
+      .catch((err: unknown) => console.error('/api/webhooks/whatsapp push error:', err));
+>>>>>>> main
 
     return NextResponse.json({ ok: true });
   } catch (err) {
