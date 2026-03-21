@@ -458,6 +458,13 @@ export const CANDIDATE_STATUS_LABELS: Record<CandidateStatus, string> = {
 // WhatsApp Cowork Thread
 // ============================================
 
+export interface CoworkContact {
+  id:           string;
+  key:          string;
+  display_name: string;
+  phone:        string | null;
+}
+
 export type CoworkMessageStatus    = 'received' | 'draft' | 'sent';
 export type CoworkMessageDirection = 'inbound' | 'outbound';
 
