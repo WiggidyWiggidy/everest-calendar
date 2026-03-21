@@ -4,6 +4,7 @@
 // ============================================
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { logAgentActivity } from '@/lib/logAgentActivity';
 
 export async function PATCH(
   request: NextRequest,
@@ -50,6 +51,16 @@ export async function PATCH(
       console.error('/api/candidates/[id] PATCH error:', error);
       return NextResponse.json({ error: 'Failed to update candidate' }, { status: 500 });
     }
+
+    const changedFields = Object.keys(updates).join(', ');
+    await logAgentActivity({
+      agentName:    'tom',
+      agentSource:  'cowork',
+      activityType: 'decision',
+      description:  `Candidate ${data?.name ?? id} updated: ${changedFields}`,
+      domain:       'hiring',
+      metadata:     { candidate_id: id, updates },
+    });
 
     return NextResponse.json({ success: true, candidate: data });
   } catch (err) {

@@ -14,6 +14,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createAnonClient } from '@supabase/supabase-js';
 import { downloadGreenApiMedia, sendViaGreenApi } from '@/lib/greenApi';
+import { createServiceClient } from '@/lib/supabase/service';
+import { logAgentActivity } from '@/lib/logAgentActivity';
 
 const CAD_AGENT_SYSTEM_PROMPT = `You are the sole communication link between a project manager and CAD designer Imran (Bangladesh, WhatsApp). Imran is building accurate 3D CAD models of 3 components: (1) a portable fridge/freezer unit, (2) an XTline micro diaphragm pump, (3) a 6-circuit blade fuse box. A shell engineer uses these models to design an enclosure. Every dimension error cascades into the shell design. Your job: review every submission, apply the reference specs, and produce precise messages that actually move Imran forward.
 
@@ -82,6 +84,100 @@ CRITICAL SPECS:
 - Freezer: 442 x 372 x 485mm external. Diagonal wave ridges on ALL faces of white upper body. Dark lower module 110.52mm tall. Vent grilles on back face: 331.3mm wide x 187.6mm tall. Display panel on front of lower module: 130.1mm wide x 41.1mm tall. Telescoping tow handle (not fixed). Large wheels at rear base corners. Recessed side handles both sides.
 - Pump: SMALL rectangular diaphragm pump, approx 205mm long, flat aluminium head with 8 bolts. No cylindrical barrel. No carry handle. Reject any rotary pump or compressor model immediately — state it is wrong, describe the correct part, tell him what to do.
 - Fuse box: 119.9 x 49.8mm. 6 circuits labelled BLOWER/RADIO/VHF/WIPERS/GPS/STEREO. M6 and M4 studs. Mounting flanges each end.`;
+
+// ── Proposal / directive helpers (APPROVE / REJECT / RETRY) ──────────────────
+
+// UUID v4 pattern
+const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+
+async function handleProposalReply(text: string): Promise<boolean> {
+  const trimmed = text.trim().toUpperCase();
+
+  // RETRY [directive_id]
+  if (trimmed.startsWith('RETRY ')) {
+    const match = text.match(UUID_RE);
+    if (!match) return false;
+    const directiveId = match[0];
+    const supabase = createServiceClient();
+    const { error } = await supabase
+      .from('orchestrator_directives')
+      .update({ status: 'pending', metadata: { retry_count: 0 } })
+      .eq('id', directiveId);
+    if (error) console.error('[whatsapp/proposal] RETRY error:', error);
+    await logAgentActivity({
+      agentName: 'tom', agentSource: 'cowork', activityType: 'approval',
+      description: `Directive ${directiveId} reset to pending via WhatsApp RETRY`,
+      domain: 'system', metadata: { directive_id: directiveId },
+    });
+    return true;
+  }
+
+  // APPROVE [proposal_id]
+  if (trimmed.startsWith('APPROVE ')) {
+    const match = text.match(UUID_RE);
+    if (!match) return false;
+    const proposalId = match[0];
+    const supabase = createServiceClient();
+    const now = new Date().toISOString();
+    const { error } = await supabase
+      .from('system_proposals')
+      .update({ status: 'queued', approved_at: now })
+      .eq('id', proposalId);
+    if (error) console.error('[whatsapp/proposal] APPROVE error:', error);
+    await logAgentActivity({
+      agentName: 'tom', agentSource: 'cowork', activityType: 'approval',
+      description: `System proposal ${proposalId} approved and queued via WhatsApp`,
+      domain: 'system', metadata: { proposal_id: proposalId },
+    });
+    return true;
+  }
+
+  // REJECT [proposal_id]
+  if (trimmed.startsWith('REJECT ')) {
+    const match = text.match(UUID_RE);
+    if (!match) return false;
+    const proposalId = match[0];
+    const supabase = createServiceClient();
+    const { error } = await supabase
+      .from('system_proposals')
+      .update({ status: 'rejected' })
+      .eq('id', proposalId);
+    if (error) console.error('[whatsapp/proposal] REJECT error:', error);
+    await logAgentActivity({
+      agentName: 'tom', agentSource: 'cowork', activityType: 'decision',
+      description: `System proposal ${proposalId} rejected via WhatsApp`,
+      domain: 'system', metadata: { proposal_id: proposalId },
+    });
+    return true;
+  }
+
+  // Freeform reply — check for recent pending proposals (last 24h) and log as feedback
+  const supabase = createServiceClient();
+  const ago24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data: recentProposal } = await supabase
+    .from('system_proposals')
+    .select('id')
+    .eq('status', 'pending')
+    .gte('whatsapp_sent_at', ago24h)
+    .order('whatsapp_sent_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (recentProposal) {
+    await supabase
+      .from('system_proposals')
+      .update({ status: 'feedback_given', your_feedback: text })
+      .eq('id', recentProposal.id);
+    await logAgentActivity({
+      agentName: 'tom', agentSource: 'cowork', activityType: 'info',
+      description: `Feedback given on proposal ${recentProposal.id}: "${text.slice(0, 80)}"`,
+      domain: 'system', metadata: { proposal_id: recentProposal.id },
+    });
+    return true; // handled — don't pass to CAD pipeline
+  }
+
+  return false;
+}
 
 type ClaudeContentBlock =
   | { type: 'text'; text: string }
@@ -154,9 +250,20 @@ export async function POST(request: NextRequest) {
     const isDoc = msgType === 'documentMessage';
     if (!isText && !isImage && !isDoc) return NextResponse.json({ ok: true });
 
-    // 3. Filter to CAD phone only
-    const cadPhone    = process.env.COWORK_CAD_PHONE;
     const senderPhone = ((body.senderData?.chatId as string) ?? '').split('@')[0];
+
+    // 2b. Owner reply handling — APPROVE / REJECT / RETRY / feedback
+    // Check before CAD filter so Tom's phone is handled from any thread.
+    const ownerPhone = process.env.OWNER_WHATSAPP_PHONE;
+    if (ownerPhone && senderPhone === ownerPhone && isText) {
+      const inboundOwnerText: string = body.messageData?.textMessageData?.textMessage ?? '';
+      const handled = await handleProposalReply(inboundOwnerText);
+      if (handled) return NextResponse.json({ ok: true });
+      // If not handled (just a normal chat from Tom), fall through to CAD pipeline — very unlikely but safe
+    }
+
+    // 3. Filter to CAD phone only
+    const cadPhone = process.env.COWORK_CAD_PHONE;
     if (cadPhone && senderPhone !== cadPhone) return NextResponse.json({ ok: true });
 
     const senderName: string | null = body.senderData?.senderName ?? null;
