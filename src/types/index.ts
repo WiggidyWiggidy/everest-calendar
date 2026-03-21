@@ -540,7 +540,7 @@ export const MANUFACTURER_STATUS_COLORS: Record<ManufacturerStatus, { bg: string
 // ============================================
 
 export type InboxPlatform = 'whatsapp' | 'upwork' | 'alibaba';
-export type InboxStatus   = 'pending' | 'approved' | 'edited' | 'rejected' | 'auto_sent' | 'snoozed';
+export type InboxStatus   = 'pending' | 'approved' | 'edited' | 'rejected' | 'auto_sent' | 'snoozed' | 'transitioned';
 export type ApprovalTier  = 0 | 1 | 2 | 3;
 
 export const INBOX_PLATFORM_COLORS: Record<InboxPlatform, { bg: string; text: string; dot: string }> = {
@@ -574,8 +574,44 @@ export interface PlatformInboxItem {
   final_reply:                 string | null;
   cowork_message_inbound_id:   string | null;
   candidate_id:                string | null;
+  metadata:                    Record<string, unknown> | null;
   created_at:                  string;
   updated_at:                  string;
+}
+
+// Inbox item enriched with pipeline context (joined on API response)
+export interface InboxItemEnriched extends PlatformInboxItem {
+  _candidate?: { id: string; name: string; tier: CandidateTier; status: CandidateStatus } | null;
+  _manufacturer?: { id: string; company_name: string; status: ManufacturerStatus } | null;
+}
+
+// ============================================
+// Agent Health Monitoring
+// ============================================
+
+export type AgentRunStatus  = 'running' | 'success' | 'error';
+export type AgentHealthColor = 'green' | 'amber' | 'red';
+
+export interface TaskRun {
+  id:              string;
+  user_id:         string;
+  agent_name:      string;
+  started_at:      string;
+  completed_at:    string | null;
+  status:          AgentRunStatus;
+  items_processed: number;
+  error_message:   string | null;
+  metadata:        Record<string, unknown> | null;
+  created_at:      string;
+}
+
+export interface AgentHealthStatus {
+  agent_name:      string;
+  last_status:     AgentRunStatus;
+  last_run_at:     string;
+  items_processed: number;
+  error_message:   string | null;
+  health:          AgentHealthColor;
 }
 
 // Represents a single tool call made by the assistant
