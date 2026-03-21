@@ -18,8 +18,6 @@ import {
   PlatformInboxItem,
 } from '@/types';
 
-const LAUNCH_DATE = new Date('2026-03-29');
-
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function healthColor(lastRunAt: string | null, lastStatus: string | null): AgentHealthColor {
@@ -69,7 +67,6 @@ export async function GET() {
     agentsRes,
     memoriesRes,
     activityRes,
-    coworkMsgsRes,
     workflowRes,
     candidatesRes,
     inboxManualRes,
@@ -101,12 +98,6 @@ export async function GET() {
       .gte('created_at', ago48h)
       .order('created_at', { ascending: false })
       .limit(50),
-
-    // Latest cowork_message per agent (for health)
-    supabase.from('cowork_messages')
-      .select('id, sender_name, created_at').eq('user_id', uid).eq('direction', 'inbound')
-      .gte('created_at', ago48h)
-      .order('created_at', { ascending: false }),
 
     // Workflow stages
     supabase.from('workflow_stages')
@@ -159,10 +150,7 @@ export async function GET() {
 
   // ── Cowork agent grid ──────────────────────────────────────────────────────
   const agentList = agentsRes.data ?? [];
-  const coworkMsgs = coworkMsgsRes.data ?? [];
 
-  // Latest inbound cowork message is a weak proxy for agent activity
-  // Better: check agent_memories created_at per agent
   const memsByAgent = new Map<string, { count: number; latest: string | null; latestTitle: string | null }>();
   for (const m of memories) {
     const existing = memsByAgent.get(m.agent_id) ?? { count: 0, latest: null, latestTitle: null };
@@ -173,9 +161,6 @@ export async function GET() {
     }
     memsByAgent.set(m.agent_id, existing);
   }
-
-  // Latest cowork_message sent_at as a proxy for any agent being active
-  const latestCoworkActivity = coworkMsgs[0]?.created_at ?? null;
 
   const coworkAgents: CoworkAgentHealth[] = agentList.map(agent => {
     const mems = memsByAgent.get(agent.id);
@@ -279,7 +264,7 @@ export async function GET() {
     ],
   });
 
-  for (const [key, ws] of Object.entries(workstreams)) {
+  for (const [, ws] of Object.entries(workstreams)) {
     if (!ws.stages.length) continue;
     pipelines.push({
       name: ws.label,

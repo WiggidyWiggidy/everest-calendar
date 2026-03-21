@@ -16,29 +16,20 @@ import {
   AgentActivityEntry,
   PipelineTrack,
   PlatformInboxItem,
-  AutonomyWeek,
   INBOX_PLATFORM_COLORS,
   AgentHealthColor,
 } from '@/types';
 import { cn } from '@/lib/utils';
 import {
   Activity,
-  Bot,
   AlertCircle,
   CheckCircle2,
-  Clock,
-  Brain,
   ChevronDown,
   ChevronUp,
   Loader2,
   ArrowRight,
-  Zap,
-  AlertTriangle,
-  Info,
-  XCircle,
-  TrendingUp,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -147,17 +138,6 @@ function AutonomyHero({ data }: { data: CommandCenterData }) {
 }
 
 // ── Activity feed ─────────────────────────────────────────────────────────────
-
-const ACTIVITY_ICONS: Record<string, React.ElementType> = {
-  auto_action: Zap,
-  decision:    AlertTriangle,
-  learning:    Brain,
-  info:        Info,
-  error:       XCircle,
-  handoff:     ArrowRight,
-  draft:       Activity,
-  approval:    CheckCircle2,
-};
 
 const ACTIVITY_DOT: Record<string, string> = {
   auto_action: 'bg-green-400',
@@ -439,7 +419,6 @@ export default function CommandCenterPage() {
   const [data, setData] = useState<CommandCenterData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [pipelineOpen] = useState(true);
   const supabase = createClient();
 
   const fetchData = useCallback(async () => {
