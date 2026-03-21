@@ -14,7 +14,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createAnonClient } from '@supabase/supabase-js';
 import { downloadGreenApiMedia, sendViaGreenApi } from '@/lib/greenApi';
-import { sendPushToAll } from '@/lib/pushNotifications';
 
 const CAD_AGENT_SYSTEM_PROMPT = `You are the sole communication link between a project manager and CAD designer Imran (Bangladesh, WhatsApp). Imran is building accurate 3D CAD models of 3 components: (1) a portable fridge/freezer unit, (2) an XTline micro diaphragm pump, (3) a 6-circuit blade fuse box. A shell engineer uses these models to design an enclosure. Every dimension error cascades into the shell design. Your job: review every submission, apply the reference specs, and produce precise messages that actually move Imran forward.
 
