@@ -43,6 +43,93 @@ function DateSeparator({ label }: { label: string }) {
   );
 }
 
+// ── Design Brief panel ────────────────────────────────────────────────────────
+function DesignBriefPanel({ contactKey }: { contactKey: string }) {
+  const [brief, setBrief]       = useState('');
+  const [draft, setDraft]       = useState('');
+  const [open, setOpen]         = useState(false);
+  const [saving, setSaving]     = useState(false);
+  const [saved, setSaved]       = useState(false);
+
+  useEffect(() => {
+    setBrief(''); setDraft('');
+    fetch(`/api/cowork/context?contact_key=${encodeURIComponent(contactKey)}`)
+      .then((r) => r.json())
+      .then(({ brief: b }) => { setBrief(b ?? ''); setDraft(b ?? ''); })
+      .catch(() => {});
+  }, [contactKey]);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const res = await fetch('/api/cowork/context', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brief: draft, contact_key: contactKey }),
+      });
+      if (res.ok) {
+        const { brief: b } = await res.json();
+        setBrief(b);
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const isDirty = draft !== brief;
+
+  return (
+    <div className="mb-3 shrink-0 border border-slate-200 rounded-xl bg-white overflow-hidden">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <BookOpen className="h-4 w-4 text-indigo-500" />
+          <span>Design Brief</span>
+          {brief && (
+            <span className="text-xs bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded-full font-normal">
+              {brief.length > 60 ? brief.slice(0, 60) + '…' : brief}
+            </span>
+          )}
+          {!brief && (
+            <span className="text-xs text-slate-400 font-normal">
+              Add context — Claude reads this before every draft reply
+            </span>
+          )}
+        </div>
+        {open ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+      </button>
+
+      {open && (
+        <div className="border-t border-slate-200 p-3">
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder={`Describe the current design state — revision number, what's agreed, what's still outstanding.\n\nExample: "Rev 4 — corner radius agreed 3mm, material 1.5mm 5052-H32. Outstanding: ventilation cutout position (lower-rear panel), cable grommet size."`}
+            rows={5}
+            className="w-full text-sm text-slate-800 placeholder-slate-400 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
+          />
+          <div className="flex items-center justify-between mt-2">
+            <p className="text-xs text-slate-400">
+              Injected into Claude&apos;s context before every reply draft.
+            </p>
+            <button
+              onClick={handleSave}
+              disabled={saving || !isDirty}
+              className="flex items-center gap-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40"
+            >
+              {saving ? 'Saving…' : saved ? <><Check className="h-3.5 w-3.5" /> Saved</> : 'Save brief'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Message bubble ────────────────────────────────────────────────────────────
 function MessageBubble({
   message,
@@ -100,7 +187,7 @@ function MessageBubble({
           )}
         >
           {/* Image attachment */}
-          {message.media_url && (
+          {message.media_url && message.media_type?.startsWith('image/') && (
             <a href={message.media_url} target="_blank" rel="noopener noreferrer" className="block mb-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -108,6 +195,23 @@ function MessageBubble({
                 alt="Attachment"
                 className="rounded-lg max-w-full max-h-64 object-contain"
               />
+            </a>
+          )}
+          {message.media_url && message.media_type && !message.media_type.startsWith('image/') && (
+            <a
+              href={message.media_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                'flex items-center gap-2 mb-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors',
+                isInbound
+                  ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  : 'bg-white/20 hover:bg-white/30 text-inherit'
+              )}
+            >
+              <FileText className="h-4 w-4 shrink-0" />
+              <span className="truncate">{message.content.replace(/^\[File: /, '').replace(/\]$/, '')}</span>
+              <span className="shrink-0 opacity-60">↗</span>
             </a>
           )}
           {editing ? (
@@ -118,7 +222,7 @@ function MessageBubble({
               autoFocus
             />
           ) : (
-            message.content !== '[Image]' && (
+            !message.content.startsWith('[') && (
               <p className="whitespace-pre-wrap">{message.content}</p>
             )
           )}
@@ -195,15 +299,25 @@ function MessageBubble({
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function CoworkPage() {
+  const [contacts, setContacts]   = useState<CoworkContact[]>([{ id: 'default', key: 'cad_designer', display_name: 'CAD Designer', phone: null }]);
+  const [activeKey, setActiveKey] = useState('cad_designer');
   const [messages, setMessages]   = useState<CoworkMessage[]>([]);
   const [loading, setLoading]     = useState(true);
   const [compose, setCompose]     = useState('');
   const [composing, setComposing] = useState(false);
   const bottomRef                 = useRef<HTMLDivElement>(null);
 
+  // Load contacts once
+  useEffect(() => {
+    fetch('/api/cowork/contacts')
+      .then((r) => r.json())
+      .then(({ contacts: c }) => { if (c?.length) setContacts(c); })
+      .catch(() => {});
+  }, []);
+
   const fetchMessages = useCallback(async () => {
     try {
-      const res = await fetch('/api/cowork');
+      const res = await fetch(`/api/cowork?contact_key=${encodeURIComponent(activeKey)}`);
       const json = await res.json();
       if (json.messages) setMessages(json.messages);
     } catch (err) {
@@ -211,15 +325,16 @@ export default function CoworkPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeKey]);
 
-  useEffect(() => { fetchMessages(); }, [fetchMessages]);
+  // Refetch when contact tab changes
+  useEffect(() => { setLoading(true); setMessages([]); fetchMessages(); }, [fetchMessages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Poll every 15 seconds for new messages from the CAD designer
+  // Poll every 15 seconds
   useEffect(() => {
     const interval = setInterval(fetchMessages, 15_000);
     return () => clearInterval(interval);
@@ -270,7 +385,7 @@ export default function CoworkPage() {
       const res = await fetch('/api/cowork', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: compose.trim(), send_immediately: true }),
+        body: JSON.stringify({ content: compose.trim(), send_immediately: true, contact_key: activeKey }),
       });
       if (res.ok) {
         const { message } = await res.json();
@@ -307,10 +422,12 @@ export default function CoworkPage() {
     );
   });
 
+  const activeContact = contacts.find((c) => c.key === activeKey) ?? contacts[0];
+
   return (
     <div className="flex flex-col h-[calc(100vh-3rem)]">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4 shrink-0">
+      <div className="flex items-center justify-between mb-3 shrink-0">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-green-100 rounded-lg">
             <MessageSquare className="h-5 w-5 text-green-600" />
@@ -318,7 +435,7 @@ export default function CoworkPage() {
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Cowork</h1>
             <p className="text-sm text-slate-500">
-              WhatsApp thread · CAD designer
+              WhatsApp threads
               {draftCount > 0 && (
                 <span className="ml-2 bg-amber-100 text-amber-700 text-xs font-semibold px-2 py-0.5 rounded-full">
                   {draftCount} draft{draftCount !== 1 ? 's' : ''} to review
@@ -338,6 +455,30 @@ export default function CoworkPage() {
           </button>
         </div>
       </div>
+
+      {/* Contact tabs */}
+      {contacts.length > 0 && (
+        <div className="flex items-center gap-1 mb-3 shrink-0 overflow-x-auto pb-1">
+          <Users className="h-4 w-4 text-slate-400 mr-1 shrink-0" />
+          {contacts.map((c) => (
+            <button
+              key={c.key}
+              onClick={() => setActiveKey(c.key)}
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap',
+                activeKey === c.key
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              )}
+            >
+              {c.display_name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Design Brief */}
+      <DesignBriefPanel contactKey={activeContact?.key ?? 'cad_designer'} />
 
       {/* Thread */}
       <div className="flex-1 bg-slate-50 rounded-xl border border-slate-200 overflow-y-auto p-4 min-h-0">
