@@ -59,9 +59,19 @@ export default function Sidebar({ userEmail }: SidebarProps) {
       } catch { /* silent */ }
     }
     fetchInboxCount();
-    const interval = setInterval(fetchInboxCount, 30_000);
-    return () => clearInterval(interval);
-  }, []);
+
+    // Realtime — update badge instantly when items are added/updated
+    const channel = supabase
+      .channel('sidebar_inbox_count')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'platform_inbox' }, () => {
+        fetchInboxCount();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase]);
 
   async function handleSignOut() {
     await supabase.auth.signOut();

@@ -1,6 +1,6 @@
 // ============================================
 // PATCH /api/inbox/[id]
-// Actions: approve | edit | reject | snooze
+// Actions: approve | edit | reject | snooze | transition
 // ============================================
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
@@ -16,7 +16,12 @@ export async function PATCH(
 
   const { id } = await params;
   const body = await request.json();
-  const { action, custom_reply } = body as { action: string; custom_reply?: string };
+  const { action, custom_reply, phone, intro_message } = body as {
+    action: string;
+    custom_reply?: string;
+    phone?: string;
+    intro_message?: string;
+  };
 
   // Fetch the inbox item
   const { data: item, error: fetchError } = await supabase
@@ -113,5 +118,50 @@ export async function PATCH(
     return NextResponse.json({ item: updated });
   }
 
-  return NextResponse.json({ error: 'Invalid action. Use: approve | edit | reject | snooze' }, { status: 400 });
+  if (action === 'transition') {
+    // Validate inputs
+    if (!phone || !/^\d+$/.test(phone)) {
+      return NextResponse.json({ error: 'phone must be digits only (e.g. 61412345678)' }, { status: 400 });
+    }
+    if (!intro_message?.trim()) {
+      return NextResponse.json({ error: 'intro_message is required' }, { status: 400 });
+    }
+
+    // Send intro via WhatsApp
+    const sendErr = await sendViaGreenApi(intro_message, phone);
+    if (sendErr) {
+      console.error('/api/inbox/[id] transition send error:', sendErr);
+      return NextResponse.json({ error: `WhatsApp send failed: ${sendErr}` }, { status: 502 });
+    }
+
+    // Mark inbox item as transitioned
+    const { data: updated, error: updateErr } = await supabase
+      .from('platform_inbox')
+      .update({ status: 'transitioned', final_reply: intro_message, approved_at: now })
+      .eq('id', id)
+      .select()
+      .single();
+    if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 });
+
+    // Log the intro message to cowork_messages so it appears in the thread
+    await supabase.from('cowork_messages').insert({
+      user_id:    user.id,
+      direction:  'outbound',
+      status:     'sent',
+      content:    intro_message,
+      sent_at:    now,
+    });
+
+    // If this item is linked to an Upwork candidate, mark them as hired
+    if (item.candidate_id) {
+      await supabase
+        .from('upwork_candidates')
+        .update({ status: 'hired' })
+        .eq('id', item.candidate_id);
+    }
+
+    return NextResponse.json({ item: updated });
+  }
+
+  return NextResponse.json({ error: 'Invalid action. Use: approve | edit | reject | snooze | transition' }, { status: 400 });
 }
