@@ -7,9 +7,9 @@
 //  4. Download image → upload to Supabase Storage (if image)
 //  5. Fetch conversation history for Claude context
 //  5b. Fetch reference specs for this contact
-//  6. Call Claude with vision + reference context
-//  7. Auto-send via Green API if COWORK_AUTO_SEND=true
-//  8. Save inbound + draft/sent via SECURITY DEFINER RPC
+//  6. Classify message with Claude Haiku (approval tier 0-3)
+//  7a. Tier 0: auto-send short Haiku ack, save, return
+//  7b. Tier 1-3: run Claude Opus draft, save, create inbox item
 // ============================================
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createAnonClient } from '@supabase/supabase-js';
@@ -87,8 +87,56 @@ type ClaudeContentBlock =
   | { type: 'text'; text: string }
   | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } };
 
+// ── Classification ────────────────────────────────────────────────────────────
+async function classifyMessage(content: string): Promise<{
+  tier: 0 | 1 | 2 | 3;
+  summary: string;
+  recommendation: string;
+}> {
+  const fallback = { tier: 1 as const, summary: '', recommendation: '' };
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY!,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 60,
+        messages: [
+          {
+            role: 'user',
+            content: `Classify this WhatsApp message into one of 4 tiers:
+0 = Simple acknowledgment needed only (< 15 word reply, no spec/cost/commitment content)
+1 = Progress update or routine question, one-tap approve draft reply
+2 = Spec/dimension question or file request, choose from options
+3 = Any mention of price/cost/commitment/agreement/deadline, Tom must handle directly
+
+Message: "${content}"
+Platform: WhatsApp, CAD designer
+
+Reply JSON only: {"tier": N, "summary": "15-word max", "recommendation": "1-2 sentences"}`,
+          },
+        ],
+      }),
+    });
+    if (!res.ok) return fallback;
+    const json = await res.json();
+    const raw = (json.content?.[0]?.text as string) ?? '';
+    const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const parsed = JSON.parse(cleaned);
+    const tier = [0, 1, 2, 3].includes(parsed.tier) ? (parsed.tier as 0 | 1 | 2 | 3) : 1;
+    return { tier, summary: parsed.summary ?? '', recommendation: parsed.recommendation ?? '' };
+  } catch {
+    return fallback;
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
+    // 1. Validate secret
     const secret = process.env.WHATSAPP_WEBHOOK_SECRET;
     if (secret) {
       const provided = new URL(request.url).searchParams.get('secret');
@@ -96,53 +144,83 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
     }
+
+    // 2. Parse payload
     const body = await request.json();
     if (body.typeWebhook !== 'incomingMessageReceived') return NextResponse.json({ ok: true });
     const msgType = body.messageData?.typeMessage;
-    const isText = msgType === 'textMessage';
+    const isText  = msgType === 'textMessage';
     const isImage = msgType === 'imageMessage';
     if (!isText && !isImage) return NextResponse.json({ ok: true });
-    const cadPhone = process.env.COWORK_CAD_PHONE;
-    const senderPhone: string = (body.senderData?.chatId as string)?.split('@')[0] ?? '';
+
+    // 3. Filter to CAD phone only
+    const cadPhone    = process.env.COWORK_CAD_PHONE;
+    const senderPhone = ((body.senderData?.chatId as string) ?? '').split('@')[0];
     if (cadPhone && senderPhone !== cadPhone) return NextResponse.json({ ok: true });
+
     const senderName: string | null = body.senderData?.senderName ?? null;
-    let inboundText = '';
+    let inboundText           = '';
     let mediaUrl: string | null = null;
     let mediaType: string | null = null;
     let imageBase64: string | null = null;
     let imageBase64MimeType: string | null = null;
+
+    // 4. Download image if present
     if (isText) {
       inboundText = body.messageData?.textMessageData?.textMessage ?? '';
     } else {
       const fileData = body.messageData?.fileMessageData;
       inboundText = fileData?.caption?.trim() || '[Image]';
-      mediaType = fileData?.mimeType ?? 'image/jpeg';
+      mediaType   = fileData?.mimeType ?? 'image/jpeg';
       const downloadUrl: string | undefined = fileData?.downloadUrl;
       if (downloadUrl) {
         const media = await downloadGreenApiMedia(downloadUrl);
         if (media) {
-          imageBase64 = Buffer.from(media.buffer).toString('base64');
+          imageBase64         = Buffer.from(media.buffer).toString('base64');
           imageBase64MimeType = media.mimeType;
           try {
-            const supabaseStorage = createAnonClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+            const supabaseStorage = createAnonClient(
+              process.env.NEXT_PUBLIC_SUPABASE_URL!,
+              process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+            );
             const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
-            const { data: uploadData } = await supabaseStorage.storage.from('cowork-media').upload(fileName, media.buffer, { contentType: media.mimeType, upsert: false });
-            if (uploadData) mediaUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/cowork-media/${fileName}`;
-          } catch (uploadErr) { console.error('/api/webhooks/whatsapp storage error:', uploadErr); }
+            const { data: uploadData } = await supabaseStorage.storage
+              .from('cowork-media')
+              .upload(fileName, media.buffer, { contentType: media.mimeType, upsert: false });
+            if (uploadData) {
+              mediaUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/cowork-media/${fileName}`;
+            }
+          } catch (uploadErr) {
+            console.error('/api/webhooks/whatsapp storage error:', uploadErr);
+          }
         }
       }
     }
+
     if (!inboundText.trim() && !imageBase64) return NextResponse.json({ ok: true });
-    const supabase = createAnonClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+
+    const supabase = createAnonClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
+    // 5. Fetch conversation history
     let historyMessages: Array<{ role: 'user' | 'assistant'; content: string }> = [];
     try {
       const { data: history } = await supabase.rpc('get_cowork_history', { p_limit: 20 });
       if (Array.isArray(history)) {
         historyMessages = history
           .filter((m: { direction: string; content: string }) => m.content && m.content !== '[Image]')
-          .map((m: { direction: string; content: string }) => ({ role: (m.direction === 'inbound' ? 'user' : 'assistant') as 'user' | 'assistant', content: m.content }));
+          .map((m: { direction: string; content: string }) => ({
+            role: (m.direction === 'inbound' ? 'user' : 'assistant') as 'user' | 'assistant',
+            content: m.content,
+          }));
       }
-    } catch (histErr) { console.error('/api/webhooks/whatsapp history error:', histErr); }
+    } catch (histErr) {
+      console.error('/api/webhooks/whatsapp history error:', histErr);
+    }
+
+    // 5b. Fetch reference specs
     let referenceContext = '';
     try {
       const { data: refs } = await supabase.rpc('get_cowork_references', { p_phone: senderPhone });
@@ -154,32 +232,134 @@ export async function POST(request: NextRequest) {
         }
         referenceContext += '=== END REFERENCE SPECS ===\n';
       }
-    } catch (refErr) { console.error('/api/webhooks/whatsapp refs error:', refErr); }
+    } catch (refErr) {
+      console.error('/api/webhooks/whatsapp refs error:', refErr);
+    }
+
+    // 6. Classify with Haiku
+    const classifyText = inboundText !== '[Image]' ? inboundText : '(image — no caption)';
+    const { tier, summary, recommendation } = await classifyMessage(classifyText);
+
+    // ── TIER 0: auto-handle with short Haiku ack ─────────────────────────────
+    if (tier === 0) {
+      let tier0Reply = 'Got it.';
+      try {
+        const tier0Res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': process.env.ANTHROPIC_API_KEY!,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model: 'claude-haiku-4-5-20251001',
+            max_tokens: 30,
+            system: 'Brief acknowledgment under 15 words. No emojis. Direct.',
+            messages: [{ role: 'user', content: inboundText }],
+          }),
+        });
+        if (tier0Res.ok) {
+          const t0Json = await tier0Res.json();
+          tier0Reply = (t0Json.content?.[0]?.text as string) ?? tier0Reply;
+        }
+      } catch {
+        // keep default
+      }
+
+      await sendViaGreenApi(tier0Reply);
+      await supabase.rpc('process_whatsapp_inbound', {
+        p_inbound_content: inboundText,
+        p_sender_name:     senderName,
+        p_draft_content:   tier0Reply,
+        p_media_url:       mediaUrl,
+        p_media_type:      mediaType,
+        p_auto_send:       true,
+      });
+      return NextResponse.json({ ok: true });
+    }
+
+    // ── TIER 1-3: Opus draft + inbox item ────────────────────────────────────
     let draftContent: string | null = null;
     try {
       const currentContent: ClaudeContentBlock[] = [];
-      if (imageBase64 && imageBase64MimeType) currentContent.push({ type: 'image', source: { type: 'base64', media_type: imageBase64MimeType, data: imageBase64 } });
+      if (imageBase64 && imageBase64MimeType) {
+        currentContent.push({
+          type: 'image',
+          source: { type: 'base64', media_type: imageBase64MimeType, data: imageBase64 },
+        });
+      }
       const captionText = inboundText !== '[Image]' ? inboundText : '(image sent, no caption)';
-      const fullText = referenceContext ? `${referenceContext}\n\nDesigner sent: ${captionText}` : captionText;
+      const fullText    = referenceContext ? `${referenceContext}\n\nDesigner sent: ${captionText}` : captionText;
       currentContent.push({ type: 'text', text: fullText });
-      const claudeMessages = [...historyMessages, { role: 'user' as const, content: currentContent.length === 1 && currentContent[0].type === 'text' ? currentContent[0].text : currentContent }];
+
+      const claudeMessages = [
+        ...historyMessages,
+        {
+          role: 'user' as const,
+          content:
+            currentContent.length === 1 && currentContent[0].type === 'text'
+              ? currentContent[0].text
+              : currentContent,
+        },
+      ];
+
       const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY!, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: 'claude-opus-4-5-20251101', max_tokens: 400, system: CAD_AGENT_SYSTEM_PROMPT, messages: claudeMessages }),
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.ANTHROPIC_API_KEY!,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-opus-4-5-20251101',
+          max_tokens: 400,
+          system: CAD_AGENT_SYSTEM_PROMPT,
+          messages: claudeMessages,
+        }),
       });
-      if (claudeRes.ok) { const claudeJson = await claudeRes.json(); draftContent = (claudeJson.content?.[0]?.text as string) ?? null; }
-      else console.error('/api/webhooks/whatsapp Claude error:', await claudeRes.text());
-    } catch (err) { console.error('/api/webhooks/whatsapp Claude failed:', err); }
-    const autoSend = process.env.COWORK_AUTO_SEND === 'true';
-    let didAutoSend = false;
-    if (autoSend && draftContent) {
-      const sendError = await sendViaGreenApi(draftContent);
-      if (!sendError) didAutoSend = true;
-      else console.error('/api/webhooks/whatsapp auto-send error:', sendError);
+
+      if (claudeRes.ok) {
+        const claudeJson = await claudeRes.json();
+        draftContent = (claudeJson.content?.[0]?.text as string) ?? null;
+      } else {
+        console.error('/api/webhooks/whatsapp Claude error:', await claudeRes.text());
+      }
+    } catch (err) {
+      console.error('/api/webhooks/whatsapp Claude failed:', err);
     }
-    const { error: rpcError } = await supabase.rpc('process_whatsapp_inbound', { p_inbound_content: inboundText, p_sender_name: senderName, p_draft_content: draftContent, p_media_url: mediaUrl, p_media_type: mediaType, p_auto_send: didAutoSend });
+
+    // Always save as draft for Tier 1-3 — never auto-send regardless of COWORK_AUTO_SEND
+    const { data: rpcData, error: rpcError } = await supabase.rpc('process_whatsapp_inbound', {
+      p_inbound_content: inboundText,
+      p_sender_name:     senderName,
+      p_draft_content:   draftContent,
+      p_media_url:       mediaUrl,
+      p_media_type:      mediaType,
+      p_auto_send:       false,
+    });
     if (rpcError) console.error('/api/webhooks/whatsapp RPC error:', rpcError);
+
+    // Create inbox item
+    const inboundId = (rpcData as { inbound_id?: string; draft_id?: string } | null)?.inbound_id ?? null;
+    try {
+      await supabase.rpc('create_inbox_item', {
+        p_platform:                   'whatsapp',
+        p_contact_name:               senderName,
+        p_contact_identifier:         senderPhone,
+        p_raw_content:                inboundText,
+        p_media_url:                  mediaUrl,
+        p_media_type:                 mediaType,
+        p_ai_summary:                 summary,
+        p_ai_recommendation:          recommendation,
+        p_draft_reply:                draftContent,
+        p_approval_tier:              tier,
+        p_cowork_message_inbound_id:  inboundId,
+        p_candidate_id:               null,
+      });
+    } catch (inboxErr) {
+      console.error('/api/webhooks/whatsapp inbox item error:', inboxErr);
+    }
+
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('/api/webhooks/whatsapp unexpected error:', err);

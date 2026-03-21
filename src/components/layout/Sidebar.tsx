@@ -20,21 +20,23 @@ import {
   Users,
   MessageSquare,
   Factory,
+  Inbox,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
-// Navigation items
+// Navigation items (inbox inserted second — high priority)
 const navItems = [
-  { href: '/dashboard',         label: 'Dashboard',  icon: LayoutDashboard },
-  { href: '/dashboard/launch',  label: 'Launch',     icon: Rocket },
-  { href: '/calendar',          label: 'Calendar',   icon: Calendar },
-  { href: '/marketing',         label: 'Marketing',  icon: TrendingUp },
+  { href: '/dashboard',         label: 'Dashboard',      icon: LayoutDashboard },
+  { href: '/inbox',             label: 'Inbox',          icon: Inbox },
+  { href: '/dashboard/launch',  label: 'Launch',         icon: Rocket },
+  { href: '/calendar',          label: 'Calendar',       icon: Calendar },
+  { href: '/marketing',         label: 'Marketing',      icon: TrendingUp },
   { href: '/candidates',        label: 'Candidates',     icon: Users },
   { href: '/manufacturers',     label: 'Manufacturers',  icon: Factory },
   { href: '/cowork',            label: 'Cowork',         icon: MessageSquare },
-  { href: '/agents',            label: 'Agents',     icon: Bot },
-  { href: '/settings',          label: 'Settings',   icon: Settings },
+  { href: '/agents',            label: 'Agents',         icon: Bot },
+  { href: '/settings',          label: 'Settings',       icon: Settings },
 ];
 
 interface SidebarProps {
@@ -45,7 +47,21 @@ export default function Sidebar({ userEmail }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileOpen, setMobileOpen]   = useState(false);
+  const [inboxCount, setInboxCount]   = useState(0);
+
+  useEffect(() => {
+    async function fetchInboxCount() {
+      try {
+        const res  = await fetch('/api/inbox?status=pending');
+        const json = await res.json();
+        if (json.pendingCount !== undefined) setInboxCount(json.pendingCount);
+      } catch { /* silent */ }
+    }
+    fetchInboxCount();
+    const interval = setInterval(fetchInboxCount, 30_000);
+    return () => clearInterval(interval);
+  }, []);
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -84,8 +100,13 @@ export default function Sidebar({ userEmail }: SidebarProps) {
               )}
               onClick={() => setMobileOpen(false)}
             >
-              <item.icon className="h-5 w-5" />
-              {item.label}
+              <item.icon className="h-5 w-5 shrink-0" />
+              <span className="flex-1">{item.label}</span>
+              {item.href === '/inbox' && inboxCount > 0 && (
+                <span className="text-xs font-bold bg-indigo-500 text-white rounded-full px-1.5 py-0.5 leading-none">
+                  {inboxCount}
+                </span>
+              )}
             </a>
           );
         })}
