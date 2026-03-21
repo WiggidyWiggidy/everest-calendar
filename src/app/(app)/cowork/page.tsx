@@ -9,7 +9,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { CoworkMessage } from '@/types';
 import { cn } from '@/lib/utils';
-import { MessageSquare, Send, Trash2, RefreshCw, Edit2, Check, X } from 'lucide-react';
+import { MessageSquare, Send, Trash2, RefreshCw, Edit2, Check, X, BookOpen, ChevronUp, ChevronDown, FileText, Users } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
 const PushNotificationButton = dynamic(
