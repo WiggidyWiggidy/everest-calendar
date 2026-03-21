@@ -458,6 +458,13 @@ export const CANDIDATE_STATUS_LABELS: Record<CandidateStatus, string> = {
 // WhatsApp Cowork Thread
 // ============================================
 
+export interface CoworkContact {
+  id:           string;
+  key:          string;
+  display_name: string;
+  phone:        string | null;
+}
+
 export type CoworkMessageStatus    = 'received' | 'draft' | 'sent';
 export type CoworkMessageDirection = 'inbound' | 'outbound';
 
@@ -576,6 +583,103 @@ export interface PlatformInboxItem {
   candidate_id:                string | null;
   created_at:                  string;
   updated_at:                  string;
+}
+
+// ============================================
+// Agent Health Monitoring (Vercel scheduled agents)
+// ============================================
+
+export type AgentRunStatus   = 'running' | 'success' | 'error';
+export type AgentHealthColor = 'green' | 'amber' | 'red';
+
+export interface TaskRun {
+  id:              string;
+  user_id:         string;
+  agent_name:      string;
+  started_at:      string;
+  completed_at:    string | null;
+  status:          AgentRunStatus;
+  items_processed: number;
+  error_message:   string | null;
+  metadata:        Record<string, unknown> | null;
+  created_at:      string;
+}
+
+export interface AgentHealthStatus {
+  agent_name:      string;
+  last_status:     AgentRunStatus;
+  last_run_at:     string;
+  items_processed: number;
+  error_message:   string | null;
+  health:          AgentHealthColor;
+}
+
+// ============================================
+// Command Center
+// ============================================
+
+export type ActivitySource = 'cowork' | 'vercel';
+export type ActivityType   = 'decision' | 'learning' | 'error' | 'handoff' | 'draft' | 'approval' | 'auto_action' | 'info';
+
+export interface AgentActivityEntry {
+  id:            string;
+  agent_name:    string;
+  agent_source:  ActivitySource;
+  activity_type: ActivityType;
+  description:   string;
+  domain:        string | null;
+  metadata:      Record<string, unknown>;
+  created_at:    string;
+}
+
+export interface PipelineNode {
+  label:  string;
+  status: 'done' | 'in_progress' | 'blocked' | 'not_started';
+  count?: number;
+}
+
+export interface PipelineTrack {
+  name:  string;
+  nodes: PipelineNode[];
+}
+
+export interface AutonomyWeek {
+  week_label:     string; // e.g. "Mar 15"
+  auto_actions:   number;
+  manual_actions: number;
+  rate:           number; // 0-100
+}
+
+export interface CoworkAgentHealth {
+  id:                  string;
+  name:                string;
+  memory_count:        number;
+  latest_memory_title: string | null;
+  last_active_at:      string | null;
+  health:              AgentHealthColor;
+}
+
+export interface CommandCenterData {
+  // Signal cards
+  pending_approvals:   number;
+  agents_active_count: number;
+  agents_total_count:  number;
+  pipeline_blockers:   number;
+  new_memories_7d:     number;
+  // Autonomy hero
+  auto_actions_7d:     number;
+  manual_actions_7d:   number;
+  autonomy_rate:       number; // 0-100
+  autonomy_trend:      AutonomyWeek[];
+  // Decision queue
+  pending_items:       PlatformInboxItem[];
+  // Activity feed
+  activity_feed:       AgentActivityEntry[];
+  // Agent grid
+  vercel_agents:       AgentHealthStatus[];
+  cowork_agents:       CoworkAgentHealth[];
+  // Pipelines
+  pipelines:           PipelineTrack[];
 }
 
 // Represents a single tool call made by the assistant
