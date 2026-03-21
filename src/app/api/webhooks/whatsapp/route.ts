@@ -14,6 +14,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createAnonClient } from '@supabase/supabase-js';
 import { downloadGreenApiMedia, sendViaGreenApi } from '@/lib/greenApi';
+import { sendPushToAll } from '@/lib/pushNotifications';
 
 const CAD_AGENT_SYSTEM_PROMPT = `You are the sole communication link between a project manager and CAD designer Imran (Bangladesh, WhatsApp). Imran is building accurate 3D CAD models of 3 components: (1) a portable fridge/freezer unit, (2) an XTline micro diaphragm pump, (3) a 6-circuit blade fuse box. A shell engineer uses these models to design an enclosure. Every dimension error cascades into the shell design. Your job: review every submission, apply the reference specs, and produce precise messages that actually move Imran forward.
 
@@ -254,11 +255,14 @@ export async function POST(request: NextRequest) {
       p_contact_key:     contactKey,
     });
 
-    if (rpcError) {
-      console.error('/api/webhooks/whatsapp RPC error:', rpcError);
-    }
-    const { error: rpcError } = await supabase.rpc('process_whatsapp_inbound', { p_inbound_content: inboundText, p_sender_name: senderName, p_draft_content: draftContent, p_media_url: mediaUrl, p_media_type: mediaType, p_auto_send: didAutoSend });
-    if (rpcError) console.error('/api/webhooks/whatsapp RPC error:', rpcError);
+    // 9. Send push notification (non-blocking — fire and forget)
+    const pushBody = inboundText && inboundText !== '[Image]'
+      ? inboundText.slice(0, 100) + (inboundText.length > 100 ? '…' : '')
+      : '📷 Image received';
+    const pushName = senderName ? `${senderName} (WhatsApp)` : 'WhatsApp message';
+    sendPushToAll({ title: pushName, body: pushBody, url: '/cowork', tag: 'cowork-inbound' })
+      .catch((err: unknown) => console.error('/api/webhooks/whatsapp push error:', err));
+
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('/api/webhooks/whatsapp unexpected error:', err);
