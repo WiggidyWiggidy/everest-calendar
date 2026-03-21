@@ -265,7 +265,7 @@ export default function InboxPage() {
           <CheckCircle2 className="h-12 w-12 text-green-400" />
           <div>
             <p className="text-slate-700 font-medium">Queue clear</p>
-            <p className="text-slate-400 text-sm mt-1">You're up to date.</p>
+            <p className="text-slate-400 text-sm mt-1">You&apos;re up to date.</p>
           </div>
         </div>
       ) : (
