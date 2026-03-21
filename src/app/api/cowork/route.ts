@@ -14,12 +14,14 @@ export async function GET(request: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status');
+    const status      = searchParams.get('status');
+    const contactKey  = searchParams.get('contact_key') ?? 'cad_designer';
 
     let query = supabase
       .from('cowork_messages')
       .select('*')
       .eq('user_id', user.id)
+      .eq('contact_key', contactKey)
       .order('created_at', { ascending: true });
 
     if (status) query = query.eq('status', status);
@@ -44,7 +46,7 @@ export async function POST(request: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await request.json();
-    const { content, parent_id, send_immediately = false } = body;
+    const { content, parent_id, send_immediately = false, contact_key = 'cad_designer' } = body;
 
     if (!content || typeof content !== 'string' || !content.trim()) {
       return NextResponse.json({ error: 'content is required' }, { status: 400 });
@@ -59,12 +61,13 @@ export async function POST(request: NextRequest) {
       const { data, error } = await supabase
         .from('cowork_messages')
         .insert({
-          user_id:   user.id,
-          status:    'sent',
-          direction: 'outbound',
-          content:   content.trim(),
-          parent_id: parent_id ?? null,
-          sent_at:   new Date().toISOString(),
+          user_id:     user.id,
+          status:      'sent',
+          direction:   'outbound',
+          content:     content.trim(),
+          parent_id:   parent_id ?? null,
+          sent_at:     new Date().toISOString(),
+          contact_key: contact_key,
         })
         .select()
         .single();
@@ -81,11 +84,12 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from('cowork_messages')
       .insert({
-        user_id:   user.id,
-        status:    'draft',
-        direction: 'outbound',
-        content:   content.trim(),
-        parent_id: parent_id ?? null,
+        user_id:     user.id,
+        status:      'draft',
+        direction:   'outbound',
+        content:     content.trim(),
+        parent_id:   parent_id ?? null,
+        contact_key: contact_key,
       })
       .select()
       .single();
