@@ -14,7 +14,7 @@ import {
   CANDIDATE_STATUS_LABELS,
 } from '@/types';
 import { cn } from '@/lib/utils';
-import { Users, ChevronDown, ChevronUp, ExternalLink, RefreshCw } from 'lucide-react';
+import { Users, ChevronDown, ChevronUp, ExternalLink, RefreshCw, MessageCircle, Send, X } from 'lucide-react';
 
 // ── Score bar ───────────────────────────────────────────────────────────────
 function ScoreBar({ score }: { score: number | null | undefined }) {
@@ -30,17 +30,115 @@ function ScoreBar({ score }: { score: number | null | undefined }) {
   );
 }
 
+// ── TransitionPanel — inline WhatsApp intro sender ──────────────────────────
+function TransitionPanel({
+  candidate,
+  onClose,
+  onSuccess,
+}: {
+  candidate: UpworkCandidate;
+  onClose: () => void;
+  onSuccess: (id: string) => void;
+}) {
+  const defaultMsg = `Hi ${candidate.name}, this is Tom from Everest Labs. I'd like to move our collaboration to WhatsApp for faster communication. Looking forward to working with you!`;
+  const [phone, setPhone]       = useState('');
+  const [message, setMessage]   = useState(defaultMsg);
+  const [sending, setSending]   = useState(false);
+  const [phoneErr, setPhoneErr] = useState('');
+
+  async function handleSend() {
+    if (!/^\d+$/.test(phone.trim())) {
+      setPhoneErr('Digits only — no spaces or dashes');
+      return;
+    }
+    if (!message.trim()) return;
+    setPhoneErr('');
+    setSending(true);
+    try {
+      const res = await fetch(`/api/candidates/${candidate.id}/transition`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: phone.trim(), intro_message: message.trim() }),
+      });
+      if (res.ok) {
+        onSuccess(candidate.id);
+        onClose();
+      } else {
+        const err = await res.json();
+        alert(`Send failed: ${err.error}`);
+      }
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <tr className="bg-green-50 border-b border-green-200">
+      <td colSpan={8} className="px-6 py-4">
+        <div className="flex items-start justify-between mb-3">
+          <p className="text-sm font-semibold text-slate-800">
+            Send WhatsApp intro to {candidate.name}
+          </p>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label className="text-xs font-medium text-slate-500 mb-1 block">
+              Phone (digits only, with country code)
+            </label>
+            <input
+              type="text"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="447700900000"
+              className={cn(
+                'w-full text-sm border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-green-400',
+                phoneErr ? 'border-red-400' : 'border-slate-200'
+              )}
+            />
+            {phoneErr && <p className="text-xs text-red-500 mt-1">{phoneErr}</p>}
+          </div>
+          <div className="md:col-span-2">
+            <label className="text-xs font-medium text-slate-500 mb-1 block">Message</label>
+            <textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              rows={2}
+              className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 resize-none outline-none focus:ring-2 focus:ring-green-400"
+            />
+          </div>
+        </div>
+        <div className="flex justify-end mt-3">
+          <button
+            onClick={handleSend}
+            disabled={sending || !phone.trim() || !message.trim()}
+            className="flex items-center gap-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+          >
+            <Send className="h-4 w-4" />
+            {sending ? 'Sending…' : 'Send & Create Contact'}
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
 // ── Candidate row (expandable) ──────────────────────────────────────────────
 function CandidateRow({
   candidate,
   onTierChange,
   onStatusChange,
+  onHired,
 }: {
   candidate: UpworkCandidate;
-  onTierChange: (id: string, tier: CandidateTier) => void;
+  onTierChange:   (id: string, tier: CandidateTier) => void;
   onStatusChange: (id: string, status: CandidateStatus) => void;
+  onHired:        (id: string) => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded]         = useState(false);
+  const [showTransition, setShowTransition] = useState(false);
 
   return (
     <>
@@ -111,12 +209,39 @@ function CandidateRow({
             <span className="text-slate-400 text-xs">—</span>
           )}
         </td>
+        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+          {candidate.status === 'hired' ? (
+            <span className="text-xs text-green-600 font-medium">Hired ✓</span>
+          ) : (
+            <button
+              onClick={() => setShowTransition((v) => !v)}
+              className={cn(
+                'inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg transition-colors',
+                showTransition
+                  ? 'bg-green-600 text-white'
+                  : 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200'
+              )}
+            >
+              <MessageCircle className="h-3 w-3" />
+              WhatsApp
+            </button>
+          )}
+        </td>
       </tr>
+
+      {/* Transition panel */}
+      {showTransition && (
+        <TransitionPanel
+          candidate={candidate}
+          onClose={() => setShowTransition(false)}
+          onSuccess={onHired}
+        />
+      )}
 
       {/* Expanded detail row */}
       {expanded && (
         <tr className="bg-slate-50 border-b border-slate-200">
-          <td colSpan={7} className="px-6 py-4">
+          <td colSpan={8} className="px-6 py-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               {candidate.proposal_snippet && (
                 <div>
@@ -181,15 +306,15 @@ function CandidateRow({
 // ── Main page ───────────────────────────────────────────────────────────────
 export default function CandidatesPage() {
   const [candidates, setCandidates] = useState<UpworkCandidate[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [tierFilter, setTierFilter] = useState<string>('');
+  const [loading, setLoading]       = useState(true);
+  const [tierFilter, setTierFilter]     = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
 
   const fetchCandidates = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (tierFilter) params.set('tier', tierFilter);
+      if (tierFilter)   params.set('tier', tierFilter);
       if (statusFilter) params.set('status', statusFilter);
       const res = await fetch(`/api/candidates?${params.toString()}`);
       const json = await res.json();
@@ -221,8 +346,12 @@ export default function CandidatesPage() {
     });
   }
 
-  const topCount = candidates.filter((c) => c.tier === 'top').length;
-  const maybeCount = candidates.filter((c) => c.tier === 'maybe').length;
+  function handleHired(id: string) {
+    setCandidates((prev) => prev.map((c) => c.id === id ? { ...c, status: 'hired' } : c));
+  }
+
+  const topCount    = candidates.filter((c) => c.tier === 'top').length;
+  const maybeCount  = candidates.filter((c) => c.tier === 'maybe').length;
   const rejectCount = candidates.filter((c) => c.tier === 'reject').length;
 
   return (
@@ -250,8 +379,8 @@ export default function CandidatesPage() {
       {/* Tier summary */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         {[
-          { label: 'Top', count: topCount, tier: 'top' as CandidateTier },
-          { label: 'Maybe', count: maybeCount, tier: 'maybe' as CandidateTier },
+          { label: 'Top',    count: topCount,    tier: 'top'    as CandidateTier },
+          { label: 'Maybe',  count: maybeCount,  tier: 'maybe'  as CandidateTier },
           { label: 'Reject', count: rejectCount, tier: 'reject' as CandidateTier },
         ].map(({ label, count, tier }) => {
           const colors = CANDIDATE_TIER_COLORS[tier];
@@ -317,6 +446,7 @@ export default function CandidatesPage() {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Tier</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Profile</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">WhatsApp</th>
               </tr>
             </thead>
             <tbody>
@@ -326,6 +456,7 @@ export default function CandidatesPage() {
                   candidate={candidate}
                   onTierChange={handleTierChange}
                   onStatusChange={handleStatusChange}
+                  onHired={handleHired}
                 />
               ))}
             </tbody>

@@ -535,6 +535,49 @@ export const MANUFACTURER_STATUS_COLORS: Record<ManufacturerStatus, { bg: string
   rejected:         { bg: 'bg-red-100',     text: 'text-red-700'    },
 };
 
+// ============================================
+// Platform Inbox — Decision Queue
+// ============================================
+
+export type InboxPlatform = 'whatsapp' | 'upwork' | 'alibaba';
+export type InboxStatus   = 'pending' | 'approved' | 'edited' | 'rejected' | 'auto_sent' | 'snoozed';
+export type ApprovalTier  = 0 | 1 | 2 | 3;
+
+export const INBOX_PLATFORM_COLORS: Record<InboxPlatform, { bg: string; text: string; dot: string }> = {
+  whatsapp: { bg: 'bg-green-100',  text: 'text-green-700',  dot: 'bg-green-500' },
+  upwork:   { bg: 'bg-emerald-100', text: 'text-emerald-700', dot: 'bg-emerald-500' },
+  alibaba:  { bg: 'bg-orange-100', text: 'text-orange-700', dot: 'bg-orange-500' },
+};
+
+export const INBOX_TIER_CONFIG: Record<ApprovalTier, { label: string; bg: string; text: string; border: string }> = {
+  0: { label: 'Auto-handled',        bg: 'bg-slate-100',  text: 'text-slate-600',  border: 'border-slate-200' },
+  1: { label: 'Ready to send',       bg: 'bg-blue-100',   text: 'text-blue-700',   border: 'border-blue-200'  },
+  2: { label: 'Choose option',       bg: 'bg-amber-100',  text: 'text-amber-700',  border: 'border-amber-300' },
+  3: { label: 'Requires your input', bg: 'bg-red-100',    text: 'text-red-700',    border: 'border-red-400'   },
+};
+
+export interface PlatformInboxItem {
+  id:                          string;
+  user_id:                     string;
+  platform:                    InboxPlatform;
+  contact_name:                string | null;
+  contact_identifier:          string | null;
+  raw_content:                 string;
+  media_url:                   string | null;
+  media_type:                  string | null;
+  ai_summary:                  string | null;
+  ai_recommendation:           string | null;
+  draft_reply:                 string | null;
+  approval_tier:               ApprovalTier;
+  status:                      InboxStatus;
+  approved_at:                 string | null;
+  final_reply:                 string | null;
+  cowork_message_inbound_id:   string | null;
+  candidate_id:                string | null;
+  created_at:                  string;
+  updated_at:                  string;
+}
+
 // Represents a single tool call made by the assistant
 export interface ActionTaken {
   tool: 'create_calendar_event' | 'update_calendar_event' | 'delete_calendar_event'
