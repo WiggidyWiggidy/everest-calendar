@@ -300,11 +300,14 @@ async function handleProposalReply(text: string): Promise<boolean> {
   return false;
 }
 
-type ClaudeContentBlock =
-  | { type: 'text'; text: string }
-  | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } };
+// ── OpenRouter helper ─────────────────────────────────────────
+const OR_HEADERS = () => ({
+  'Content-Type': 'application/json',
+  'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+  'HTTP-Referer': 'https://everest-calendar.vercel.app',
+  'X-Title': 'Everest CAD Agent',
+});
 
-// ── Classification ────────────────────────────────────────────────────────────
 async function classifyMessage(content: string): Promise<{
   tier: 0 | 1 | 2 | 3;
   summary: string;
@@ -312,16 +315,12 @@ async function classifyMessage(content: string): Promise<{
 }> {
   const fallback = { tier: 1 as const, summary: '', recommendation: '' };
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY!,
-        'anthropic-version': '2023-06-01',
-      },
+      headers: OR_HEADERS(),
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 60,
+        model: 'mistralai/mistral-small-3.1-24b-instruct',
+        max_tokens: 80,
         messages: [
           {
             role: 'user',
@@ -334,14 +333,14 @@ async function classifyMessage(content: string): Promise<{
 Message: "${content}"
 Platform: WhatsApp, CAD designer
 
-Reply JSON only: {"tier": N, "summary": "15-word max", "recommendation": "1-2 sentences"}`,
+Reply JSON only, no markdown: {"tier": N, "summary": "15-word max", "recommendation": "1-2 sentences"}`,
           },
         ],
       }),
     });
     if (!res.ok) return fallback;
     const json = await res.json();
-    const raw = (json.content?.[0]?.text as string) ?? '';
+    const raw = (json.choices?.[0]?.message?.content as string) ?? '';
     const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     const parsed = JSON.parse(cleaned);
     const tier = [0, 1, 2, 3].includes(parsed.tier) ? (parsed.tier as 0 | 1 | 2 | 3) : 1;
@@ -480,23 +479,21 @@ export async function POST(request: NextRequest) {
     if (tier === 0) {
       let tier0Reply = 'Got it.';
       try {
-        const tier0Res = await fetch('https://api.anthropic.com/v1/messages', {
+        const tier0Res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': process.env.ANTHROPIC_API_KEY!,
-            'anthropic-version': '2023-06-01',
-          },
+          headers: OR_HEADERS(),
           body: JSON.stringify({
-            model: 'claude-haiku-4-5-20251001',
+            model: 'mistralai/mistral-small-3.1-24b-instruct',
             max_tokens: 30,
-            system: 'Brief acknowledgment under 15 words. No emojis. Direct.',
-            messages: [{ role: 'user', content: inboundText }],
+            messages: [
+              { role: 'system', content: 'Brief acknowledgment under 15 words. No emojis. Direct.' },
+              { role: 'user', content: inboundText },
+            ],
           }),
         });
         if (tier0Res.ok) {
           const t0Json = await tier0Res.json();
-          tier0Reply = (t0Json.content?.[0]?.text as string) ?? tier0Reply;
+          tier0Reply = (t0Json.choices?.[0]?.message?.content as string) ?? tier0Reply;
         }
       } catch {
         // keep default
@@ -514,51 +511,46 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    // ── TIER 1-3: Opus draft + inbox item ────────────────────────────────────
+    // ── TIER 1-3: CAD draft via OpenRouter ───────────────────────────────────
     let draftContent: string | null = null;
     try {
-      const currentContent: ClaudeContentBlock[] = [];
+      // Build current message in OpenAI vision format
+      type OAIBlock = { type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } };
+      const currentBlocks: OAIBlock[] = [];
       if (imageBase64 && imageBase64MimeType) {
-        currentContent.push({
-          type: 'image',
-          source: { type: 'base64', media_type: imageBase64MimeType, data: imageBase64 },
+        currentBlocks.push({
+          type: 'image_url',
+          image_url: { url: `data:${imageBase64MimeType};base64,${imageBase64}` },
         });
       }
       const captionText = inboundText !== '[Image]' ? inboundText : '(image sent, no caption)';
       const fullText    = referenceContext ? `${referenceContext}\n\nDesigner sent: ${captionText}` : captionText;
-      currentContent.push({ type: 'text', text: fullText });
+      currentBlocks.push({ type: 'text', text: fullText });
 
-      const claudeMessages = [
+      const openaiMessages = [
+        { role: 'system', content: CAD_AGENT_SYSTEM_PROMPT },
         ...historyMessages,
         {
           role: 'user' as const,
-          content:
-            currentContent.length === 1 && currentContent[0].type === 'text'
-              ? currentContent[0].text
-              : currentContent,
+          content: currentBlocks.length === 1 && currentBlocks[0].type === 'text' ? currentBlocks[0].text : currentBlocks,
         },
       ];
 
-      const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+      const claudeRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': process.env.ANTHROPIC_API_KEY!,
-          'anthropic-version': '2023-06-01',
-        },
+        headers: OR_HEADERS(),
         body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
+          model: 'anthropic/claude-haiku-4-5',  // vision-capable via OpenRouter
           max_tokens: 400,
-          system: CAD_AGENT_SYSTEM_PROMPT,
-          messages: claudeMessages,
+          messages: openaiMessages,
         }),
       });
 
       if (claudeRes.ok) {
         const claudeJson = await claudeRes.json();
-        draftContent = (claudeJson.content?.[0]?.text as string) ?? null;
+        draftContent = (claudeJson.choices?.[0]?.message?.content as string) ?? null;
       } else {
-        console.error('/api/webhooks/whatsapp Claude error:', await claudeRes.text());
+        console.error('/api/webhooks/whatsapp OpenRouter error:', await claudeRes.text());
       }
     } catch (err) {
       console.error('/api/webhooks/whatsapp Claude failed:', err);
