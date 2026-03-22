@@ -189,13 +189,17 @@ async function handleProposalReply(text: string): Promise<boolean> {
 
       } else if (proposalType === 'code_change' || proposalType === 'bug_fix') {
         // Queue in task_backlog for OpenClaw to build
+        const impactScore = (proposal.metadata?.impact as string) === 'high' ? 8 : 6;
         await supabase.from('task_backlog').insert({
-          title:       proposal.title,
-          description: impl,
-          priority:    (proposal.metadata?.priority as string) ?? 'medium',
-          status:      'queued',
-          source:      'system_proposals',
-          metadata:    { proposal_id: proposalId },
+          user_id:       '174f2dff-7a96-464c-a919-b473c328d531',
+          title:         proposal.title,
+          description:   impl,
+          priority_score: impactScore,
+          status:        'pending',
+          build_status:  'queued',
+          task_type:     'build',
+          source:        'agent',
+          build_context: JSON.stringify({ proposal_id: proposalId }),
         });
 
         await supabase
@@ -211,12 +215,15 @@ async function handleProposalReply(text: string): Promise<boolean> {
       } else if (proposalType === 'schema_change') {
         // NEVER auto-execute — always queue for manual review
         await supabase.from('task_backlog').insert({
-          title:       `[MIGRATION REVIEW] ${proposal.title}`,
-          description: `Schema change proposal — requires manual review before execution.\n\n${impl}`,
-          priority:    'high',
-          status:      'queued',
-          source:      'system_proposals',
-          metadata:    { proposal_id: proposalId, requires_review: true },
+          user_id:       '174f2dff-7a96-464c-a919-b473c328d531',
+          title:         `[MIGRATION REVIEW] ${proposal.title}`,
+          description:   `Schema change proposal — requires manual review before execution.\n\n${impl}`,
+          priority_score: 8,
+          status:        'pending',
+          build_status:  'queued',
+          task_type:     'build',
+          source:        'agent',
+          build_context: JSON.stringify({ proposal_id: proposalId, requires_review: true }),
         });
 
         await supabase
