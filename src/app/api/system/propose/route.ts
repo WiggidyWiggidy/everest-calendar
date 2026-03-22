@@ -112,12 +112,16 @@ export async function POST(request: NextRequest) {
     const ownerPhone = process.env.OWNER_WHATSAPP_PHONE;
     let whatsappMessageId: string | null = null;
 
-    const sendErr = await sendViaGreenApi(waMessage, ownerPhone ?? undefined);
-    if (sendErr) {
-      console.error('[system/propose] WhatsApp send error:', sendErr);
-      // Don't fail the endpoint — proposal is saved, WhatsApp is best-effort
-    } else {
-      whatsappMessageId = `wa_${Date.now()}`;
+    try {
+      const sendErr = await sendViaGreenApi(waMessage, ownerPhone ?? undefined);
+      if (sendErr) {
+        console.error('[system/propose] WhatsApp send error:', sendErr);
+      } else {
+        whatsappMessageId = `wa_${Date.now()}`;
+      }
+    } catch (waErr) {
+      console.error('[system/propose] WhatsApp threw:', waErr);
+      // Best-effort — don't fail the endpoint
     }
 
     // 4. Update proposal with WhatsApp info
