@@ -547,7 +547,7 @@ export async function POST(request: NextRequest) {
           'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify({
-          model: 'claude-opus-4-5-20251101',
+          model: 'claude-sonnet-4-6',
           max_tokens: 400,
           system: CAD_AGENT_SYSTEM_PROMPT,
           messages: claudeMessages,
