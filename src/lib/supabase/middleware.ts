@@ -42,7 +42,11 @@ export async function updateSession(request: NextRequest) {
   // API routes that use X-API-Key auth (not session) must be exempt from redirect
   const isApiKeyRoute =
     (request.nextUrl.pathname.startsWith('/api/candidates') && request.method === 'POST') ||
-    (request.nextUrl.pathname === '/api/webhooks/whatsapp' && request.method === 'POST');
+    (request.nextUrl.pathname === '/api/webhooks/whatsapp' && request.method === 'POST') ||
+    (request.nextUrl.pathname === '/api/system/propose' && request.method === 'POST') ||
+    (request.nextUrl.pathname === '/api/agent-runs' && request.method === 'POST') ||
+    (request.nextUrl.pathname.startsWith('/api/webhooks/openclaw')) ||
+    (request.nextUrl.pathname.startsWith('/api/cron/') && (request.headers.get('x-cron-secret') !== null || request.nextUrl.searchParams.has('secret')));
 
   if (!user && !isAuthPage && !isApiKeyRoute) {
     const url = request.nextUrl.clone();

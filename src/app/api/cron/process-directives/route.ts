@@ -85,7 +85,24 @@ async function handleSupplierResponded(
   supabase: ReturnType<typeof createServiceClient>
 ): Promise<void> {
   const manufacturerId = directive.metadata?.manufacturer_id as string | undefined;
-  if (!manufacturerId) throw new Error('missing metadata.manufacturer_id');
+
+  // Standing-rule directives have no manufacturer_id — just acknowledge and notify
+  if (!manufacturerId) {
+    const ownerPhone = process.env.OWNER_WHATSAPP_PHONE;
+    await sendViaGreenApi(
+      `🏭 Supplier reply protocol active:\n${(directive.instruction ?? '').slice(0, 300)}`,
+      ownerPhone ?? undefined
+    ).catch(() => {});
+    await logAgentActivity({
+      agentName:    'orchestrator',
+      agentSource:  'vercel',
+      activityType: 'info',
+      description:  'Supplier-responded standing rule acknowledged',
+      domain:       'supplier',
+      metadata:     directive.metadata,
+    });
+    return;
+  }
 
   const { data: mfr, error: mfrErr } = await supabase
     .from('manufacturer_shortlist')
@@ -95,7 +112,6 @@ async function handleSupplierResponded(
 
   if (mfrErr || !mfr) throw new Error(`manufacturer ${manufacturerId} not found`);
 
-  // Find latest platform_inbox item for this supplier
   const { data: inboxItem } = await supabase
     .from('platform_inbox')
     .select('id, ai_recommendation, raw_content')
@@ -165,21 +181,52 @@ async function handleBuildRequired(
   supabase: ReturnType<typeof createServiceClient>
 ): Promise<void> {
   const taskId = directive.metadata?.task_backlog_id as string | undefined;
-  if (!taskId) throw new Error('missing metadata.task_backlog_id');
 
-  await supabase
-    .from('task_backlog')
-    .update({ status: 'in-progress' })
-    .eq('id', taskId);
+  if (taskId) {
+    // Existing task — just flag it
+    await supabase
+      .from('task_backlog')
+      .update({ status: 'in-progress' })
+      .eq('id', taskId);
 
-  await logAgentActivity({
-    agentName:    'orchestrator',
-    agentSource:  'vercel',
-    activityType: 'auto_action',
-    description:  `Task ${taskId} flagged for build — status set to in-progress`,
-    domain:       'system',
-    metadata:     { task_backlog_id: taskId },
-  });
+    await logAgentActivity({
+      agentName:    'orchestrator',
+      agentSource:  'vercel',
+      activityType: 'auto_action',
+      description:  `Task ${taskId} flagged for build — status set to in-progress`,
+      domain:       'system',
+      metadata:     { task_backlog_id: taskId },
+    });
+  } else {
+    // New build request — create task_backlog item from directive instruction
+    const { data: newTask } = await supabase
+      .from('task_backlog')
+      .insert({
+        title:       directive.metadata?.title as string ?? `Build required: ${directive.target_agent ?? 'unknown'}`,
+        description: directive.instruction ?? 'See directive metadata for details.',
+        priority:    directive.priority === 'critical' ? 'critical' : directive.priority === 'high' ? 'high' : 'medium',
+        status:      'queued',
+        source:      'orchestrator_directive',
+        metadata:    { directive_id: directive.id, ...directive.metadata },
+      })
+      .select('id')
+      .single();
+
+    const ownerPhone = process.env.OWNER_WHATSAPP_PHONE;
+    await sendViaGreenApi(
+      `🏗️ Build task created:\n"${directive.instruction?.slice(0, 150) ?? 'See task_backlog for details'}"\n\nQueued for Claude Code to build.`,
+      ownerPhone ?? undefined
+    ).catch(() => {});
+
+    await logAgentActivity({
+      agentName:    'orchestrator',
+      agentSource:  'vercel',
+      activityType: 'auto_action',
+      description:  `New build task created from directive: ${(newTask?.id ?? 'unknown').slice(0, 8)}`,
+      domain:       'system',
+      metadata:     { new_task_id: newTask?.id, directive_id: directive.id },
+    });
+  }
 }
 
 async function handleAgentHealthAlert(directive: OrchestratorDirective): Promise<void> {
@@ -410,6 +457,166 @@ async function handleDirectiveOverdue(
   });
 }
 
+// ── NEW: data_available ──────────────────────────────────────────────────────
+async function handleDataAvailable(
+  directive: OrchestratorDirective
+): Promise<void> {
+  const ownerPhone = process.env.OWNER_WHATSAPP_PHONE;
+  const instruction = directive.instruction ?? 'New data available for agent.';
+  await sendViaGreenApi(
+    `📊 Data available for *${directive.target_agent ?? 'agent'}*:\n${instruction.slice(0, 300)}`,
+    ownerPhone ?? undefined
+  ).catch(() => {});
+  await logAgentActivity({
+    agentName:    'orchestrator',
+    agentSource:  'vercel',
+    activityType: 'info',
+    description:  `Data-available notification sent for ${directive.target_agent}: ${instruction.slice(0, 80)}`,
+    domain:       'system',
+    metadata:     directive.metadata,
+  });
+}
+
+// ── NEW: drawing_ready ───────────────────────────────────────────────────────
+async function handleDrawingReady(
+  directive: OrchestratorDirective,
+  supabase: ReturnType<typeof createServiceClient>
+): Promise<void> {
+  const instruction = directive.instruction ?? 'Drawing is ready — proceed with factory outreach.';
+
+  await supabase.from('platform_inbox').insert({
+    platform:           'system',
+    contact_name:       'Chinese Negotiator',
+    contact_identifier: 'chinese_negotiator',
+    raw_content:        instruction,
+    ai_summary:         'Drawing ready — send Phase 2 notifications to all Tier 1 factories.',
+    ai_recommendation:  instruction,
+    approval_tier:      1,
+    status:             'pending',
+    metadata:           directive.metadata,
+  });
+
+  const ownerPhone = process.env.OWNER_WHATSAPP_PHONE;
+  await sendViaGreenApi(
+    `📐 Drawing ready trigger received.\n\nChinese Negotiator inbox item created. Send order: Demi (Xiang Xin Yu, site visit 28 Mar) first, then all others.\n\nCheck Inbox to review Phase 2 messages.`,
+    ownerPhone ?? undefined
+  ).catch(() => {});
+
+  await logAgentActivity({
+    agentName:    'orchestrator',
+    agentSource:  'vercel',
+    activityType: 'handoff',
+    description:  'Drawing-ready directive processed — inbox item created for Chinese Negotiator',
+    domain:       'supplier',
+    metadata:     directive.metadata,
+  });
+}
+
+// ── NEW: all_suppliers_silent ────────────────────────────────────────────────
+async function handleAllSuppliersSilent(
+  directive: OrchestratorDirective,
+  supabase: ReturnType<typeof createServiceClient>
+): Promise<void> {
+  const escalationDate = directive.metadata?.escalation_date as string | undefined;
+  const now = new Date();
+
+  // Check if we've passed the escalation date
+  if (escalationDate && new Date(escalationDate) > now) {
+    // Not yet — just acknowledge
+    await logAgentActivity({
+      agentName:    'orchestrator',
+      agentSource:  'vercel',
+      activityType: 'info',
+      description:  `All-suppliers-silent escalation pending — triggers ${escalationDate}`,
+      domain:       'supplier',
+      metadata:     directive.metadata,
+    });
+    return;
+  }
+
+  // Check actual supplier silence
+  const { data: suppliers } = await supabase
+    .from('manufacturer_shortlist')
+    .select('name, contact_name, outreach_status, last_response_at, outreach_sent_at')
+    .eq('outreach_status', 'contacted');
+
+  const silentSuppliers = (suppliers ?? []).filter(s => !s.last_response_at);
+
+  const ownerPhone = process.env.OWNER_WHATSAPP_PHONE;
+  if (silentSuppliers.length > 0) {
+    const list = silentSuppliers.map(s => `• ${s.contact_name ?? s.name} (contacted ${s.outreach_sent_at ? new Date(s.outreach_sent_at).toLocaleDateString('en-AU') : 'unknown'})`).join('\n');
+    await sendViaGreenApi(
+      `🔕 *All suppliers silent*\n\n${silentSuppliers.length} factories with no reply:\n${list}\n\nReview: (1) correct Alibaba URLs? (2) messages sent? (3) China public holiday?`,
+      ownerPhone ?? undefined
+    ).catch(() => {});
+  }
+
+  await logAgentActivity({
+    agentName:    'orchestrator',
+    agentSource:  'vercel',
+    activityType: 'auto_action',
+    description:  `Supplier silence check: ${silentSuppliers.length} still silent`,
+    domain:       'supplier',
+    metadata:     { silent_count: silentSuppliers.length },
+  });
+}
+
+// ── NEW: brief_ready ─────────────────────────────────────────────────────────
+async function handleBriefReady(
+  directive: OrchestratorDirective,
+  supabase: ReturnType<typeof createServiceClient>
+): Promise<void> {
+  const instruction = directive.instruction ?? 'Brief is ready.';
+
+  await supabase.from('platform_inbox').insert({
+    platform:           'system',
+    contact_name:       directive.target_agent ?? 'Chinese Negotiator',
+    contact_identifier: directive.target_agent ?? 'chinese_negotiator',
+    raw_content:        instruction,
+    ai_summary:         `Brief ready: ${instruction.slice(0, 100)}`,
+    ai_recommendation:  instruction,
+    approval_tier:      2,
+    status:             'pending',
+    metadata:           directive.metadata,
+  });
+
+  const ownerPhone = process.env.OWNER_WHATSAPP_PHONE;
+  await sendViaGreenApi(
+    `📋 Brief ready for *${directive.target_agent ?? 'agent'}*:\n${instruction.slice(0, 250)}\n\nCheck Inbox to review.`,
+    ownerPhone ?? undefined
+  ).catch(() => {});
+
+  await logAgentActivity({
+    agentName:    'orchestrator',
+    agentSource:  'vercel',
+    activityType: 'handoff',
+    description:  `Brief-ready directive processed for ${directive.target_agent}: inbox item created`,
+    domain:       'system',
+    metadata:     directive.metadata,
+  });
+}
+
+// ── NEW: agent_registered ────────────────────────────────────────────────────
+async function handleAgentRegistered(
+  directive: OrchestratorDirective
+): Promise<void> {
+  const agentId   = directive.metadata?.agent_id as string | undefined;
+  const agentType = directive.metadata?.agent_type as string | undefined;
+  const ownerPhone = process.env.OWNER_WHATSAPP_PHONE;
+  await sendViaGreenApi(
+    `🤖 Agent registered: *${directive.target_agent ?? 'new agent'}*\n${agentType ? `Type: ${agentType}\n` : ''}${directive.instruction?.slice(0, 200) ?? ''}`,
+    ownerPhone ?? undefined
+  ).catch(() => {});
+  await logAgentActivity({
+    agentName:    'orchestrator',
+    agentSource:  'vercel',
+    activityType: 'info',
+    description:  `Agent registered: ${directive.target_agent ?? 'unknown'} (id: ${agentId ?? 'n/a'})`,
+    domain:       'system',
+    metadata:     directive.metadata,
+  });
+}
+
 // ── Main handler ──────────────────────────────────────────────────────────────
 
 export async function GET(request: NextRequest) {
@@ -492,6 +699,21 @@ export async function GET(request: NextRequest) {
           break;
         case 'daily_briefing':
           await handleDailyBriefing(directive, supabase);
+          break;
+        case 'data_available':
+          await handleDataAvailable(directive);
+          break;
+        case 'drawing_ready':
+          await handleDrawingReady(directive, supabase);
+          break;
+        case 'all_suppliers_silent':
+          await handleAllSuppliersSilent(directive, supabase);
+          break;
+        case 'brief_ready':
+          await handleBriefReady(directive, supabase);
+          break;
+        case 'agent_registered':
+          await handleAgentRegistered(directive);
           break;
         default: {
           // Unknown type — send to WhatsApp so nothing is silently dropped
