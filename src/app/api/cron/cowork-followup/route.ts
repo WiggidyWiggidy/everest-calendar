@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { sendViaGreenApi } from '@/lib/greenApi';
+import { logAgentActivity } from '@/lib/logAgentActivity';
 
 const SILENCE_THRESHOLD_HOURS = 24;
 
@@ -147,9 +148,27 @@ export async function GET(request: NextRequest) {
       results.push({ contact_key: contactKey, action: `sent_followup_after_${Math.round(inboundAgeHours)}h` });
     }
 
+    const sent = results.filter(r => r.action.startsWith('sent_')).length;
+    await logAgentActivity({
+      agentName:    'cowork-followup',
+      agentSource:  'vercel',
+      activityType: 'auto_action',
+      description:  `Followup run complete — ${contactKeys.length} contacts checked, ${sent} follow-ups sent`,
+      domain:       'design',
+      metadata:     { results, contacts_checked: contactKeys.length, sent },
+    });
+
     return NextResponse.json({ ok: true, results });
   } catch (err) {
     console.error('/api/cron/cowork-followup unexpected error:', err);
+    await logAgentActivity({
+      agentName:    'cowork-followup',
+      agentSource:  'vercel',
+      activityType: 'error',
+      description:  `Followup cron failed: ${err instanceof Error ? err.message : String(err)}`,
+      domain:       'design',
+      metadata:     {},
+    }).catch(() => {});
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

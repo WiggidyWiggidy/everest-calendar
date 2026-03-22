@@ -198,6 +198,185 @@ async function handleAgentHealthAlert(directive: OrchestratorDirective): Promise
   });
 }
 
+// ── NEW: spec_updated ────────────────────────────────────────────────────────
+async function handleSpecUpdated(
+  directive: OrchestratorDirective,
+  supabase: ReturnType<typeof createServiceClient>
+): Promise<void> {
+  const instruction = directive.instruction ?? 'Spec update received — review and communicate to relevant party.';
+  const targetAgent  = directive.target_agent ?? 'engineer_communication';
+
+  await supabase.from('message_drafts').insert({
+    contact_key:   targetAgent,
+    contact_name:  directive.metadata?.contact_name as string ?? targetAgent,
+    message_type:  'spec_update',
+    draft_content: instruction,
+    drafted_by:    'orchestrator',
+    status:        'pending_review',
+    metadata:      directive.metadata,
+  });
+
+  const ownerPhone = process.env.OWNER_WHATSAPP_PHONE;
+  await sendViaGreenApi(
+    `📐 Spec update directive queued for ${targetAgent}:\n"${instruction.slice(0, 200)}"\n\nCheck message drafts to review.`,
+    ownerPhone ?? undefined
+  );
+
+  await logAgentActivity({
+    agentName:    'orchestrator',
+    agentSource:  'vercel',
+    activityType: 'draft',
+    description:  `Spec update draft created for ${targetAgent}: ${instruction.slice(0, 80)}`,
+    domain:       'design',
+    metadata:     directive.metadata,
+  });
+}
+
+// ── NEW: priority_override ───────────────────────────────────────────────────
+async function handlePriorityOverride(
+  directive: OrchestratorDirective
+): Promise<void> {
+  const instruction  = directive.instruction ?? 'Priority override — action required.';
+  const targetAgent  = directive.target_agent ?? 'unknown';
+  const ownerPhone   = process.env.OWNER_WHATSAPP_PHONE;
+
+  const urgencyEmoji = directive.priority === 'critical' ? '🔴' : directive.priority === 'high' ? '🟠' : '🟡';
+
+  await sendViaGreenApi(
+    `${urgencyEmoji} Priority override for ${targetAgent}:\n${instruction}\n\nPriority: ${directive.priority?.toUpperCase() ?? 'HIGH'}`,
+    ownerPhone ?? undefined
+  );
+
+  await logAgentActivity({
+    agentName:    'orchestrator',
+    agentSource:  'vercel',
+    activityType: 'auto_action',
+    description:  `Priority override sent via WhatsApp for ${targetAgent}: ${instruction.slice(0, 80)}`,
+    domain:       'system',
+    metadata:     directive.metadata,
+  });
+}
+
+// ── NEW: focus_thread ────────────────────────────────────────────────────────
+async function handleFocusThread(
+  directive: OrchestratorDirective,
+  supabase: ReturnType<typeof createServiceClient>
+): Promise<void> {
+  const instruction   = directive.instruction ?? 'Thread requires focused attention.';
+  const targetAgent   = directive.target_agent ?? 'hiring_engineer';
+
+  // Create an inbox item to surface this for review
+  try {
+    await supabase.rpc('create_inbox_item', {
+      p_platform:           'system',
+      p_contact_name:       targetAgent,
+      p_contact_identifier: targetAgent,
+      p_raw_content:        instruction,
+      p_media_url:          null,
+      p_media_type:         null,
+      p_ai_summary:         `Focus required: ${instruction.slice(0, 100)}`,
+      p_ai_recommendation:  instruction,
+      p_draft_reply:        null,
+      p_approval_tier:      2,
+      p_cowork_message_inbound_id: null,
+      p_candidate_id:       (directive.metadata?.candidate_id as string | null) ?? null,
+    });
+  } catch {
+    // create_inbox_item rpc may not accept system platform — fall back to direct insert
+    await supabase.from('platform_inbox').insert({
+      platform:           'system',
+      contact_name:       targetAgent,
+      contact_identifier: targetAgent,
+      raw_content:        instruction,
+      ai_summary:         `Focus required: ${instruction.slice(0, 100)}`,
+      ai_recommendation:  instruction,
+      approval_tier:      2,
+      status:             'pending',
+    });
+  }
+
+  const ownerPhone = process.env.OWNER_WHATSAPP_PHONE;
+  await sendViaGreenApi(
+    `🎯 Focus thread flagged for ${targetAgent}:\n"${instruction.slice(0, 200)}"\n\nCheck Inbox to review.`,
+    ownerPhone ?? undefined
+  );
+
+  await logAgentActivity({
+    agentName:    'orchestrator',
+    agentSource:  'vercel',
+    activityType: 'handoff',
+    description:  `Focus thread inbox item created for ${targetAgent}: ${instruction.slice(0, 80)}`,
+    domain:       'hiring',
+    metadata:     directive.metadata,
+  });
+}
+
+// ── NEW: daily_briefing ──────────────────────────────────────────────────────
+async function handleDailyBriefing(
+  directive: OrchestratorDirective,
+  supabase: ReturnType<typeof createServiceClient>
+): Promise<void> {
+  const ownerPhone = process.env.OWNER_WHATSAPP_PHONE;
+
+  // Pull together a quick briefing from live data
+  const now = new Date();
+  const ago24h = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+
+  const [pendingInboxRes, recentActivityRes, pendingDirectivesRes] = await Promise.all([
+    supabase.from('platform_inbox').select('id, contact_name, ai_summary, approval_tier').eq('status', 'pending').order('created_at', { ascending: false }).limit(5),
+    supabase.from('agent_activity_log').select('agent_name, description, created_at').gte('created_at', ago24h).order('created_at', { ascending: false }).limit(5),
+    supabase.from('orchestrator_directives').select('directive_type, priority').eq('status', 'pending').order('priority', { ascending: true }).limit(5),
+  ]);
+
+  const pendingItems    = pendingInboxRes.data ?? [];
+  const recentActivity  = recentActivityRes.data ?? [];
+  const pendingDirs     = pendingDirectivesRes.data ?? [];
+
+  let briefing = `📊 *Daily Briefing — ${now.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'short' })}*\n\n`;
+
+  if (pendingItems.length) {
+    briefing += `*Inbox (${pendingItems.length} pending):*\n`;
+    for (const item of pendingItems) {
+      const tier = item.approval_tier >= 3 ? '🔴' : item.approval_tier === 2 ? '🟠' : '🟡';
+      briefing += `${tier} ${item.contact_name}: ${(item.ai_summary ?? '').slice(0, 80)}\n`;
+    }
+    briefing += '\n';
+  } else {
+    briefing += `✅ Inbox clear\n\n`;
+  }
+
+  if (pendingDirs.length) {
+    briefing += `*Pending directives (${pendingDirs.length}):*\n`;
+    for (const d of pendingDirs) {
+      briefing += `• ${d.priority?.toUpperCase() ?? 'MED'}: ${d.directive_type}\n`;
+    }
+    briefing += '\n';
+  }
+
+  if (recentActivity.length) {
+    briefing += `*Recent agent activity:*\n`;
+    for (const a of recentActivity) {
+      briefing += `• ${a.agent_name}: ${(a.description ?? '').slice(0, 60)}\n`;
+    }
+  }
+
+  // Append any custom instruction from the directive
+  if (directive.instruction) {
+    briefing += `\n📝 ${directive.instruction}`;
+  }
+
+  await sendViaGreenApi(briefing, ownerPhone ?? undefined);
+
+  await logAgentActivity({
+    agentName:    'orchestrator',
+    agentSource:  'vercel',
+    activityType: 'auto_action',
+    description:  `Daily briefing sent via WhatsApp — ${pendingItems.length} inbox items, ${pendingDirs.length} pending directives`,
+    domain:       'system',
+    metadata:     { pending_inbox: pendingItems.length, pending_directives: pendingDirs.length },
+  });
+}
+
 async function handleDirectiveOverdue(
   supabase: ReturnType<typeof createServiceClient>
 ): Promise<void> {
@@ -302,8 +481,28 @@ export async function GET(request: NextRequest) {
         case 'directive_overdue':
           // Already handled above — mark complete
           break;
-        default:
+        case 'spec_updated':
+          await handleSpecUpdated(directive, supabase);
+          break;
+        case 'priority_override':
+          await handlePriorityOverride(directive);
+          break;
+        case 'focus_thread':
+          await handleFocusThread(directive, supabase);
+          break;
+        case 'daily_briefing':
+          await handleDailyBriefing(directive, supabase);
+          break;
+        default: {
+          // Unknown type — send to WhatsApp so nothing is silently dropped
+          const ownerPhone = process.env.OWNER_WHATSAPP_PHONE;
+          const fallbackMsg = directive.instruction ?? JSON.stringify(directive.metadata);
+          await sendViaGreenApi(
+            `⚙️ Unhandled directive [${directive.directive_type}] for ${directive.target_agent ?? 'unknown'}:\n${fallbackMsg?.slice(0, 300)}`,
+            ownerPhone ?? undefined
+          ).catch(() => {});
           console.warn(`[process-directives] unknown directive_type: ${directive.directive_type}`);
+        }
       }
 
       // Success — mark completed

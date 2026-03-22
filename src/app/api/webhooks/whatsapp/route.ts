@@ -119,15 +119,136 @@ async function handleProposalReply(text: string): Promise<boolean> {
     const proposalId = match[0];
     const supabase = createServiceClient();
     const now = new Date().toISOString();
-    const { error } = await supabase
+
+    // Fetch the full proposal before updating status
+    const { data: proposal, error: fetchErr } = await supabase
       .from('system_proposals')
-      .update({ status: 'queued', approved_at: now })
+      .select('*')
+      .eq('id', proposalId)
+      .maybeSingle();
+
+    if (fetchErr || !proposal) {
+      console.error('[whatsapp/proposal] APPROVE fetch error:', fetchErr);
+      await sendViaGreenApi(`⚠️ Could not find proposal ${proposalId}`, process.env.OWNER_WHATSAPP_PHONE ?? undefined);
+      return true;
+    }
+
+    // Mark approved
+    await supabase
+      .from('system_proposals')
+      .update({ status: 'approved', approved_at: now })
       .eq('id', proposalId);
-    if (error) console.error('[whatsapp/proposal] APPROVE error:', error);
+
+    // ── Execute based on proposal_type ──────────────────────────────────────
+    const ownerPhone = process.env.OWNER_WHATSAPP_PHONE;
+    try {
+      const proposalType: string = proposal.proposal_type ?? '';
+      const agentName: string    = (proposal.metadata?.agent_name as string) ?? '';
+      const impl: string         = proposal.implementation_notes ?? proposal.description ?? '';
+
+      if (proposalType === 'prompt_update') {
+        // Apply the new system prompt directly to the agents table
+        const { error: updateErr } = await supabase
+          .from('agents')
+          .update({ system_prompt: impl, updated_at: now })
+          .eq('name', agentName);
+
+        if (updateErr) throw new Error(`agents update failed: ${updateErr.message}`);
+
+        await supabase
+          .from('system_proposals')
+          .update({ status: 'implemented', implemented_at: now })
+          .eq('id', proposalId);
+
+        await sendViaGreenApi(
+          `✅ Prompt updated for *${agentName}*.\n\nChanges are live immediately.`,
+          ownerPhone ?? undefined
+        );
+
+      } else if (proposalType === 'process_improvement') {
+        // Create an orchestrator directive
+        await supabase.from('orchestrator_directives').insert({
+          directive_type: (proposal.metadata?.directive_type as string) ?? 'priority_override',
+          target_agent:   agentName || null,
+          instruction:    impl,
+          status:         'pending',
+          priority:       (proposal.metadata?.priority as string) ?? 'medium',
+          source_agent:   'system_proposals',
+          metadata:       proposal.metadata ?? {},
+        });
+
+        await supabase
+          .from('system_proposals')
+          .update({ status: 'implemented', implemented_at: now })
+          .eq('id', proposalId);
+
+        await sendViaGreenApi(
+          `✅ Process improvement queued as directive.\n\nWill be processed at next cron run (≤15 min).`,
+          ownerPhone ?? undefined
+        );
+
+      } else if (proposalType === 'code_change' || proposalType === 'bug_fix') {
+        // Queue in task_backlog for OpenClaw to build
+        await supabase.from('task_backlog').insert({
+          title:       proposal.title,
+          description: impl,
+          priority:    (proposal.metadata?.priority as string) ?? 'medium',
+          status:      'queued',
+          source:      'system_proposals',
+          metadata:    { proposal_id: proposalId },
+        });
+
+        await supabase
+          .from('system_proposals')
+          .update({ status: 'implemented', implemented_at: now })
+          .eq('id', proposalId);
+
+        await sendViaGreenApi(
+          `✅ Build task created for OpenClaw.\n\n"${proposal.title}"\n\nOpenClaw will pick this up and raise a PR.`,
+          ownerPhone ?? undefined
+        );
+
+      } else if (proposalType === 'schema_change') {
+        // NEVER auto-execute — always queue for manual review
+        await supabase.from('task_backlog').insert({
+          title:       `[MIGRATION REVIEW] ${proposal.title}`,
+          description: `Schema change proposal — requires manual review before execution.\n\n${impl}`,
+          priority:    'high',
+          status:      'queued',
+          source:      'system_proposals',
+          metadata:    { proposal_id: proposalId, requires_review: true },
+        });
+
+        await supabase
+          .from('system_proposals')
+          .update({ status: 'implemented', implemented_at: now })
+          .eq('id', proposalId);
+
+        await sendViaGreenApi(
+          `⚠️ Schema change queued for manual review — NOT auto-executing.\n\n"${proposal.title}"\n\nReview the migration before running it.`,
+          ownerPhone ?? undefined
+        );
+
+      } else {
+        // Unknown type — just mark approved and notify
+        await sendViaGreenApi(
+          `✅ Proposal approved: "${proposal.title}"\n\nType: ${proposalType} — no auto-executor for this type. Manual action may be required.`,
+          ownerPhone ?? undefined
+        );
+      }
+    } catch (execErr) {
+      const errMsg = execErr instanceof Error ? execErr.message : String(execErr);
+      console.error('[whatsapp/proposal] execution error:', execErr);
+      await sendViaGreenApi(
+        `⚠️ Proposal approved but execution failed:\n${errMsg.slice(0, 200)}\n\nProposal ID: ${proposalId}`,
+        ownerPhone ?? undefined
+      );
+    }
+
     await logAgentActivity({
       agentName: 'tom', agentSource: 'cowork', activityType: 'approval',
-      description: `System proposal ${proposalId} approved and queued via WhatsApp`,
-      domain: 'system', metadata: { proposal_id: proposalId },
+      description: `System proposal "${proposal.title}" (${proposal.proposal_type}) approved and executed via WhatsApp`,
+      domain: 'system', metadata: { proposal_id: proposalId, proposal_type: proposal.proposal_type },
     });
     return true;
   }
