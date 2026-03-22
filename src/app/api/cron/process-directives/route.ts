@@ -199,15 +199,19 @@ async function handleBuildRequired(
     });
   } else {
     // New build request — create task_backlog item from directive instruction
+    const priorityScore = directive.priority === 'critical' ? 9 : directive.priority === 'high' ? 7 : 5;
     const { data: newTask } = await supabase
       .from('task_backlog')
       .insert({
-        title:       directive.metadata?.title as string ?? `Build required: ${directive.target_agent ?? 'unknown'}`,
-        description: directive.instruction ?? 'See directive metadata for details.',
-        priority:    directive.priority === 'critical' ? 'critical' : directive.priority === 'high' ? 'high' : 'medium',
-        status:      'queued',
-        source:      'orchestrator_directive',
-        metadata:    { directive_id: directive.id, ...directive.metadata },
+        user_id:      '174f2dff-7a96-464c-a919-b473c328d531',
+        title:        (directive.metadata?.title as string) ?? `Build required: ${directive.target_agent ?? 'unknown'}`,
+        description:  directive.instruction ?? 'See directive metadata for details.',
+        priority_score: priorityScore,
+        status:       'pending',
+        build_status: 'queued',
+        task_type:    'build',
+        source:       'agent',
+        build_context: JSON.stringify({ directive_id: directive.id, ...directive.metadata }),
       })
       .select('id')
       .single();
