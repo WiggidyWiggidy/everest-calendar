@@ -374,7 +374,8 @@ export async function POST(request: NextRequest) {
 
     // 2b. Owner reply handling — APPROVE / REJECT / RETRY / feedback
     // Check before CAD filter so Tom's phone is handled from any thread.
-    const ownerPhone = process.env.OWNER_WHATSAPP_PHONE;
+    // Normalise: Green API strips '+' from chatId, env var may include it
+    const ownerPhone = (process.env.OWNER_WHATSAPP_PHONE ?? '').replace(/^\+/, '');
     if (ownerPhone && senderPhone === ownerPhone && isText) {
       const inboundOwnerText: string = body.messageData?.textMessageData?.textMessage ?? '';
       const handled = await handleProposalReply(inboundOwnerText);
