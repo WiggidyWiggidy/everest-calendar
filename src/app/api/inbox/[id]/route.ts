@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { sendViaGreenApi } from '@/lib/greenApi';
+import { logAgentActivity } from '@/lib/logAgentActivity';
 
 export async function PATCH(
   request: NextRequest,
@@ -50,6 +51,15 @@ export async function PATCH(
       .single();
     if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 });
 
+    await logAgentActivity({
+      agentName:    'tom',
+      agentSource:  'cowork',
+      activityType: 'approval',
+      description:  `Inbox item approved and sent to ${item.platform}:${item.contact_name ?? item.contact_identifier}`,
+      domain:       item.platform === 'upwork' ? 'hiring' : item.platform === 'alibaba' ? 'supplier' : 'design',
+      metadata:     { inbox_id: id, platform: item.platform },
+    });
+
     // Mark the linked cowork draft as sent
     if (item.cowork_message_inbound_id) {
       await supabase
@@ -88,6 +98,15 @@ export async function PATCH(
         .eq('status', 'draft');
     }
 
+    await logAgentActivity({
+      agentName:    'tom',
+      agentSource:  'cowork',
+      activityType: 'approval',
+      description:  `Inbox item edited and sent to ${item.platform}:${item.contact_name ?? item.contact_identifier}`,
+      domain:       item.platform === 'upwork' ? 'hiring' : item.platform === 'alibaba' ? 'supplier' : 'design',
+      metadata:     { inbox_id: id, platform: item.platform },
+    });
+
     return NextResponse.json({ item: updated });
   }
 
@@ -99,6 +118,16 @@ export async function PATCH(
       .select()
       .single();
     if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 });
+
+    await logAgentActivity({
+      agentName:    'tom',
+      agentSource:  'cowork',
+      activityType: 'decision',
+      description:  `Inbox item rejected from ${item.platform}:${item.contact_name ?? item.contact_identifier}`,
+      domain:       item.platform === 'upwork' ? 'hiring' : item.platform === 'alibaba' ? 'supplier' : 'design',
+      metadata:     { inbox_id: id, platform: item.platform },
+    });
+
     return NextResponse.json({ item: updated });
   }
 
