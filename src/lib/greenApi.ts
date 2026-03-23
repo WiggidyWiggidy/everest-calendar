@@ -52,3 +52,38 @@ export async function sendViaGreenApi(text: string, phone?: string): Promise<str
 
   return null; // success
 }
+
+// Send audio file via Green API (for voice notes)
+export async function sendAudioViaGreenApi(
+  audioUrl: string,
+  phone?: string
+): Promise<string | null> {
+  const instanceId  = process.env.GREEN_API_INSTANCE_ID;
+  const token       = process.env.GREEN_API_TOKEN;
+  const ownerPhone  = process.env.OWNER_WHATSAPP_PHONE?.replace(/^\+/, '');
+  const targetPhone = phone ?? ownerPhone;
+
+  if (!instanceId || !token || !targetPhone) {
+    return 'Green API not configured for audio';
+  }
+
+  const url = `https://api.green-api.com/waInstance${instanceId}/sendFileByUrl/${token}`;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chatId:   `${targetPhone}@c.us`,
+      urlFile:  audioUrl,
+      fileName: 'voice.mp3',
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    console.error('Green API audio send error:', errText);
+    return `Green API returned ${res.status}: ${errText}`;
+  }
+
+  return null; // success
+}
