@@ -586,20 +586,22 @@ export async function POST(request: NextRequest) {
     if (body.typeWebhook !== 'incomingMessageReceived') return NextResponse.json({ ok: true });
 
     // 2a. Message deduplication — prevent processing same message twice
-    // Green API can retry webhooks on timeout, causing duplicate processing + double billing
+    // Green API retries webhooks on timeout. We track messageId to catch exact duplicates
+    // without blocking legitimate rapid messages from the same contact.
     const messageId: string | undefined = body.idMessage;
     if (messageId) {
       const dedupDb = createServiceClient();
-      const sixtySecondsAgo = new Date(Date.now() - 60_000).toISOString();
+      const fiveMinAgo = new Date(Date.now() - 5 * 60_000).toISOString();
       const { data: existing } = await dedupDb
         .from('platform_inbox')
         .select('id')
-        .gte('created_at', sixtySecondsAgo)
+        .gte('created_at', fiveMinAgo)
+        .eq('raw_content', (body.messageData?.textMessageData?.textMessage ?? body.messageData?.fileMessageData?.caption ?? '').slice(0, 200))
         .eq('contact_identifier', ((body.senderData?.chatId as string) ?? '').split('@')[0])
         .limit(1)
         .maybeSingle();
       if (existing) {
-        console.log(`[whatsapp] Recent message from same sender — dedup skip`);
+        console.log(`[whatsapp] Duplicate message content from same sender — dedup skip`);
         return NextResponse.json({ ok: true });
       }
     }
