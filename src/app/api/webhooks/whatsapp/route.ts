@@ -584,6 +584,26 @@ export async function POST(request: NextRequest) {
     // 2. Parse payload
     const body = await request.json();
     if (body.typeWebhook !== 'incomingMessageReceived') return NextResponse.json({ ok: true });
+
+    // 2a. Message deduplication — prevent processing same message twice
+    // Green API can retry webhooks on timeout, causing duplicate processing + double billing
+    const messageId: string | undefined = body.idMessage;
+    if (messageId) {
+      const dedupDb = createServiceClient();
+      const sixtySecondsAgo = new Date(Date.now() - 60_000).toISOString();
+      const { data: existing } = await dedupDb
+        .from('platform_inbox')
+        .select('id')
+        .gte('created_at', sixtySecondsAgo)
+        .eq('contact_identifier', ((body.senderData?.chatId as string) ?? '').split('@')[0])
+        .limit(1)
+        .maybeSingle();
+      if (existing) {
+        console.log(`[whatsapp] Recent message from same sender — dedup skip`);
+        return NextResponse.json({ ok: true });
+      }
+    }
+
     const msgType = body.messageData?.typeMessage;
     const isText  = msgType === 'textMessage';
     const isImage = msgType === 'imageMessage';
@@ -609,7 +629,10 @@ export async function POST(request: NextRequest) {
       const prefixHandled = await handlePrefixRouting(inboundOwnerText);
       if (prefixHandled) return NextResponse.json({ ok: true });
 
-      // If not handled (just a normal chat from Tom), fall through to contact pipeline
+      // Owner messages are handled by OpenClaw directly — don't double-process.
+      // Without this guard, every Tom→OpenClaw message triggers BOTH OpenClaw LLM calls
+      // AND Vercel webhook LLM calls (Mistral classify + Haiku draft) = ~4x billing.
+      return NextResponse.json({ ok: true });
     }
 
     // 3. Multi-contact lookup — replace hardcoded CAD phone filter
