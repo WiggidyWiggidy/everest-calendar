@@ -3,7 +3,7 @@
 // Flow:
 //  1. Validate secret
 //  2. Parse Green API payload (text + image messages)
-//  3. Filter to COWORK_CAD_PHONE only
+//  3. Look up sender in cowork_contacts (multi-contact routing)
 //  4. Download image → upload to Supabase Storage (if image)
 //  5. Fetch conversation history for Claude context
 //  5b. Fetch reference specs for this contact
@@ -89,6 +89,9 @@ CRITICAL SPECS:
 
 // UUID v4 pattern
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+
+// ── Prefix routing pattern for owner relay messages ──────────────────────────
+const PREFIX_RE = /^(UP|ALI):\s*(.+?)\s+says?:\s*(.+)$/i;
 
 async function handleProposalReply(text: string): Promise<boolean> {
   const trimmed = text.trim().toUpperCase();
@@ -307,6 +310,216 @@ async function handleProposalReply(text: string): Promise<boolean> {
   return false;
 }
 
+// ── Protocol lookup & merging ─────────────────────────────────────────────────
+
+interface ProtocolRow {
+  protocol_key: string;
+  protocol_type: string;
+  contact_type: string | null;
+  contact_key: string | null;
+  parent_key: string | null;
+  platform: string | null;
+  rules: Record<string, unknown> | null;
+  checkpoints: Record<string, unknown> | null;
+  is_active: boolean;
+}
+
+interface ContactRow {
+  key: string;
+  display_name: string;
+  phone: string;
+  system_prompt: string | null;
+  contact_type?: string | null;
+}
+
+function flattenRules(rules: Record<string, unknown> | null): string {
+  if (!rules) return '';
+  const lines: string[] = [];
+  for (const [key, value] of Object.entries(rules)) {
+    if (typeof value === 'string') {
+      lines.push(`- ${key}: ${value}`);
+    } else if (Array.isArray(value)) {
+      lines.push(`- ${key}:`);
+      for (const item of value) {
+        lines.push(`  • ${typeof item === 'string' ? item : JSON.stringify(item)}`);
+      }
+    } else if (value && typeof value === 'object') {
+      lines.push(`- ${key}: ${JSON.stringify(value)}`);
+    }
+  }
+  return lines.join('\n');
+}
+
+async function buildSystemPromptFromProtocols(
+  contactKey: string,
+  contactType: string | null,
+): Promise<string | null> {
+  const supabase = createServiceClient();
+
+  // 1. Master protocol for whatsapp
+  const { data: masterRows } = await supabase
+    .from('communication_protocols')
+    .select('*')
+    .eq('protocol_type', 'master')
+    .eq('platform', 'whatsapp')
+    .eq('is_active', true);
+
+  // 2. Contact-type protocol
+  let contactTypeRows: ProtocolRow[] = [];
+  if (contactType) {
+    const { data } = await supabase
+      .from('communication_protocols')
+      .select('*')
+      .eq('contact_type', contactType)
+      .eq('protocol_type', 'contact_type')
+      .eq('is_active', true);
+    if (data) contactTypeRows = data as ProtocolRow[];
+  }
+
+  // 3. Contact-specific protocol
+  const { data: contactSpecificRows } = await supabase
+    .from('communication_protocols')
+    .select('*')
+    .eq('contact_key', contactKey)
+    .eq('is_active', true);
+
+  const master = (masterRows ?? []) as ProtocolRow[];
+  const specific = (contactSpecificRows ?? []) as ProtocolRow[];
+
+  // If no protocols found at any level, return null (use fallback)
+  if (master.length === 0 && contactTypeRows.length === 0 && specific.length === 0) {
+    return null;
+  }
+
+  // Build merged prompt
+  const sections: string[] = ['=== COMMUNICATION PROTOCOL ==='];
+
+  if (master.length > 0) {
+    sections.push('\n[Master Rules]');
+    for (const row of master) {
+      const rulesText = flattenRules(row.rules);
+      if (rulesText) sections.push(rulesText);
+    }
+  }
+
+  if (contactTypeRows.length > 0) {
+    sections.push(`\n[Contact Type Rules: ${contactType}]`);
+    for (const row of contactTypeRows) {
+      const rulesText = flattenRules(row.rules);
+      if (rulesText) sections.push(rulesText);
+    }
+  }
+
+  if (specific.length > 0) {
+    sections.push('\n[Contact-Specific Rules]');
+    for (const row of specific) {
+      const rulesText = flattenRules(row.rules);
+      if (rulesText) sections.push(rulesText);
+    }
+  }
+
+  // Checkpoints from any level (prefer most specific)
+  const allCheckpoints = [...master, ...contactTypeRows, ...specific].filter(r => r.checkpoints);
+  if (allCheckpoints.length > 0) {
+    sections.push('\n[Checkpoints]');
+    // Use the most specific checkpoint data (last wins)
+    const cp = allCheckpoints[allCheckpoints.length - 1].checkpoints;
+    if (cp) {
+      sections.push(flattenRules(cp as Record<string, unknown>));
+    }
+  }
+
+  sections.push('\n=== END PROTOCOL ===');
+
+  return sections.join('\n');
+}
+
+// ── Prefix routing for owner relay messages (UP: / ALI:) ──────────────────────
+
+async function handlePrefixRouting(text: string): Promise<boolean> {
+  const match = text.match(PREFIX_RE);
+  if (!match) return false;
+
+  const platformCode = match[1].toUpperCase();
+  const contactName = match[2].trim();
+  const messageContent = match[3].trim();
+
+  const platform = platformCode === 'UP' ? 'upwork' : 'alibaba';
+
+  const supabase = createServiceClient();
+
+  // Look up protocol for this platform to draft a reply
+  let draftReply: string | null = null;
+  try {
+    // Try to find a protocol for this platform
+    const { data: protocolRows } = await supabase
+      .from('communication_protocols')
+      .select('*')
+      .eq('platform', platform)
+      .eq('is_active', true);
+
+    if (protocolRows && protocolRows.length > 0) {
+      const protocolPrompt = (protocolRows as ProtocolRow[])
+        .map(r => flattenRules(r.rules))
+        .filter(Boolean)
+        .join('\n');
+
+      if (protocolPrompt) {
+        try {
+          const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: OR_HEADERS(),
+            body: JSON.stringify({
+              model: 'anthropic/claude-haiku-4-5',
+              max_tokens: 400,
+              messages: [
+                { role: 'system', content: `You are drafting a reply on the ${platform} platform. Follow these communication rules:\n${protocolPrompt}` },
+                { role: 'user', content: `${contactName} says: ${messageContent}` },
+              ],
+            }),
+          });
+          if (res.ok) {
+            const json = await res.json();
+            draftReply = (json.choices?.[0]?.message?.content as string) ?? null;
+          }
+        } catch (draftErr) {
+          console.error('[whatsapp/prefix] draft error:', draftErr);
+        }
+      }
+    }
+  } catch (protocolErr) {
+    console.error('[whatsapp/prefix] protocol lookup error:', protocolErr);
+  }
+
+  // Create inbox item for the relayed message
+  try {
+    await supabase.rpc('create_inbox_item', {
+      p_platform:                   platform,
+      p_contact_name:               contactName,
+      p_contact_identifier:         `${platform}:${contactName.toLowerCase().replace(/\s+/g, '_')}`,
+      p_raw_content:                messageContent,
+      p_media_url:                  null,
+      p_media_type:                 null,
+      p_ai_summary:                 `${platform} message from ${contactName} relayed by Tom`,
+      p_ai_recommendation:          draftReply ? 'Draft reply generated from protocol' : 'No protocol found — manual reply needed',
+      p_draft_reply:                draftReply,
+      p_approval_tier:              1,
+      p_cowork_message_inbound_id:  null,
+      p_candidate_id:               null,
+    });
+  } catch (inboxErr) {
+    console.error('[whatsapp/prefix] inbox item error:', inboxErr);
+  }
+
+  await logAgentActivity({
+    agentName: 'tom', agentSource: 'cowork', activityType: 'info',
+    description: `Prefix-routed ${platform} message from ${contactName}: "${messageContent.slice(0, 80)}"`,
+    domain: 'cowork', metadata: { platform, contact_name: contactName },
+  });
+
+  return true;
+}
+
 // ── OpenRouter helper ─────────────────────────────────────────
 const OR_HEADERS = () => ({
   'Content-Type': 'application/json',
@@ -379,22 +592,74 @@ export async function POST(request: NextRequest) {
 
     const senderPhone = ((body.senderData?.chatId as string) ?? '').split('@')[0];
 
-    // 2b. Owner reply handling — APPROVE / REJECT / RETRY / feedback
-    // Check before CAD filter so Tom's phone is handled from any thread.
+    // 2b. Owner reply handling — APPROVE / REJECT / RETRY / feedback / prefix routing
+    // Check before contact filter so Tom's phone is handled from any thread.
     // Normalise: Green API strips '+' from chatId, env var may include it
     const ownerPhone = (process.env.OWNER_WHATSAPP_PHONE ?? '').replace(/^\+/, '');
-    if (ownerPhone && senderPhone === ownerPhone && isText) {
+    const isOwner = ownerPhone && senderPhone === ownerPhone;
+
+    if (isOwner && isText) {
       const inboundOwnerText: string = body.messageData?.textMessageData?.textMessage ?? '';
+
+      // Check for proposal replies first
       const handled = await handleProposalReply(inboundOwnerText);
       if (handled) return NextResponse.json({ ok: true });
-      // If not handled (just a normal chat from Tom), fall through to CAD pipeline — very unlikely but safe
+
+      // Check for prefix routing (UP: / ALI:)
+      const prefixHandled = await handlePrefixRouting(inboundOwnerText);
+      if (prefixHandled) return NextResponse.json({ ok: true });
+
+      // If not handled (just a normal chat from Tom), fall through to contact pipeline
     }
 
-    // 3. Filter to CAD phone only
-    const cadPhone = process.env.COWORK_CAD_PHONE;
-    if (cadPhone && senderPhone !== cadPhone) return NextResponse.json({ ok: true });
+    // 3. Multi-contact lookup — replace hardcoded CAD phone filter
+    const serviceDb = createServiceClient();
+    let contact: ContactRow | null = null;
 
-    const senderName: string | null = body.senderData?.senderName ?? null;
+    const { data: contactRow } = await serviceDb
+      .from('cowork_contacts')
+      .select('key, display_name, phone, system_prompt, contact_type')
+      .eq('phone', senderPhone)
+      .maybeSingle();
+
+    if (contactRow) {
+      contact = contactRow as ContactRow;
+    } else if (!isOwner) {
+      // Unknown contact and not owner — create inbox item tagged unknown_contact and return
+      try {
+        const inboundText = isText
+          ? (body.messageData?.textMessageData?.textMessage ?? '')
+          : (body.messageData?.fileMessageData?.caption ?? '[Media]');
+
+        await serviceDb.rpc('create_inbox_item', {
+          p_platform:                   'whatsapp',
+          p_contact_name:               body.senderData?.senderName ?? 'Unknown',
+          p_contact_identifier:         senderPhone,
+          p_raw_content:                inboundText || '[No text content]',
+          p_media_url:                  null,
+          p_media_type:                 null,
+          p_ai_summary:                 `Message from unknown contact ${senderPhone}`,
+          p_ai_recommendation:          'Unknown contact — add to cowork_contacts if this is a known collaborator',
+          p_draft_reply:                null,
+          p_approval_tier:              3,
+          p_cowork_message_inbound_id:  null,
+          p_candidate_id:               null,
+        });
+      } catch (unknownErr) {
+        console.error('[whatsapp] unknown contact inbox error:', unknownErr);
+      }
+      return NextResponse.json({ ok: true });
+    } else {
+      // Owner without a contact record — let them fall through but they shouldn't reach drafting
+      // (Owner messages are already handled above for proposals/prefix routing)
+      return NextResponse.json({ ok: true });
+    }
+
+    const contactKey = contact.key;
+    const contactDisplayName = contact.display_name;
+    const contactType = contact.contact_type ?? null;
+    const senderName: string | null = body.senderData?.senderName ?? contactDisplayName;
+
     let inboundText           = '';
     let mediaUrl: string | null = null;
     let mediaType: string | null = null;
@@ -447,10 +712,13 @@ export async function POST(request: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
-    // 5. Fetch conversation history
+    // 5. Fetch conversation history (scoped to contact)
     let historyMessages: Array<{ role: 'user' | 'assistant'; content: string }> = [];
     try {
-      const { data: history } = await supabase.rpc('get_cowork_history', { p_limit: 20 });
+      const { data: history } = await supabase.rpc('get_cowork_history', {
+        p_limit: 20,
+        p_contact_key: contactKey,
+      });
       if (Array.isArray(history)) {
         historyMessages = history
           .filter((m: { direction: string; content: string }) => m.content && m.content !== '[Image]')
@@ -482,6 +750,27 @@ export async function POST(request: NextRequest) {
     // 6. Classify with Haiku
     const classifyText = inboundText !== '[Image]' ? inboundText : '(image — no caption)';
     const { tier, summary, recommendation } = await classifyMessage(classifyText);
+
+    // ── Build system prompt: DB protocols → fallback to hardcoded constant ────
+    let systemPrompt = CAD_AGENT_SYSTEM_PROMPT;
+    try {
+      const protocolPrompt = await buildSystemPromptFromProtocols(contactKey, contactType);
+      if (protocolPrompt) {
+        // If contact also has a system_prompt field, prepend it
+        if (contact.system_prompt) {
+          systemPrompt = `${contact.system_prompt}\n\n${protocolPrompt}`;
+        } else {
+          systemPrompt = protocolPrompt;
+        }
+      } else if (contact.system_prompt) {
+        // No DB protocols but contact has a system_prompt field
+        systemPrompt = contact.system_prompt;
+      }
+      // else: no protocols and no contact system_prompt — keep CAD_AGENT_SYSTEM_PROMPT fallback
+    } catch (protocolErr) {
+      console.error('/api/webhooks/whatsapp protocol lookup error:', protocolErr);
+      // Keep fallback
+    }
 
     // ── TIER 0: auto-handle with short Haiku ack ─────────────────────────────
     if (tier === 0) {
@@ -515,11 +804,12 @@ export async function POST(request: NextRequest) {
         p_media_url:       mediaUrl,
         p_media_type:      mediaType,
         p_auto_send:       true,
+        p_contact_key:     contactKey,
       });
       return NextResponse.json({ ok: true });
     }
 
-    // ── TIER 1-3: CAD draft via OpenRouter ───────────────────────────────────
+    // ── TIER 1-3: draft via OpenRouter ───────────────────────────────────
     let draftContent: string | null = null;
     try {
       // Build current message in OpenAI vision format
@@ -536,7 +826,7 @@ export async function POST(request: NextRequest) {
       currentBlocks.push({ type: 'text', text: fullText });
 
       const openaiMessages = [
-        { role: 'system', content: CAD_AGENT_SYSTEM_PROMPT },
+        { role: 'system', content: systemPrompt },
         ...historyMessages,
         {
           role: 'user' as const,
@@ -572,6 +862,7 @@ export async function POST(request: NextRequest) {
       p_media_url:       mediaUrl,
       p_media_type:      mediaType,
       p_auto_send:       false,
+      p_contact_key:     contactKey,
     });
     if (rpcError) console.error('/api/webhooks/whatsapp RPC error:', rpcError);
 
