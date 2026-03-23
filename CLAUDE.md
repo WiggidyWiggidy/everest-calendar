@@ -1,5 +1,45 @@
 # Everest Calendar — Claude Code Context
 
+## ⚠️ CRITICAL — Read Before ANY Change
+
+This system has TWO independent LLM pipelines processing WhatsApp messages:
+1. **Vercel webhook** (`/api/webhooks/whatsapp`) — calls Mistral + Haiku via OpenRouter
+2. **OpenClaw gateway** (local, port 18789) — calls Haiku via OpenRouter
+
+**They share the same OpenRouter API key.** Changes to either affect both. Before writing code:
+- How many LLM calls does this change trigger? Count them.
+- Could this cause double-billing? (Both pipelines processing same message)
+- What happens when it fails? Does it retry? How expensive is the fallback?
+- Owner messages → handled by OpenClaw ONLY. Webhook skips them.
+- External contacts (Imran, suppliers) → handled by webhook ONLY.
+
+**Supabase project:** `oksemtvjcfzicksmukmz` (NOT the old `fwvdcchsoaxkmodyjqzj`)
+**OpenRouter key:** shared across OpenClaw + Vercel webhook — spending limit MUST be set
+
+## System Architecture — Background Processes
+
+### LaunchAgents (macOS, always running)
+| Agent | Schedule | What it does | LLM cost |
+|-------|----------|-------------|----------|
+| `ai.openclaw.gateway` | KeepAlive | OpenClaw gateway + WhatsApp Web bridge | Per-message (~$0.02) |
+| `ai.openclaw.auto-chain` | Every 30 min | Checks `orchestrator_directives` for pending work, runs agents | $0.01-0.05 if directives found |
+| `ai.openclaw.morning-agents` | 7:00 AM | Runs all 4 Cowork agents sequentially | ~$0.08/run |
+| `ai.openclaw.orchestrator-cron` | 7:00 AM | Analyses agent state, proposes improvements | ~$0.02/run |
+| `ai.openclaw.digest-cron` | 6:00 AM | Daily progress digest to WhatsApp | ~$0.01/run |
+| `ai.openclaw.cost-monitor` | Every 2h | Checks OpenRouter spend, alerts if >$1/day | $0 (no LLM) |
+
+### Vercel Crons
+| Cron | Schedule | What it does |
+|------|----------|-------------|
+| `/api/cron/cowork-followup` | Daily midnight UTC | Follows up with silent contacts (calls Anthropic Haiku) |
+| `/api/cron/process-directives` | Daily 6am UTC | Processes queued directives |
+
+### Tables with Auto-Processors (inserting rows = triggering work = spending money)
+- `orchestrator_directives` (status=pending) → auto-chain picks up every 30 min
+- `system_proposals` (status=pending) → Tom APPROVE/REJECT via WhatsApp
+- `platform_inbox` (status=pending) → Tom approves in web UI
+- `task_backlog` (build_status=queued) → build watcher (currently DISABLED)
+
 ## Project Overview
 Everest Calendar is a product launch command centre for Everest Labs.
 The owner (Tom) is the sole user. Physical product: Ice Showers. Launch: March 29 2026.
