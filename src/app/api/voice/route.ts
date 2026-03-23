@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendAudioViaGreenApi, sendViaGreenApi } from '@/lib/greenApi';
-import { createClient } from '@supabase/supabase-js';
 
 // POST /api/voice — send voice note via Green API
 // Called by OpenClaw voice skill: uploads audio to Supabase Storage,
