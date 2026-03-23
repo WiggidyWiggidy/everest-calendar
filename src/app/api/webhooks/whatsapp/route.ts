@@ -470,7 +470,7 @@ async function handlePrefixRouting(text: string): Promise<boolean> {
             method: 'POST',
             headers: OR_HEADERS(),
             body: JSON.stringify({
-              model: 'anthropic/claude-haiku-4-5',
+              model: 'anthropic/claude-haiku-4.5',
               max_tokens: 400,
               messages: [
                 { role: 'system', content: `You are drafting a reply on the ${platform} platform. Follow these communication rules:\n${protocolPrompt}` },
@@ -863,7 +863,7 @@ export async function POST(request: NextRequest) {
         method: 'POST',
         headers: OR_HEADERS(),
         body: JSON.stringify({
-          model: 'anthropic/claude-haiku-4-5',  // vision-capable via OpenRouter
+          model: 'anthropic/claude-haiku-4.5',  // vision-capable via OpenRouter
           max_tokens: 400,
           messages: openaiMessages,
         }),
