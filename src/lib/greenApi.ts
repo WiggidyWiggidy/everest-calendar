@@ -27,7 +27,7 @@ export async function sendViaGreenApi(text: string, phone?: string): Promise<str
   const instanceId  = process.env.GREEN_API_INSTANCE_ID;
   const token       = process.env.GREEN_API_TOKEN;
   const cadPhone    = process.env.COWORK_CAD_PHONE;
-  const targetPhone = phone ?? cadPhone;
+  const targetPhone = (phone ?? cadPhone ?? '').replace(/^\+/, '');
 
   if (!instanceId || !token || !targetPhone) {
     return 'Green API not configured — add GREEN_API_INSTANCE_ID, GREEN_API_TOKEN, COWORK_CAD_PHONE to env vars';
