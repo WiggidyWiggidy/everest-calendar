@@ -46,6 +46,8 @@ export async function updateSession(request: NextRequest) {
     (request.nextUrl.pathname === '/api/system/propose' && request.method === 'POST') ||
     (request.nextUrl.pathname === '/api/agent-runs' && request.method === 'POST') ||
     (request.nextUrl.pathname.startsWith('/api/webhooks/openclaw')) ||
+    (request.nextUrl.pathname.startsWith('/api/approve')) ||
+    (request.nextUrl.pathname.startsWith('/approve')) ||
     (request.nextUrl.pathname.startsWith('/api/cron/') && (request.headers.get('x-cron-secret') !== null || request.nextUrl.searchParams.has('secret')));
 
   if (!user && !isAuthPage && !isApiKeyRoute) {
