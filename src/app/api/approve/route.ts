@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
 
   const items = await supabaseQuery(
     'platform_inbox',
-    `id=like.${id}*&status=eq.pending&select=id,contact_name,platform,draft_reply,ai_summary,contact_identifier&limit=1`
+    `id=like.${id}%25&status=eq.pending&draft_reply=not.is.null&select=id,contact_name,platform,draft_reply,ai_summary,contact_identifier&limit=1`
   );
 
   if (!Array.isArray(items) || items.length === 0) {
