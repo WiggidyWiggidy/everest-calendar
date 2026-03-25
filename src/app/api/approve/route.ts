@@ -22,16 +22,6 @@ async function supabaseRpc(fn: string, params: Record<string, unknown>) {
   return res.json();
 }
 
-async function supabaseQuery(table: string, query: string) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-    },
-  });
-  return res.json();
-}
-
 async function supabaseInsert(table: string, data: Record<string, unknown>) {
   await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
     method: 'POST',
@@ -50,24 +40,28 @@ export async function GET(request: NextRequest) {
   const id = request.nextUrl.searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
-  const items = await supabaseQuery(
-    'platform_inbox',
-    `id=like.${id}%25&status=eq.pending&draft_reply=not.is.null&select=id,contact_name,platform,draft_reply,ai_summary,contact_identifier&limit=1`
+  // UUID LIKE doesn't work in PostgREST. Fetch pending drafts via RPC and filter by prefix.
+  const allPending = await supabaseRpc('get_next_pending_draft', { p_max: 50 });
+  if (!Array.isArray(allPending)) {
+    return NextResponse.json({ error: 'Failed to fetch drafts' }, { status: 500 });
+  }
+
+  const match = allPending.find((i: Record<string, string>) =>
+    String(i.inbox_id || '').startsWith(id) || String(i.id_prefix || '') === id
   );
 
-  if (!Array.isArray(items) || items.length === 0) {
+  if (!match) {
     return NextResponse.json({ error: 'No pending item found' }, { status: 404 });
   }
 
-  const item = items[0];
   return NextResponse.json({
-    id: item.id,
-    short_id: item.id.substring(0, 4),
-    contact_name: item.contact_name,
-    platform: item.platform,
-    draft_reply: item.draft_reply,
-    ai_summary: item.ai_summary,
-    contact_identifier: item.contact_identifier,
+    id: match.inbox_id,
+    short_id: match.id_prefix,
+    contact_name: match.contact_name,
+    platform: match.platform,
+    draft_reply: match.draft_reply,
+    contact_identifier: match.contact_identifier,
+    priority: match.priority,
   });
 }
 
