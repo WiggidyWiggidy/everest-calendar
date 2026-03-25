@@ -38,7 +38,8 @@ function ApproveContent() {
       .catch(() => { setError('Failed to load draft'); setLoading(false); });
   }, [id]);
 
-  const tg = typeof window !== 'undefined' ? (window as any).Telegram?.WebApp : null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tg = typeof window !== 'undefined' ? (window as Record<string, any>).Telegram?.WebApp : null;
 
   async function handleApprove() {
     setSubmitting(true);
@@ -136,6 +137,7 @@ function ApproveContent() {
 export default function ApprovePage() {
   return (
     <>
+      {/* eslint-disable-next-line @next/next/no-sync-scripts */}
       <script src="https://telegram.org/js/telegram-web-app.js" />
       <Suspense fallback={<div style={styles.container}><p>Loading...</p></div>}>
         <ApproveContent />
