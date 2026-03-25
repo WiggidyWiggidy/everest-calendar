@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
   // UUID LIKE doesn't work in PostgREST. Fetch pending drafts via RPC and filter by prefix.
   const allPending = await supabaseRpc('get_next_pending_draft', { p_max: 50 });
   if (!Array.isArray(allPending)) {
-    return NextResponse.json({ error: 'Failed to fetch drafts' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch drafts', detail: allPending }, { status: 500 });
   }
 
   const match = allPending.find((i: Record<string, string>) =>
