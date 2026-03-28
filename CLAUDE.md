@@ -109,6 +109,7 @@ Scheduled tasks have DELAYED, INVISIBLE feedback. A bad prompt change won't visi
 | `task_backlog` | Build queue — build_status: queued/building/pr_raised/approved/rejected/failed ONLY |
 | `system_proposals` | Improvement proposals awaiting Tom's APPROVE/REJECT |
 | `agent_activity_log` | All agent run logs |
+| `supplier_conversations` | Per-supplier per-component negotiation tracking — phase, quotes, message history, target prices |
 
 ### External Message Routing (DO NOT confuse)
 - **Imran/Jay → Vercel webhook** `/api/webhooks/whatsapp` → Green API → platform_inbox for Tom approval
@@ -303,6 +304,8 @@ Example: "3 pending approvals:\n1. Follow-up to Jay about measurements — appro
 | "order all planned" | Batch draft for all planned, group by supplier, present batch |
 | "pipeline" / "supplier pipeline" | `rpc/get_supplier_pipeline` → every contact with state and next action |
 | "thread [name]" | `rpc/get_conversation_thread` → full conversation history |
+| "quote [supplier] [price]" | `rpc/log_supplier_message` with p_quote_usd → updates negotiation state, confirms new quote logged |
+| "compare [component]" | `rpc/get_supplier_comparison` → all suppliers who quoted, ranked by price |
 
 ### Approval Workflow (CRITICAL — READ CAREFULLY)
 
@@ -372,6 +375,7 @@ Steps:
 10. Find and click Send button
 11. Confirm to Tom: "Sent to [supplier] on Alibaba. I'll flag you when they reply."
 12. Log to observations: type='message_sent', contact_key, metadata={platform: 'alibaba'}
+13. Log to supplier_conversations: `rpc/log_supplier_message` with supplier_key, component_name, direction='outbound', content=[message], channel='alibaba'
 
 **If Chrome fails at any step:** Don't retry more than once. Tell Tom: "Chrome couldn't reach [supplier]. Here's the message to paste:\n\n[message text]\n\nAlibaba link: [url]"
 
@@ -383,6 +387,29 @@ Steps:
 - Jack Ye (Fuzhan): fuzhan-tops.en.alibaba.com
 
 **For product-page URLs** (like alibaba.com/product-detail/...): navigate to the product page, the "Chat Now" button should be on the product listing.
+
+### Supplier Conversation Tracking
+
+**Both Chrome active mode and email passive mode write to `supplier_conversations` table.**
+
+**Before drafting any supplier message:**
+1. Query `rpc/get_conversation_thread` for this supplier to get full history
+2. Read negotiation phase, quote trajectory, and previous messages
+3. Cross-reference with `product_context` (negotiation_playbook, chinese_comms_protocol)
+4. Draft response with reasoning
+
+**After sending any supplier message (Chrome or manual):**
+1. Call `rpc/log_supplier_message` with: supplier_key, component_name, direction, content, channel
+2. If supplier quoted a price: include p_quote_usd to update the quote tracking
+3. If phase changed (e.g., agreed to samples): UPDATE supplier_conversations SET negotiation_phase = '[new_phase]'
+
+**When processing inbound supplier messages:**
+1. Match supplier by name/key
+2. Log inbound message: `rpc/log_supplier_message` with direction='inbound'
+3. Extract any quoted prices and log them
+4. Create platform_inbox item with full negotiation context for Tom's approval
+
+**Supplier keys:** steven, ally, stella, demi, jack, jay
 
 ### Upwork Chrome Send Protocol
 
