@@ -29,6 +29,7 @@ import {
   DollarSign,
   ShieldAlert,
   ExternalLink,
+  Inbox,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -84,17 +85,20 @@ export default function DashboardPage() {
   const [criticalPath, setCriticalPath] = useState<{
     topCandidatesUnmessaged: number;
     pendingCoworkDrafts: number;
+    pendingInbox: number;
     loading: boolean;
-  }>({ topCandidatesUnmessaged: 0, pendingCoworkDrafts: 0, loading: true });
+  }>({ topCandidatesUnmessaged: 0, pendingCoworkDrafts: 0, pendingInbox: 0, loading: true });
 
   useEffect(() => {
     Promise.all([
       fetch('/api/candidates?tier=top&status=new').then((r) => r.ok ? r.json() : { candidates: [] }),
       fetch('/api/cowork?status=draft').then((r) => r.ok ? r.json() : { messages: [] }),
-    ]).then(([cands, cowork]) => {
+      fetch('/api/inbox?status=pending').then((r) => r.ok ? r.json() : { pendingCount: 0 }),
+    ]).then(([cands, cowork, inbox]) => {
       setCriticalPath({
         topCandidatesUnmessaged: (cands.candidates ?? []).length,
         pendingCoworkDrafts:     (cowork.messages ?? []).length,
+        pendingInbox:            inbox.pendingCount ?? 0,
         loading: false,
       });
     }).catch(() => setCriticalPath((p) => ({ ...p, loading: false })));
@@ -272,6 +276,25 @@ export default function DashboardPage() {
             {format(launchDate!, 'MMM d')}
           </span>
         </div>
+      )}
+
+      {/* ── Pending approvals shortcut ──────────────────────────────────────── */}
+      {criticalPath.pendingInbox > 0 && (
+        <a
+          href="/inbox"
+          className="mb-4 flex items-center justify-between rounded-xl bg-indigo-50 border-2 border-indigo-200 px-4 py-3 hover:bg-indigo-100 transition-colors group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 bg-indigo-600 rounded-lg flex items-center justify-center">
+              <Inbox className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-indigo-900">Pending Approvals</p>
+              <p className="text-xs text-indigo-600">{criticalPath.pendingInbox} item{criticalPath.pendingInbox !== 1 ? 's' : ''} waiting for your decision</p>
+            </div>
+          </div>
+          <ExternalLink className="h-4 w-4 text-indigo-400 group-hover:text-indigo-600 transition-colors" />
+        </a>
       )}
 
       {/* ── Fix 2: Clickable stat cards ───────────────────────────────────────── */}
