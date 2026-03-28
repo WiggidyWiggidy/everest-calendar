@@ -153,7 +153,7 @@ export default function SwipeCard({
         transition,
         opacity: isFlying ? 0 : stackOpacity,
         touchAction: isEditing ? 'auto' : 'none',
-        top: '50%',
+        top: '35%',
       }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
