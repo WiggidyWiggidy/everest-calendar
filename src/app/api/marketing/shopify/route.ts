@@ -151,6 +151,65 @@ function generateSetup3ColHTML(s: PageSection): string {
   </section>`;
 }
 
+function generateCountdownTimerHTML(s: PageSection): string {
+  const launchDate = s.cta_url || '2026-04-15T00:00:00'; // default launch date
+  return `
+  <section class="lp-section lp-countdown" style="background:#0f1419;color:#fff;text-align:center;">
+    <h2 class="lp-h2 lp-h2-light">${s.headline}</h2>
+    <p class="lp-lead-light">${s.body}</p>
+    <div id="lp-timer" style="display:flex;gap:24px;justify-content:center;margin:32px 0;">
+      <div><span class="lp-timer-num" id="lp-days">--</span><span class="lp-timer-label">Days</span></div>
+      <div><span class="lp-timer-num" id="lp-hours">--</span><span class="lp-timer-label">Hours</span></div>
+      <div><span class="lp-timer-num" id="lp-mins">--</span><span class="lp-timer-label">Minutes</span></div>
+      <div><span class="lp-timer-num" id="lp-secs">--</span><span class="lp-timer-label">Seconds</span></div>
+    </div>
+    ${s.cta_text ? `<a href="#lp-email-form" class="lp-btn-large">${s.cta_text}</a>` : ''}
+  </section>
+  <script>
+  (function(){
+    var end=new Date("${launchDate}").getTime();
+    function u(){var n=end-Date.now();if(n<0)return;
+      document.getElementById("lp-days").textContent=Math.floor(n/864e5);
+      document.getElementById("lp-hours").textContent=Math.floor((n%864e5)/36e5);
+      document.getElementById("lp-mins").textContent=Math.floor((n%36e5)/6e4);
+      document.getElementById("lp-secs").textContent=Math.floor((n%6e4)/1e3);
+    }u();setInterval(u,1000);
+  })();
+  </script>`;
+}
+
+function generateEmailCaptureHTML(s: PageSection): string {
+  const apiUrl = 'https://everest-calendar.vercel.app/api/marketing/subscribe';
+  return `
+  <section class="lp-section" style="text-align:center;max-width:560px;margin:0 auto;padding:60px 20px;" id="lp-email-form">
+    <h2 class="lp-h2">${s.headline}</h2>
+    <p class="lp-lead">${s.body}</p>
+    <form id="lp-subscribe" style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:24px;">
+      <input type="email" id="lp-email" placeholder="Enter your email" required
+        style="padding:14px 20px;border:2px solid #e8ecf0;border-radius:40px;font-size:1rem;width:280px;outline:none;" />
+      <button type="submit" class="lp-btn-primary">${s.cta_text || 'Join Waitlist'}</button>
+    </form>
+    <p id="lp-sub-msg" style="margin-top:12px;font-size:0.9rem;color:#6b7280;display:none;"></p>
+  </section>
+  <script>
+  document.getElementById("lp-subscribe").addEventListener("submit",function(e){
+    e.preventDefault();
+    var em=document.getElementById("lp-email").value;
+    var msg=document.getElementById("lp-sub-msg");
+    var params=new URLSearchParams(window.location.search);
+    fetch("${apiUrl}",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({email:em,source_page:window.location.pathname,
+        utm_source:params.get("utm_source"),utm_medium:params.get("utm_medium"),
+        utm_campaign:params.get("utm_campaign"),utm_content:params.get("utm_content")})
+    }).then(function(r){return r.json()}).then(function(d){
+      if(d.subscribed){msg.textContent="You're on the list!";msg.style.color="#059669";}
+      else{msg.textContent="Something went wrong. Try again.";}
+      msg.style.display="block";
+    }).catch(function(){msg.textContent="Network error. Try again.";msg.style.display="block";});
+  });
+  </script>`;
+}
+
 interface GenerateContext {
   productName?: string;
 }
@@ -166,6 +225,8 @@ function generateSectionHTML(section: PageSection, ctx: GenerateContext = {}): s
     faq: generateFAQHTML,
     cta_banner: generateCTABannerHTML,
     setup_3col: generateSetup3ColHTML,
+    countdown_timer: generateCountdownTimerHTML,
+    email_capture: generateEmailCaptureHTML,
   };
   return (generators[section.type] ?? generateHeroHTML)(section);
 }
@@ -238,6 +299,9 @@ const LP_STYLES = `
   .lp-faq-a { padding: 0 24px 20px; color: #4a5568; line-height: 1.7; }
   /* ── CTA Banner (dark) ───────────────────────────────────── */
   .lp-cta-banner { background: #0f1419; color: #fff; padding: 100px 48px; text-align: center; }
+  /* ── Countdown Timer ───────────────────────────────────── */
+  .lp-timer-num { display: block; font-size: 3rem; font-weight: 800; letter-spacing: -0.04em; }
+  .lp-timer-label { display: block; font-size: 0.75rem; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.1em; }
   /* ── Sticky Buy Bar ──────────────────────────────────────── */
   .lp-sticky-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #0f1419; color: #fff; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; z-index: 9999; box-shadow: 0 -4px 24px rgba(0,0,0,0.25); transform: translateY(100%); transition: transform 0.3s ease; }
   .lp-sticky-info { display: flex; flex-direction: column; gap: 2px; }
