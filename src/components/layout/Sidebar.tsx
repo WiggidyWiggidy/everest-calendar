@@ -35,6 +35,7 @@ const navItems = [
   { href: '/calendar',          label: 'Calendar',        icon: Calendar },
   { href: '/marketing',         label: 'Marketing',       icon: TrendingUp },
   { href: '/candidates',        label: 'Candidates',      icon: Users },
+  { href: '/suppliers',          label: 'Suppliers',        icon: Factory },
   { href: '/manufacturers',     label: 'Manufacturers',   icon: Factory },
   { href: '/cowork',            label: 'Cowork',          icon: MessageSquare },
   { href: '/agents',            label: 'Agents',          icon: Bot },
