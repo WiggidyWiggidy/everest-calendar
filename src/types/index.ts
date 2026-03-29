@@ -327,7 +327,8 @@ export interface MarketingAsset {
 export type LandingPageStatus = 'monitoring' | 'testing' | 'paused' | 'archived';
 export type ProposalStatus = 'pending' | 'approved' | 'user_written' | 'building' | 'live' | 'rejected';
 export type MediaAssetCategory = 'product_hero' | 'lifestyle' | 'feature' | 'social_proof' | 'packaging' | 'ingredient' | 'other';
-export type SectionType = 'hero' | 'key_benefits' | 'how_it_works' | 'science_proof' | 'social_proof' | 'comparison' | 'faq' | 'cta_banner' | 'setup_3col';
+export type SectionType = 'hero' | 'key_benefits' | 'how_it_works' | 'science_proof' | 'social_proof' | 'comparison' | 'faq' | 'cta_banner' | 'setup_3col' | 'article_body' | 'author_bio' | 'related_products' | 'email_capture';
+export type PageType = 'product' | 'blog' | 'landing';
 
 export interface LandingPage {
   id: string;
@@ -400,6 +401,79 @@ export interface PageSection {
   image_url?: string;
   cta_text?: string;
   cta_url?: string;
+}
+
+// ── Marketing System V2 ────────────────────────────────────────────────────
+
+export type AdTemplateFormat = '1080x1080' | '1200x628' | '1080x1920' | 'custom';
+export type AdTemplateLayout = 'product_centered' | 'lifestyle' | 'before_after' | 'testimonial' | 'offer' | 'minimal';
+export type AdCreativeStatus = 'draft' | 'pending_approval' | 'approved' | 'live' | 'paused' | 'completed';
+export type MarketingProposalType = 'pause_ad' | 'scale_ad' | 'new_creative' | 'page_variant' | 'new_blog' | 'budget_realloc' | 'new_experiment' | 'new_campaign';
+export type MarketingProposalStatus = 'pending' | 'approved' | 'rejected' | 'executed' | 'expired';
+
+export interface AdTemplate {
+  id: string;
+  user_id: string;
+  name: string;
+  format: AdTemplateFormat;
+  layout_type: AdTemplateLayout;
+  zones: Record<string, unknown>;
+  background_color: string;
+  template_image_url: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdCreative {
+  id: string;
+  user_id: string;
+  experiment_id: string | null;
+  template_id: string | null;
+  media_asset_id: string | null;
+  meta_ad_id: string | null;
+  meta_campaign_id: string | null;
+  meta_adset_id: string | null;
+  headline: string | null;
+  body_copy: string | null;
+  cta_text: string | null;
+  target_audience: Record<string, unknown> | null;
+  daily_budget: number | null;
+  status: AdCreativeStatus;
+  composite_image_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdMetricsDaily {
+  id: string;
+  ad_creative_id: string;
+  date: string;
+  impressions: number;
+  clicks: number;
+  spend: number;
+  ctr: number | null;
+  cpc: number | null;
+  cpm: number | null;
+  purchases: number;
+  revenue: number;
+  roas: number | null;
+  created_at: string;
+}
+
+export interface MarketingProposal {
+  id: string;
+  user_id: string;
+  proposal_type: MarketingProposalType;
+  title: string;
+  reasoning: string;
+  action_data: Record<string, unknown>;
+  metrics_snapshot: Record<string, unknown> | null;
+  priority: 'high' | 'medium' | 'low';
+  status: MarketingProposalStatus;
+  inbox_item_id: string | null;
+  executed_at: string | null;
+  created_at: string;
 }
 
 export interface AnalystProposalPayload {

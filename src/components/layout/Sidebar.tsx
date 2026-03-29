@@ -8,17 +8,13 @@ import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import {
   LayoutDashboard,
-  Calendar,
-  Bot,
   Settings,
   LogOut,
   Mountain,
   Menu,
   X,
-  Rocket,
   TrendingUp,
   Users,
-  MessageSquare,
   Factory,
   Inbox,
   Activity,
@@ -28,18 +24,13 @@ import { useState, useEffect } from 'react';
 
 // Navigation items
 const navItems = [
-  { href: '/dashboard',         label: 'Dashboard',       icon: LayoutDashboard },
-  { href: '/inbox',             label: 'Inbox',           icon: Inbox },
-  { href: '/command-center',    label: 'Command Center',  icon: Activity },
-  { href: '/dashboard/launch',  label: 'Launch',          icon: Rocket },
-  { href: '/calendar',          label: 'Calendar',        icon: Calendar },
-  { href: '/marketing',         label: 'Marketing',       icon: TrendingUp },
-  { href: '/candidates',        label: 'Candidates',      icon: Users },
-  { href: '/suppliers',          label: 'Suppliers',        icon: Factory },
-  { href: '/manufacturers',     label: 'Manufacturers',   icon: Factory },
-  { href: '/cowork',            label: 'Cowork',          icon: MessageSquare },
-  { href: '/agents',            label: 'Agents',          icon: Bot },
-  { href: '/settings',          label: 'Settings',        icon: Settings },
+  { href: '/dashboard',      label: 'Dashboard',    icon: LayoutDashboard },
+  { href: '/inbox',          label: 'Inbox',        icon: Inbox },
+  { href: '/marketing',     label: 'Marketing',    icon: TrendingUp },
+  { href: '/operations',    label: 'Operations',   icon: Activity },
+  { href: '/supply-chain',  label: 'Supply Chain', icon: Factory },
+  { href: '/team',          label: 'Team',         icon: Users },
+  { href: '/settings',      label: 'Settings',     icon: Settings },
 ];
 
 interface SidebarProps {
