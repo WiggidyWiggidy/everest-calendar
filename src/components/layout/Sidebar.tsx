@@ -18,18 +18,18 @@ import {
   Factory,
   Inbox,
   Activity,
+  Sun,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 
 // Navigation items
 const navItems = [
-  { href: '/dashboard',      label: 'Dashboard',    icon: LayoutDashboard },
+  { href: '/today',          label: 'Today',        icon: Sun },
   { href: '/inbox',          label: 'Inbox',        icon: Inbox },
+  { href: '/suppliers',     label: 'Suppliers',    icon: Factory },
   { href: '/marketing',     label: 'Marketing',    icon: TrendingUp },
-  { href: '/operations',    label: 'Operations',   icon: Activity },
-  { href: '/supply-chain',  label: 'Supply Chain', icon: Factory },
-  { href: '/team',          label: 'Team',         icon: Users },
+  { href: '/dashboard',      label: 'Calendar',     icon: LayoutDashboard },
   { href: '/settings',      label: 'Settings',     icon: Settings },
 ];
 
@@ -79,9 +79,7 @@ export default function Sidebar({ userEmail }: SidebarProps) {
       {/* Navigation links */}
       <nav className="flex-1 px-3 space-y-1">
         {navItems.map((item) => {
-          const isActive = item.href === '/dashboard'
-            ? pathname === '/dashboard'
-            : pathname === item.href || pathname.startsWith(item.href + '/');
+          const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
           return (
             <a
               key={item.href}
