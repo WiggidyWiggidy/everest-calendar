@@ -22,8 +22,11 @@ export async function GET(request: NextRequest) {
 
   if (status === 'pending') {
     query = query.eq('status', 'pending');
+  } else if (status === 'ready') {
+    // Ready to send: approved/edited items on non-WhatsApp platforms (need manual send)
+    query = query.in('status', ['approved', 'edited']).in('platform', ['alibaba', 'upwork']);
   } else if (status === 'done') {
-    query = query.in('status', ['approved', 'edited', 'rejected', 'snoozed']);
+    query = query.in('status', ['approved', 'edited', 'rejected', 'snoozed', 'transitioned']);
   } else if (status) {
     query = query.eq('status', status);
   }

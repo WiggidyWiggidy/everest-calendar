@@ -3,12 +3,12 @@
 // ============================================
 // /inbox — Tinder-Style Swipe Approval
 // Swipe right = approve. Swipe left = skip.
-// No buttons. Pure gesture-based decisions.
+// "Ready to Send" tab = copy-paste delivery for Alibaba.
 // ============================================
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { PlatformInboxItem, INBOX_PLATFORM_COLORS, InboxPlatform } from '@/types';
 import { cn } from '@/lib/utils';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, Copy, ExternalLink, Check } from 'lucide-react';
 import SwipeCard from '@/components/inbox/SwipeCard';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -24,16 +24,20 @@ interface NegotiationContext {
 }
 
 type InboxFilter = 'all' | InboxPlatform;
+type InboxTab = 'pending' | 'ready' | 'done';
 
 // ── Main Page ────────────────────────────────────────────────────────────────
 export default function InboxPage() {
   const [items, setItems] = useState<PlatformInboxItem[]>([]);
+  const [readyItems, setReadyItems] = useState<PlatformInboxItem[]>([]);
   const [negotiations, setNegotiations] = useState<Record<string, NegotiationContext>>({});
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<'pending' | 'done'>('pending');
+  const [tab, setTab] = useState<InboxTab>('pending');
   const [filter, setFilter] = useState<InboxFilter>('all');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [markingSent, setMarkingSent] = useState<string | null>(null);
 
-  // Fetch items
+  // Fetch items for pending/done tabs
   const fetchItems = useCallback(async (status: 'pending' | 'done') => {
     try {
       const res = await fetch(`/api/inbox?status=${status}`);
@@ -75,16 +79,62 @@ export default function InboxPage() {
     }
   }, []);
 
+  // Fetch "ready to send" items — approved/edited Alibaba items not yet sent
+  const fetchReadyItems = useCallback(async () => {
+    try {
+      const res = await fetch('/api/inbox?status=ready');
+      const json = await res.json();
+      if (json.items) setReadyItems(json.items);
+    } catch (err) {
+      console.error('Failed to fetch ready items:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     setLoading(true);
-    fetchItems(tab);
-  }, [tab, fetchItems]);
+    if (tab === 'ready') {
+      fetchReadyItems();
+    } else {
+      fetchItems(tab === 'pending' ? 'pending' : 'done');
+    }
+  }, [tab, fetchItems, fetchReadyItems]);
 
   // Poll every 30s
   useEffect(() => {
-    const interval = setInterval(() => fetchItems(tab), 30_000);
+    const interval = setInterval(() => {
+      if (tab === 'ready') fetchReadyItems();
+      else fetchItems(tab === 'pending' ? 'pending' : 'done');
+    }, 30_000);
     return () => clearInterval(interval);
-  }, [tab, fetchItems]);
+  }, [tab, fetchItems, fetchReadyItems]);
+
+  // Copy message to clipboard
+  async function handleCopy(id: string, text: string) {
+    await navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  }
+
+  // Mark as sent — transitions item so it leaves the ready queue
+  async function handleMarkSent(id: string) {
+    setMarkingSent(id);
+    try {
+      const res = await fetch(`/api/inbox/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'mark_sent' }),
+      });
+      if (res.ok) {
+        setReadyItems((prev) => prev.filter((i) => i.id !== id));
+      }
+    } catch (err) {
+      console.error('Mark sent failed:', err);
+    } finally {
+      setMarkingSent(null);
+    }
+  }
 
   // Filtered items
   const filteredItems = useMemo(() => {
@@ -153,20 +203,33 @@ export default function InboxPage() {
       <div className="bg-white border-b border-slate-100 pt-14 lg:pt-3 pb-2 px-4 z-10">
         {/* Tabs */}
         <div className="flex items-center gap-1 mb-2">
-          {(['pending', 'done'] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => { setTab(t); setFilter('all'); }}
-              className={cn(
-                'px-3 py-1.5 text-sm font-medium rounded-lg transition-colors',
-                tab === t
-                  ? 'bg-slate-900 text-white'
-                  : 'text-slate-400 hover:text-slate-700'
-              )}
-            >
-              {t === 'pending' ? `Pending (${filteredItems.length})` : 'Done'}
-            </button>
-          ))}
+          <button
+            onClick={() => { setTab('pending'); setFilter('all'); }}
+            className={cn(
+              'px-3 py-1.5 text-sm font-medium rounded-lg transition-colors',
+              tab === 'pending' ? 'bg-slate-900 text-white' : 'text-slate-400 hover:text-slate-700'
+            )}
+          >
+            Pending ({filteredItems.length})
+          </button>
+          <button
+            onClick={() => { setTab('ready'); setFilter('all'); }}
+            className={cn(
+              'px-3 py-1.5 text-sm font-medium rounded-lg transition-colors',
+              tab === 'ready' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-slate-700'
+            )}
+          >
+            Ready to Send{readyItems.length > 0 ? ` (${readyItems.length})` : ''}
+          </button>
+          <button
+            onClick={() => { setTab('done'); setFilter('all'); }}
+            className={cn(
+              'px-3 py-1.5 text-sm font-medium rounded-lg transition-colors',
+              tab === 'done' ? 'bg-slate-900 text-white' : 'text-slate-400 hover:text-slate-700'
+            )}
+          >
+            Done
+          </button>
         </div>
 
         {/* Platform filters */}
@@ -199,6 +262,97 @@ export default function InboxPage() {
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-slate-600" />
+          </div>
+        ) : tab === 'ready' ? (
+          /* Ready to Send tab — copy-paste delivery for Alibaba */
+          <div className="p-4 space-y-3 overflow-y-auto h-full">
+            {readyItems.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-center gap-4 px-8">
+                <CheckCircle2 className="h-20 w-20 text-green-400" />
+                <div>
+                  <p className="text-xl font-semibold text-slate-700">All sent</p>
+                  <p className="text-slate-400 text-sm mt-1">
+                    Approve messages in the Pending tab. They&apos;ll appear here for sending.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              readyItems.map((item) => {
+                const messageText = item.final_reply ?? item.draft_reply ?? '';
+                const alibabaUrl = item.contact_identifier ?? '';
+                const isCopied = copiedId === item.id;
+                const isMarking = markingSent === item.id;
+
+                return (
+                  <div key={item.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                    {/* Supplier header */}
+                    <div className="px-4 py-3 bg-orange-50 border-b border-orange-100">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold text-slate-800 text-sm">{item.contact_name ?? 'Unknown Supplier'}</p>
+                          {item.ai_summary && (
+                            <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{item.ai_summary}</p>
+                          )}
+                        </div>
+                        <span className={cn(
+                          'text-xs px-2 py-0.5 rounded-full font-medium',
+                          item.status === 'edited' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
+                        )}>
+                          {item.status === 'edited' ? 'Edited' : 'Approved'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Message text — the copy target */}
+                    <div className="px-4 py-3">
+                      <div className="bg-slate-50 rounded-lg p-3 text-sm text-slate-700 whitespace-pre-wrap font-mono leading-relaxed">
+                        {messageText}
+                      </div>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="px-4 pb-3 flex gap-2">
+                      {/* Copy message */}
+                      <button
+                        onClick={() => handleCopy(item.id, messageText)}
+                        className={cn(
+                          'flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all',
+                          isCopied
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-slate-900 text-white hover:bg-slate-800 active:scale-[0.98]'
+                        )}
+                      >
+                        {isCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                        {isCopied ? 'Copied!' : 'Copy Message'}
+                      </button>
+
+                      {/* Open Alibaba chat */}
+                      {alibabaUrl && (
+                        <a
+                          href={alibabaUrl.startsWith('http') ? alibabaUrl : `https://${alibabaUrl}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-orange-100 text-orange-700 hover:bg-orange-200 transition-colors"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                          Open Chat
+                        </a>
+                      )}
+
+                      {/* Mark as sent */}
+                      <button
+                        onClick={() => handleMarkSent(item.id)}
+                        disabled={isMarking}
+                        className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-green-100 text-green-700 hover:bg-green-200 transition-colors disabled:opacity-50"
+                      >
+                        <Check className="h-4 w-4" />
+                        {isMarking ? '...' : 'Sent'}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         ) : tab === 'done' ? (
           /* Done tab - simple list */

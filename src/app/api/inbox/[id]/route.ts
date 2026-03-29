@@ -255,5 +255,40 @@ export async function PATCH(
     return NextResponse.json({ item: updated });
   }
 
-  return NextResponse.json({ error: 'Invalid action. Use: approve | edit | reject | snooze' }, { status: 400 });
+  if (action === 'mark_sent') {
+    // Tom manually sent this message (copy-paste to Alibaba/Upwork)
+    const { data: updated, error: updateErr } = await supabase
+      .from('platform_inbox')
+      .update({ status: 'transitioned', updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+    if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 });
+
+    // Log the supplier message if this was an Alibaba item
+    if (item.platform === 'alibaba' && item.contact_name) {
+      try {
+        await supabase.rpc('log_supplier_message', {
+          p_supplier_key: item.contact_name,
+          p_component_name: null,
+          p_direction: 'outbound',
+          p_content: item.final_reply ?? item.draft_reply ?? '',
+          p_channel: 'alibaba',
+        });
+      } catch { /* non-critical — log but don't block */ }
+    }
+
+    await logAgentActivity({
+      agentName:    'tom',
+      agentSource:  'cowork',
+      activityType: 'approval',
+      description:  `Message manually sent on ${item.platform} to ${item.contact_name ?? item.contact_identifier}`,
+      domain:       item.platform === 'alibaba' ? 'supplier' : 'hiring',
+      metadata:     { inbox_id: id, platform: item.platform, delivery: 'manual_copy_paste' },
+    });
+
+    return NextResponse.json({ item: updated });
+  }
+
+  return NextResponse.json({ error: 'Invalid action. Use: approve | edit | reject | snooze | mark_sent' }, { status: 400 });
 }

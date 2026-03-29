@@ -84,6 +84,57 @@ Scheduled tasks have DELAYED, INVISIBLE feedback. A bad prompt change won't visi
 
 ---
 
+## Guardrails (added 29 Mar 2026 — after failure analysis)
+
+### 1. Alibaba Delivery = Copy-Paste (NOT Chrome Automation)
+Chrome MCP has timed out on every Alibaba send attempt since 26 Mar. Do not attempt Chrome-based Alibaba messaging.
+
+**The flow:**
+- ATLAS drafts messages, Tom approves via swipe inbox
+- Approved messages appear in the "Ready to Send" tab at `/inbox`
+- Tom copies the message (one-tap), opens the supplier's Alibaba chat (one-tap), pastes, sends
+- Tom clicks "Sent" button to log delivery and advance the negotiation phase
+
+**Every first-contact message must include a WhatsApp bridge line:**
+> For faster communication, feel free to reach me on WhatsApp: +86 13002019335
+
+**Goal:** Get every supplier onto WhatsApp within 1-2 messages. Once on WhatsApp, the full automation stack works (Green API sends/receives automatically).
+
+**If a future session tries to build Chrome-based Alibaba send automation:** Stop. Read this section. The last 3 days of attempts all failed. Invest that time elsewhere.
+
+### 2. Business Impact Gate (every session)
+Before building anything, answer: **"What business outcome does this produce?"**
+
+- "Tom can send 21 messages to suppliers" = YES
+- "Swipe cards look nicer" = NO (not until delivery works)
+- "Version control for CAD" = YES (but only if files persist after session ends)
+
+**Session structure:**
+1. First 10 min: identify the ONE blocker that's furthest upstream
+2. 80% of session on that blocker
+3. 20% on downstream polish (only after blocker is resolved or waiting on Tom)
+
+### 3. Proof-of-Existence Rule
+Before claiming "X was built":
+- `ls` the file to prove it exists on disk
+- Query the DB to prove the row exists
+- Run the function to prove it works
+
+Never claim "built" or "fixed" based on what you *wrote* -- only based on what you *verified*.
+
+### 4. CAD Files Live in `cad/shell/`
+All shell CAD Python files live in `everest-calendar/cad/shell/`. Real git, real PRs, real persistence.
+
+**Before ANY geometry or dimension change:** Enter plan mode. The plan must state:
+- What the current baseline is (read from git)
+- What's changing and why
+- What validation confirms it didn't regress (clearance checks, DXF visual)
+
+### 5. Explain-as-You-Go
+Every plan and every output should teach Tom what's happening and why. Show the logic chain. No black boxes. Tom should be able to spot fatal flaws before execution starts.
+
+---
+
 ## 🔴 Instant Context — Read This First
 
 **Product**: ISU-001 portable ice shower | **Launch**: 29 Mar 2026 | **Timezone**: WITA (UTC+8)
@@ -202,17 +253,13 @@ For ANY operation that might take >3 seconds (Chrome, web search, large DB query
 2. Do the operation
 3. Send the result as a NEW message (new messages ping Tom's phone; edits don't)
 
-**Chrome fallback strategy (copy-paste is PRIMARY):**
+**Alibaba delivery (copy-paste ONLY — Chrome deprecated 29 Mar):**
 When `send_channel` is `chrome_alibaba` after an approval:
-1. FIRST: Send Tom the message text + Alibaba chat link as a Telegram message: "Message ready for [supplier]:\n\n[message text]\n\nChat link: [url]"
-2. THEN: Attempt Chrome send in background (if Chrome MCP is available)
-3. If Chrome succeeds: Edit the message to add "✓ Sent on Alibaba"
-4. If Chrome fails or times out: Do nothing — Tom already has the copy-paste version
+1. Send Tom the message text + Alibaba chat link as a Telegram message
+2. Tell Tom: "Message ready in your inbox Ready to Send tab, or copy from here."
+3. Do NOT attempt Chrome send — it times out on Alibaba every time since 26 Mar
 
-**Never hang on Chrome MCP:**
-- Maximum 2 Chrome tool calls per operation. If the first 2 fail, stop and give Tom the copy-paste.
-- If Chrome MCP returns an error, IMMEDIATELY fall back. Don't retry.
-- Never navigate to more than 1 Alibaba supplier per approval. Batch sends = sequential, with 30s gaps.
+**Upwork delivery:** Chrome send for Upwork is still viable (lighter site). Use Chrome fallback for Upwork only.
 
 ### Presenting Drafts with Inline Keyboards
 
