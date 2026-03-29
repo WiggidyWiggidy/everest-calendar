@@ -155,7 +155,7 @@ interface GenerateContext {
 }
 
 function generateSectionHTML(section: PageSection, ctx: GenerateContext = {}): string {
-  const generators: Record<SectionType, (s: PageSection) => string> = {
+  const generators: Partial<Record<SectionType, (s: PageSection) => string>> = {
     hero: generateHeroHTML,
     key_benefits: generateKeyBenefitsHTML,
     how_it_works: generateHowItWorksHTML,
