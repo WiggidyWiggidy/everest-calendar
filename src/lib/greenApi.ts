@@ -24,13 +24,18 @@ export async function downloadGreenApiMedia(
 }
 
 export async function sendViaGreenApi(text: string, phone?: string): Promise<string | null> {
+  // SAFETY: phone must be explicitly provided. Never fall back to a default number.
+  // This prevents messages intended for Alibaba/Upwork from being sent to WhatsApp contacts.
+  if (!phone) {
+    return 'No phone number provided. Cannot send WhatsApp message without an explicit recipient.';
+  }
+
   const instanceId  = process.env.GREEN_API_INSTANCE_ID;
   const token       = process.env.GREEN_API_TOKEN;
-  const cadPhone    = process.env.COWORK_CAD_PHONE;
-  const targetPhone = (phone ?? cadPhone ?? '').replace(/^\+/, '');
+  const targetPhone = phone.replace(/^\+/, '');
 
   if (!instanceId || !token || !targetPhone) {
-    return 'Green API not configured — add GREEN_API_INSTANCE_ID, GREEN_API_TOKEN, COWORK_CAD_PHONE to env vars';
+    return 'Green API not configured. Add GREEN_API_INSTANCE_ID and GREEN_API_TOKEN to env vars.';
   }
 
   const url = `https://api.green-api.com/waInstance${instanceId}/sendMessage/${token}`;
