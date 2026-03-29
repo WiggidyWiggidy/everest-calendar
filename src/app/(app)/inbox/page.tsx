@@ -141,8 +141,11 @@ export default function InboxPage() {
     return () => window.removeEventListener('keydown', handleKey);
   });
 
-  // Top 3 items for card stack
-  const stackItems = filteredItems.slice(0, 3);
+  // Batch to 5, show top 3 as card stack
+  const BATCH_SIZE = 5;
+  const batchedItems = filteredItems.slice(0, BATCH_SIZE);
+  const stackItems = batchedItems.slice(0, 3);
+  // Wave tracking: filteredItems.length / BATCH_SIZE waves total
 
   return (
     <div className="h-[100dvh] flex flex-col bg-slate-50 -m-6 lg:-m-0 -mt-16 lg:-mt-0">
@@ -161,7 +164,7 @@ export default function InboxPage() {
                   : 'text-slate-400 hover:text-slate-700'
               )}
             >
-              {t === 'pending' ? `Pending (${items.length})` : 'Done'}
+              {t === 'pending' ? `Pending (${filteredItems.length})` : 'Done'}
             </button>
           ))}
         </div>
