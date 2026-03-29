@@ -14,8 +14,9 @@ import { AnalystTab } from './AnalystTab';
 import { PageBuilderTab } from './PageBuilderTab';
 import { AdsTab } from './AdsTab';
 import { BlogTab } from './BlogTab';
+import { VelocityTab } from './VelocityTab';
 
-type Tab = 'overview' | 'ads' | 'blog' | 'pages' | 'analyst' | 'assets' | 'page_builder' | 'experiments' | 'insights' | 'sources';
+type Tab = 'overview' | 'velocity' | 'ads' | 'blog' | 'pages' | 'analyst' | 'assets' | 'page_builder' | 'experiments' | 'insights' | 'sources';
 
 interface SourceStatus { connected: boolean; missing: string[] }
 interface SourcesData {
@@ -101,6 +102,7 @@ export function MarketingDashboard() {
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'overview', label: 'Overview' },
+    { key: 'velocity', label: 'Velocity' },
     { key: 'ads', label: 'Ads' },
     { key: 'blog', label: 'Blog' },
     { key: 'pages', label: `Pages${pages.length > 0 ? ` (${pages.length})` : ''}` },
@@ -151,6 +153,7 @@ export function MarketingDashboard() {
         {activeTab === 'overview' && (
           <OverviewTab today={today} history={history} onMetricsSaved={load} />
         )}
+        {activeTab === 'velocity' && <VelocityTab />}
         {activeTab === 'ads' && <AdsTab />}
         {activeTab === 'blog' && <BlogTab />}
         {activeTab === 'pages' && (
