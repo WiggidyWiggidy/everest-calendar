@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getShopifyToken, getShopifyStoreUrl } from '@/lib/shopify-auth';
 
 // PUT: Publish or unpublish a Shopify page
 export async function PUT(request: NextRequest) {
@@ -13,10 +14,13 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'landing_page_id and published (boolean) required' }, { status: 400 });
     }
 
-    const shopifyUrl = process.env.SHOPIFY_STORE_URL;
-    const shopifyToken = process.env.SHOPIFY_ACCESS_TOKEN;
-    if (!shopifyUrl || !shopifyToken) {
-      return NextResponse.json({ error: 'Shopify credentials not configured' }, { status: 400 });
+    let shopifyUrl: string;
+    let shopifyToken: string;
+    try {
+      shopifyUrl = getShopifyStoreUrl();
+      shopifyToken = await getShopifyToken();
+    } catch (e) {
+      return NextResponse.json({ error: (e as Error).message }, { status: 400 });
     }
 
     // Get the landing page to find shopify_page_id

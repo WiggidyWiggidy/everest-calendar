@@ -130,6 +130,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Generate canonical name from AI category + tags
+    const category = aiCategory || 'other';
+    const tagSlug = (aiTags ?? []).slice(0, 2).join('-').toLowerCase().replace(/[^a-z0-9-]/g, '') || 'asset';
+    const ext = file.name.split('.').pop() || 'png';
+    const canonicalName = `${category}_isu001_${tagSlug}_v1.${ext}`;
+
     // Insert into media_assets
     const { data: asset, error: insertError } = await supabase
       .from('media_assets')
@@ -144,6 +150,8 @@ export async function POST(request: NextRequest) {
         ai_description: aiDescription,
         ai_tags: aiTags,
         ai_suitable_for: aiSuitableFor,
+        canonical_name: canonicalName,
+        product_key: 'isu001',
         status: 'active',
       })
       .select()
