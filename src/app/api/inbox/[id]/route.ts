@@ -110,10 +110,23 @@ export async function PATCH(
     if (!item.draft_reply) {
       return NextResponse.json({ error: 'No draft reply to send' }, { status: 400 });
     }
-    const sendErr = await sendViaGreenApi(item.draft_reply, item.contact_identifier ?? undefined);
-    if (sendErr) {
-      console.error('/api/inbox/[id] approve send error:', sendErr);
-      return NextResponse.json({ error: `WhatsApp send failed: ${sendErr}` }, { status: 502 });
+
+    // Platform-specific send logic
+    let sendChannel: string = 'pending_manual';
+
+    if (item.platform === 'whatsapp') {
+      // WhatsApp: send via Green API
+      const sendErr = await sendViaGreenApi(item.draft_reply, item.contact_identifier ?? undefined);
+      if (sendErr) {
+        console.error('/api/inbox/[id] approve send error:', sendErr);
+        return NextResponse.json({ error: `WhatsApp send failed: ${sendErr}` }, { status: 502 });
+      }
+      sendChannel = 'whatsapp';
+    } else if (item.platform === 'alibaba') {
+      // Alibaba: mark as approved, ATLAS sends via Chrome or Tom copies
+      sendChannel = 'chrome_alibaba';
+    } else if (item.platform === 'upwork') {
+      sendChannel = 'chrome_upwork';
     }
 
     const { data: updated, error: updateErr } = await supabase
@@ -128,9 +141,9 @@ export async function PATCH(
       agentName:    'tom',
       agentSource:  'cowork',
       activityType: 'approval',
-      description:  `Inbox item approved and sent to ${item.platform}:${item.contact_name ?? item.contact_identifier}`,
+      description:  `Inbox item approved for ${item.platform}:${item.contact_name ?? item.contact_identifier}`,
       domain:       item.platform === 'upwork' ? 'hiring' : item.platform === 'alibaba' ? 'supplier' : 'design',
-      metadata:     { inbox_id: id, platform: item.platform },
+      metadata:     { inbox_id: id, platform: item.platform, send_channel: sendChannel },
     });
 
     // Log correction for learning loop
@@ -145,17 +158,32 @@ export async function PATCH(
         .eq('status', 'draft');
     }
 
-    return NextResponse.json({ item: updated });
+    return NextResponse.json({
+      item: updated,
+      send_channel: sendChannel,
+      alibaba_url: item.platform === 'alibaba' ? item.contact_identifier : undefined,
+    });
   }
 
   if (action === 'edit') {
     if (!custom_reply?.trim()) {
       return NextResponse.json({ error: 'custom_reply is required for edit action' }, { status: 400 });
     }
-    const sendErr = await sendViaGreenApi(custom_reply, item.contact_identifier ?? undefined);
-    if (sendErr) {
-      console.error('/api/inbox/[id] edit send error:', sendErr);
-      return NextResponse.json({ error: `WhatsApp send failed: ${sendErr}` }, { status: 502 });
+
+    // Platform-specific send logic
+    let sendChannel: string = 'pending_manual';
+
+    if (item.platform === 'whatsapp') {
+      const sendErr = await sendViaGreenApi(custom_reply, item.contact_identifier ?? undefined);
+      if (sendErr) {
+        console.error('/api/inbox/[id] edit send error:', sendErr);
+        return NextResponse.json({ error: `WhatsApp send failed: ${sendErr}` }, { status: 502 });
+      }
+      sendChannel = 'whatsapp';
+    } else if (item.platform === 'alibaba') {
+      sendChannel = 'chrome_alibaba';
+    } else if (item.platform === 'upwork') {
+      sendChannel = 'chrome_upwork';
     }
 
     const { data: updated, error: updateErr } = await supabase
@@ -178,15 +206,18 @@ export async function PATCH(
       agentName:    'tom',
       agentSource:  'cowork',
       activityType: 'approval',
-      description:  `Inbox item edited and sent to ${item.platform}:${item.contact_name ?? item.contact_identifier}`,
+      description:  `Inbox item edited for ${item.platform}:${item.contact_name ?? item.contact_identifier}`,
       domain:       item.platform === 'upwork' ? 'hiring' : item.platform === 'alibaba' ? 'supplier' : 'design',
-      metadata:     { inbox_id: id, platform: item.platform },
+      metadata:     { inbox_id: id, platform: item.platform, send_channel: sendChannel },
     });
 
-    // Log correction for learning loop
     await logCorrection(supabase, item, custom_reply ?? null, 'edit');
 
-    return NextResponse.json({ item: updated });
+    return NextResponse.json({
+      item: updated,
+      send_channel: sendChannel,
+      alibaba_url: item.platform === 'alibaba' ? item.contact_identifier : undefined,
+    });
   }
 
   if (action === 'reject') {
