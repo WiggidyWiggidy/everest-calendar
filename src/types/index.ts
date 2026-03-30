@@ -275,6 +275,8 @@ export interface MarketingMetricDaily {
   customers_acquired: number | null;
   gross_profit: number | null;
   profit_per_customer: number | null;
+  cpa: number | null;
+  sales_growth_rate: number | null;
   notes: string | null;
   data_source: string;
   created_at: string;
