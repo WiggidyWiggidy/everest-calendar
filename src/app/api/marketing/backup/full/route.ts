@@ -1,40 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import { getShopifyToken, getShopifyStoreUrl } from '@/lib/shopify-auth';
-import { auditLog } from '@/lib/marketing-safety';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 
 // POST: Full backup of all Shopify pages + local marketing data
 // Called daily by scheduled task or manually
-// Stores snapshots in content_backups table + local JSON files
+// Uses service role client when called via sync-secret (bypasses RLS)
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      // Allow sync-secret auth for scheduled tasks
-      const syncSecret = request.headers.get('x-sync-secret');
-      if (!syncSecret || syncSecret !== process.env.MARKETING_SYNC_SECRET) {
+    let supabase;
+    let userId: string | undefined;
+
+    const syncSecret = request.headers.get('x-sync-secret');
+    const isSyncAuth = syncSecret === process.env.MARKETING_SYNC_SECRET;
+
+    if (isSyncAuth) {
+      // Use service role client to bypass RLS
+      supabase = createServiceClient();
+      // Look up first user (single-tenant app)
+      const { data: users } = await supabase.auth.admin.listUsers({ perPage: 1 });
+      userId = users?.users?.[0]?.id;
+    } else {
+      supabase = await createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
-    }
-    // For sync-secret auth, look up the first user (single-tenant app)
-    let userId = user?.id;
-    if (!userId) {
-      const { data: firstUser } = await supabase
-        .from('landing_pages')
-        .select('user_id')
-        .limit(1)
-        .single();
-      if (!firstUser?.user_id) {
-        // Fallback: query auth.users directly via service role
-        const { data: users } = await supabase.auth.admin.listUsers({ perPage: 1 });
-        userId = users?.users?.[0]?.id;
-      } else {
-        userId = firstUser.user_id;
-      }
+      userId = user.id;
     }
 
     const results: Record<string, unknown> = { timestamp: new Date().toISOString() };
@@ -145,8 +140,14 @@ export async function POST(request: NextRequest) {
 
     // 4. Audit log
     if (userId) {
-      await auditLog(supabase, userId, 'backup_created', 'full_backup', dateStr,
-        null, results as Record<string, unknown>, 'user');
+      await supabase.from('marketing_audit_log').insert({
+        user_id: userId,
+        operation: 'backup_created',
+        resource_type: 'full_backup',
+        resource_id: dateStr,
+        after_state: results,
+        triggered_by: isSyncAuth ? 'scheduled_agent' : 'user',
+      });
     }
 
     return NextResponse.json({ backed_up: true, ...results });
