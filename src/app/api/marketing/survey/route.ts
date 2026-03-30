@@ -35,7 +35,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to save response' }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true }, {
+      headers: { 'Access-Control-Allow-Origin': '*' },
+    });
   } catch (err) {
     console.error('survey error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
