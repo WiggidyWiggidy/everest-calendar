@@ -1,0 +1,142 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { getShopifyToken, getShopifyStoreUrl } from '@/lib/shopify-auth';
+import { auditLog } from '@/lib/marketing-safety';
+import { writeFile, mkdir } from 'fs/promises';
+import { join } from 'path';
+
+// POST: Full backup of all Shopify pages + local marketing data
+// Called daily by scheduled task or manually
+// Stores snapshots in content_backups table + local JSON files
+
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      // Allow sync-secret auth for scheduled tasks
+      const syncSecret = request.headers.get('x-sync-secret');
+      if (!syncSecret || syncSecret !== process.env.MARKETING_SYNC_SECRET) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+    }
+    const userId = user?.id;
+
+    const results: Record<string, unknown> = { timestamp: new Date().toISOString() };
+    const dateStr = new Date().toISOString().split('T')[0];
+
+    // 1. Backup Shopify pages
+    let shopifyPages: Record<string, unknown>[] = [];
+    try {
+      const shopifyUrl = getShopifyStoreUrl();
+      const shopifyToken = await getShopifyToken();
+
+      let hasMore = true;
+      let sinceId = '0';
+      while (hasMore) {
+        const res = await fetch(
+          `https://${shopifyUrl}/admin/api/2024-01/pages.json?limit=50&since_id=${sinceId}`,
+          { headers: { 'X-Shopify-Access-Token': shopifyToken } }
+        );
+
+        if (!res.ok) {
+          results.shopify_error = `API error: ${res.status}`;
+          break;
+        }
+
+        const data = await res.json();
+        const pages = data.pages ?? [];
+        shopifyPages = [...shopifyPages, ...pages];
+
+        if (pages.length < 50) {
+          hasMore = false;
+        } else {
+          sinceId = String(pages[pages.length - 1].id);
+        }
+      }
+
+      // Store each page as a snapshot
+      if (userId && shopifyPages.length > 0) {
+        const backupRows = shopifyPages.map((page: Record<string, unknown>) => ({
+          user_id: userId,
+          resource_type: 'shopify_page',
+          resource_id: String(page.id),
+          snapshot_data: page,
+          snapshot_reason: `Full backup ${dateStr}`,
+          triggered_by: 'scheduled_backup',
+        }));
+
+        await supabase.from('content_backups').insert(backupRows);
+      }
+
+      results.shopify_pages_backed_up = shopifyPages.length;
+    } catch (e) {
+      results.shopify_error = (e as Error).message;
+    }
+
+    // 2. Backup local marketing data
+    let landingPages: Record<string, unknown>[] = [];
+    let adCreatives: Record<string, unknown>[] = [];
+
+    if (userId) {
+      const { data: lp } = await supabase
+        .from('landing_pages')
+        .select('*')
+        .eq('user_id', userId);
+      landingPages = lp ?? [];
+
+      const { data: ac } = await supabase
+        .from('ad_creatives')
+        .select('*')
+        .eq('user_id', userId);
+      adCreatives = ac ?? [];
+    }
+
+    results.landing_pages_backed_up = landingPages.length;
+    results.ad_creatives_backed_up = adCreatives.length;
+
+    // 3. Write local JSON files (belt + suspenders)
+    try {
+      const backupDir = join(process.cwd(), '..', 'backups');
+      await mkdir(backupDir, { recursive: true });
+
+      if (shopifyPages.length > 0) {
+        await writeFile(
+          join(backupDir, `shopify-pages-${dateStr}.json`),
+          JSON.stringify(shopifyPages, null, 2)
+        );
+      }
+
+      if (landingPages.length > 0) {
+        await writeFile(
+          join(backupDir, `landing-pages-${dateStr}.json`),
+          JSON.stringify(landingPages, null, 2)
+        );
+      }
+
+      if (adCreatives.length > 0) {
+        await writeFile(
+          join(backupDir, `ad-creatives-${dateStr}.json`),
+          JSON.stringify(adCreatives, null, 2)
+        );
+      }
+
+      results.local_files_written = true;
+    } catch {
+      // Local file write might fail on Vercel (read-only FS), that's OK
+      results.local_files_written = false;
+      results.local_files_note = 'Vercel has read-only filesystem. DB backups are the primary store.';
+    }
+
+    // 4. Audit log
+    if (userId) {
+      await auditLog(supabase, userId, 'backup_created', 'full_backup', dateStr,
+        null, results as Record<string, unknown>, 'user');
+    }
+
+    return NextResponse.json({ backed_up: true, ...results });
+  } catch (err) {
+    console.error('backup/full error:', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}

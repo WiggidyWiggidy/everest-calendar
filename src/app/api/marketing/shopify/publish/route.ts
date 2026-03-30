@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getShopifyToken, getShopifyStoreUrl } from '@/lib/shopify-auth';
+import { snapshotShopifyPage, auditLog, checkThrottle, recordThrottle } from '@/lib/marketing-safety';
 
 // PUT: Publish or unpublish a Shopify page
+// SAFETY: Snapshots page state before change, audit logs after, throttle-checked
 export async function PUT(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -23,10 +25,19 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: (e as Error).message }, { status: 400 });
     }
 
+    // Throttle check
+    const actionType = published ? 'page_publish' : 'page_unpublish';
+    const throttle = await checkThrottle(supabase, user.id, actionType);
+    if (!throttle.allowed) {
+      return NextResponse.json({
+        error: `Daily ${actionType} limit reached (${throttle.count}/${throttle.limit}). Try again tomorrow.`,
+      }, { status: 429 });
+    }
+
     // Get the landing page to find shopify_page_id
     const { data: page, error: pageError } = await supabase
       .from('landing_pages')
-      .select('shopify_page_id, name')
+      .select('shopify_page_id, name, status')
       .eq('id', landing_page_id)
       .eq('user_id', user.id)
       .single();
@@ -37,6 +48,14 @@ export async function PUT(request: NextRequest) {
     if (!page.shopify_page_id) {
       return NextResponse.json({ error: 'No Shopify page linked. Create a draft first.' }, { status: 400 });
     }
+
+    // SAFETY: Snapshot the current Shopify page state before any modification
+    const snapshotId = await snapshotShopifyPage(
+      supabase, user.id, page.shopify_page_id, shopifyUrl, shopifyToken,
+      published ? 'pre_publish' : 'pre_unpublish'
+    );
+
+    const beforeState = { status: page.status, published: !published, shopify_page_id: page.shopify_page_id };
 
     // Update Shopify page published status
     const shopifyRes = await fetch(
@@ -73,11 +92,23 @@ export async function PUT(request: NextRequest) {
     const handle = shopifyData.page?.handle;
     const previewUrl = handle ? `https://${shopifyUrl}/pages/${handle}` : null;
 
+    const afterState = { status: newStatus, published, shopify_page_id: page.shopify_page_id };
+
+    // SAFETY: Audit log + throttle record
+    await auditLog(
+      supabase, user.id,
+      published ? 'page_published' : 'page_unpublished',
+      'landing_page', landing_page_id, beforeState, afterState, 'user',
+      { snapshot_id: snapshotId, page_name: page.name }
+    );
+    await recordThrottle(supabase, user.id, actionType);
+
     return NextResponse.json({
       published,
       status: newStatus,
       preview_url: previewUrl,
       admin_url: `https://${shopifyUrl}/admin/pages/${page.shopify_page_id}`,
+      safety: { snapshot_id: snapshotId, throttle: `${throttle.count + 1}/${throttle.limit}` },
     });
   } catch (err) {
     console.error('shopify/publish error:', err);
