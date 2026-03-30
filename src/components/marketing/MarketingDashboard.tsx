@@ -15,8 +15,9 @@ import { PageBuilderTab } from './PageBuilderTab';
 import { AdsTab } from './AdsTab';
 import { BlogTab } from './BlogTab';
 import { VelocityTab } from './VelocityTab';
+import { GrowthTab } from './GrowthTab';
 
-type Tab = 'overview' | 'velocity' | 'ads' | 'blog' | 'pages' | 'analyst' | 'assets' | 'page_builder' | 'experiments' | 'insights' | 'sources';
+type Tab = 'growth' | 'overview' | 'velocity' | 'ads' | 'blog' | 'pages' | 'analyst' | 'assets' | 'page_builder' | 'experiments' | 'insights' | 'sources';
 
 interface SourceStatus { connected: boolean; missing: string[] }
 interface SourcesData {
@@ -31,7 +32,7 @@ interface PageWithProposal extends LandingPage {
 }
 
 export function MarketingDashboard() {
-  const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [activeTab, setActiveTab] = useState<Tab>('growth');
   const [loading, setLoading] = useState(true);
   const [history, setHistory] = useState<MarketingMetricDaily[]>([]);
   const [today, setToday] = useState<MarketingMetricDaily | null>(null);
@@ -101,6 +102,7 @@ export function MarketingDashboard() {
   const shopifyConnected = !!(sources?.shopify?.connected);
 
   const tabs: { key: Tab; label: string }[] = [
+    { key: 'growth', label: 'Growth' },
     { key: 'overview', label: 'Overview' },
     { key: 'velocity', label: 'Velocity' },
     { key: 'ads', label: 'Ads' },
@@ -150,6 +152,7 @@ export function MarketingDashboard() {
 
       {/* Tab content */}
       <div className="flex-1 overflow-y-auto">
+        {activeTab === 'growth' && <GrowthTab history={history} />}
         {activeTab === 'overview' && (
           <OverviewTab today={today} history={history} onMetricsSaved={load} />
         )}

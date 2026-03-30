@@ -52,6 +52,14 @@ export async function POST(request: NextRequest) {
     const orderCount = orders.length;
     const aov = orderCount > 0 ? revenue / orderCount : 0;
 
+    // Count unique customers (by email) as customers_acquired
+    const uniqueEmails = new Set(
+      orders
+        .map((o: { email?: string }) => o.email?.toLowerCase())
+        .filter(Boolean)
+    );
+    const customersAcquired = uniqueEmails.size;
+
     // Upsert into marketing_metrics_daily using service client
     const supabase = await createClient();
 
@@ -73,6 +81,7 @@ export async function POST(request: NextRequest) {
         shopify_revenue: revenue,
         shopify_orders: orderCount,
         shopify_aov: aov,
+        customers_acquired: customersAcquired,
         data_source: 'api',
         updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id,date' });
@@ -81,10 +90,55 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: upsertError.message }, { status: 500 });
     }
 
+    // Compute CPA and profit metrics if Meta spend exists for this date
+    const { data: row } = await supabase
+      .from('marketing_metrics_daily')
+      .select('meta_spend, customers_acquired, shopify_revenue')
+      .eq('user_id', userId)
+      .eq('date', dateStr)
+      .single();
+
+    if (row?.meta_spend && row.customers_acquired && row.customers_acquired > 0) {
+      const cpa = row.meta_spend / row.customers_acquired;
+      const profitPerCustomer = row.shopify_revenue && row.customers_acquired > 0
+        ? (row.shopify_revenue - row.meta_spend) / row.customers_acquired
+        : null;
+      const grossProfit = row.shopify_revenue ? row.shopify_revenue - row.meta_spend : null;
+
+      // Get prior 7-day avg revenue for growth rate
+      const { data: priorRows } = await supabase
+        .from('marketing_metrics_daily')
+        .select('shopify_revenue')
+        .eq('user_id', userId)
+        .gte('date', new Date(Date.now() - 8 * 86400000).toISOString().split('T')[0])
+        .lt('date', dateStr)
+        .order('date', { ascending: false });
+
+      let salesGrowthRate = null;
+      if (priorRows && priorRows.length > 0) {
+        const priorAvg = priorRows.reduce((s, r) => s + (r.shopify_revenue || 0), 0) / priorRows.length;
+        if (priorAvg > 0) {
+          salesGrowthRate = ((revenue - priorAvg) / priorAvg) * 100;
+        }
+      }
+
+      await supabase
+        .from('marketing_metrics_daily')
+        .update({
+          cpa,
+          profit_per_customer: profitPerCustomer,
+          gross_profit: grossProfit,
+          sales_growth_rate: salesGrowthRate,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', userId)
+        .eq('date', dateStr);
+    }
+
     return NextResponse.json({
       synced: true,
       date: dateStr,
-      metrics: { revenue, orders: orderCount, aov },
+      metrics: { revenue, orders: orderCount, aov, customers_acquired: customersAcquired },
     });
   } catch (err) {
     console.error('sync/shopify error:', err);

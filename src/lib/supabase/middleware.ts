@@ -51,7 +51,10 @@ export async function updateSession(request: NextRequest) {
     (request.nextUrl.pathname.startsWith('/api/cron/') && (request.headers.get('x-cron-secret') !== null || request.nextUrl.searchParams.has('secret'))) ||
     (request.nextUrl.pathname.startsWith('/api/marketing/sync/') && request.headers.get('x-sync-secret') !== null) ||
     (request.nextUrl.pathname.startsWith('/api/marketing/backup/') && request.headers.get('x-sync-secret') !== null) ||
-    (request.nextUrl.pathname === '/api/marketing/subscribe' && request.method === 'POST');
+    (request.nextUrl.pathname === '/api/marketing/subscribe' && request.method === 'POST') ||
+    (request.nextUrl.pathname === '/api/webhooks/meta-leads') ||
+    (request.nextUrl.pathname === '/api/marketing/survey' && request.method === 'POST') ||
+    (request.nextUrl.pathname === '/api/marketing/token-health' && request.headers.get('x-sync-secret') !== null);
 
   if (!user && !isAuthPage && !isApiKeyRoute) {
     const url = request.nextUrl.clone();
