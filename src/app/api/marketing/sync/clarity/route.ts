@@ -32,10 +32,16 @@ export async function POST(request: NextRequest) {
     yesterday.setDate(yesterday.getDate() - 1);
     const dateStr = yesterday.toISOString().split('T')[0];
 
-    // Clarity Export API
+    // Clarity Export API — correct endpoint (token is project-scoped, no project ID in URL)
+    // numOfDays: 1=24h, 2=48h, 3=72h. We use 2 to catch yesterday reliably.
     const clarityRes = await fetch(
-      `https://www.clarity.ms/export-data/api/v1/${clarityProjectId}/dashboard?startDate=${dateStr}&endDate=${dateStr}`,
-      { headers: { Authorization: `Bearer ${clarityToken}` } }
+      `https://www.clarity.ms/export-data/api/v1/project-live-insights?numOfDays=2&dimension1=URL`,
+      {
+        headers: {
+          Authorization: `Bearer ${clarityToken}`,
+          'Content-Type': 'application/json',
+        },
+      }
     );
 
     if (!clarityRes.ok) {
@@ -43,12 +49,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Clarity API error', detail: err }, { status: 500 });
     }
 
-    const clarityData = await clarityRes.json();
+    // Clarity returns array of metric objects: [{metricName, information:[{dimensionValue, metricValue}]}]
+    const clarityData = (await clarityRes.json()) as { metricName: string; information: { dimensionValue: string; metricValue: number }[] }[];
 
-    const engagementScore = clarityData.engagementScore ?? null;
-    const rageClicks = clarityData.rageClicks ?? null;
-    const deadClicks = clarityData.deadClicks ?? null;
-    const avgScrollDepth = clarityData.avgScrollDepth ?? null;
+    // Aggregate across all URLs to get site-wide totals
+    const sumMetric = (name: string): number => {
+      const entry = clarityData.find(m => m.metricName === name);
+      if (!entry) return 0;
+      return entry.information.reduce((s, r) => s + (r.metricValue ?? 0), 0);
+    };
+
+    const avgMetric = (name: string): number | null => {
+      const entry = clarityData.find(m => m.metricName === name);
+      if (!entry || entry.information.length === 0) return null;
+      const total = entry.information.reduce((s, r) => s + (r.metricValue ?? 0), 0);
+      return total / entry.information.length;
+    };
+
+    const totalTraffic = sumMetric('Traffic');
+    const rageClicks = sumMetric('RageClickCount');
+    const deadClicks = sumMetric('DeadClickCount');
+    const avgScrollDepth = avgMetric('ScrollDepth');
+    const avgEngagementTime = avgMetric('EngagementTime');
+
+    // Derive an engagement score (0-100) from scroll depth + engagement time
+    // scroll depth (0-100) weighted 60%, engagement time normalised to 0-100 weighted 40%
+    // engagement time: assume 120s = 100 score
+    const scrollScore = avgScrollDepth ?? 0;
+    const timeScore = avgEngagementTime != null ? Math.min((avgEngagementTime / 120) * 100, 100) : 0;
+    const engagementScore = totalTraffic > 0 ? Math.round(scrollScore * 0.6 + timeScore * 0.4) : null;
 
     const supabase = await createClient();
     let userId = auth.userId;
