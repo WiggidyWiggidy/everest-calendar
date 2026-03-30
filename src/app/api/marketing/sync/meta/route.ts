@@ -84,6 +84,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: upsertError.message }, { status: 500 });
     }
 
+    // Recompute CPA if Shopify data already exists for this date
+    const { data: row } = await supabase
+      .from('marketing_metrics_daily')
+      .select('shopify_revenue, customers_acquired')
+      .eq('user_id', userId)
+      .eq('date', dateStr)
+      .single();
+
+    if (row?.customers_acquired && row.customers_acquired > 0 && spend > 0) {
+      const cpa = spend / row.customers_acquired;
+      const grossProfit = row.shopify_revenue ? row.shopify_revenue - spend : null;
+      const profitPerCustomer = row.shopify_revenue
+        ? (row.shopify_revenue - spend) / row.customers_acquired
+        : null;
+
+      await supabase
+        .from('marketing_metrics_daily')
+        .update({
+          cpa,
+          gross_profit: grossProfit,
+          profit_per_customer: profitPerCustomer,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', userId)
+        .eq('date', dateStr);
+    }
+
     return NextResponse.json({
       synced: true,
       date: dateStr,
