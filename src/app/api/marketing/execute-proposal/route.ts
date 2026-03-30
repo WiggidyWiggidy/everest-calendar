@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import {
+  validateProposal, validateBudgetChange, snapshotBeforeWrite,
+  auditLog, checkThrottle, recordThrottle,
+} from '@/lib/marketing-safety';
 
 // Execute an approved marketing proposal by chaining the appropriate API calls
 // Proposal types: page_variant, new_blog, new_creative, pause_ad, scale_ad, new_campaign
+// SAFETY: Every destructive action is snapshot'd, validated, throttle-checked, and audit-logged
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,6 +34,16 @@ export async function POST(request: NextRequest) {
 
     if (proposal.status !== 'approved') {
       return NextResponse.json({ error: `Proposal status is '${proposal.status}', must be 'approved'` }, { status: 400 });
+    }
+
+    // SAFETY: Validate proposal (expiry, required fields, data sanity)
+    const validation = validateProposal({
+      proposal_type: proposal.proposal_type,
+      action_data: proposal.action_data ?? {},
+      created_at: proposal.created_at,
+    });
+    if (!validation.valid) {
+      return NextResponse.json({ error: `Proposal validation failed: ${validation.reason}` }, { status: 400 });
     }
 
     const actionData = proposal.action_data ?? {};
@@ -218,10 +233,29 @@ export async function POST(request: NextRequest) {
       }
 
       case 'pause_ad': {
-        // Update ad_creatives status to paused
         const { ad_creative_id } = actionData as { ad_creative_id?: string };
         if (!ad_creative_id) {
           return NextResponse.json({ error: 'action_data.ad_creative_id required' }, { status: 400 });
+        }
+
+        // SAFETY: Throttle check (max 3 pauses per day)
+        const pauseThrottle = await checkThrottle(supabase, user.id, 'ad_pause');
+        if (!pauseThrottle.allowed) {
+          return NextResponse.json({
+            error: `Daily ad pause limit reached (${pauseThrottle.count}/${pauseThrottle.limit}). Cannot pause more ads today.`,
+          }, { status: 429 });
+        }
+
+        // SAFETY: Snapshot before pause
+        const { data: adBefore } = await supabase
+          .from('ad_creatives')
+          .select('*')
+          .eq('id', ad_creative_id)
+          .eq('user_id', user.id)
+          .single();
+
+        if (adBefore) {
+          await snapshotBeforeWrite(supabase, user.id, 'ad_creative', ad_creative_id, adBefore, 'pre_pause', proposal_id);
         }
 
         const { error: pauseErr } = await supabase
@@ -232,14 +266,43 @@ export async function POST(request: NextRequest) {
 
         results.paused = !pauseErr;
         if (pauseErr) results.error = pauseErr.message;
+
+        // SAFETY: Audit + throttle
+        await auditLog(supabase, user.id, 'ad_paused', 'ad_creative', ad_creative_id,
+          adBefore ? { status: adBefore.status } : null,
+          { status: 'paused' }, 'proposal_execution', { proposal_id });
+        await recordThrottle(supabase, user.id, 'ad_pause');
         break;
       }
 
       case 'scale_ad': {
-        // Update ad budget
         const { ad_creative_id, new_budget } = actionData as { ad_creative_id?: string; new_budget?: number };
         if (!ad_creative_id || !new_budget) {
           return NextResponse.json({ error: 'action_data.ad_creative_id and new_budget required' }, { status: 400 });
+        }
+
+        // SAFETY: Throttle check
+        const scaleThrottle = await checkThrottle(supabase, user.id, 'ad_scale');
+        if (!scaleThrottle.allowed) {
+          return NextResponse.json({
+            error: `Daily ad scale limit reached (${scaleThrottle.count}/${scaleThrottle.limit}).`,
+          }, { status: 429 });
+        }
+
+        // SAFETY: Get current budget and validate change (max 50% increase)
+        const { data: scaleBefore } = await supabase
+          .from('ad_creatives')
+          .select('*')
+          .eq('id', ad_creative_id)
+          .eq('user_id', user.id)
+          .single();
+
+        if (scaleBefore) {
+          const budgetCheck = validateBudgetChange(scaleBefore.daily_budget || 0, new_budget);
+          if (!budgetCheck.valid) {
+            return NextResponse.json({ error: budgetCheck.reason }, { status: 400 });
+          }
+          await snapshotBeforeWrite(supabase, user.id, 'ad_creative', ad_creative_id, scaleBefore, 'pre_scale', proposal_id);
         }
 
         const { error: scaleErr } = await supabase
@@ -250,6 +313,12 @@ export async function POST(request: NextRequest) {
 
         results.scaled = !scaleErr;
         if (scaleErr) results.error = scaleErr.message;
+
+        // SAFETY: Audit + throttle
+        await auditLog(supabase, user.id, 'ad_budget_changed', 'ad_creative', ad_creative_id,
+          scaleBefore ? { daily_budget: scaleBefore.daily_budget } : null,
+          { daily_budget: new_budget }, 'proposal_execution', { proposal_id });
+        await recordThrottle(supabase, user.id, 'ad_scale');
         break;
       }
 

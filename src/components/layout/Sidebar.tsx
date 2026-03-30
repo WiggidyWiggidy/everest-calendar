@@ -14,10 +14,8 @@ import {
   Menu,
   X,
   TrendingUp,
-  Users,
   Factory,
   Inbox,
-  Activity,
   Sun,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';

@@ -85,7 +85,7 @@ export function VelocityTab() {
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-semibold text-gray-900">Experiment Velocity</h2>
-        <p className="text-sm text-gray-500 mt-1">How fast you're testing and what's winning.</p>
+        <p className="text-sm text-gray-500 mt-1">How fast you&apos;re testing and what&apos;s winning.</p>
       </div>
 
       {/* Hero metrics */}
