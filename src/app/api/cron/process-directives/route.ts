@@ -793,5 +793,33 @@ export async function GET(request: NextRequest) {
     metadata:     { processed, errors, total: directives.length },
   });
 
-  return NextResponse.json({ processed, errors, total: directives.length });
+  // ── Marketing data sync (daily) ────────────────────────────────────────────
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://everest-calendar.vercel.app';
+  const mktgSyncSecret = process.env.MARKETING_SYNC_SECRET || '';
+  const syncSources = ['meta', 'clarity', 'shopify'];
+  const syncResults: Record<string, string> = {};
+
+  for (const source of syncSources) {
+    try {
+      const syncRes = await fetch(`${baseUrl}/api/marketing/sync/${source}`, {
+        method: 'POST',
+        headers: { 'x-sync-secret': mktgSyncSecret },
+      });
+      const syncData = await syncRes.json();
+      syncResults[source] = syncRes.ok ? 'ok' : (syncData.error || `${syncRes.status}`);
+    } catch (e) {
+      syncResults[source] = (e as Error).message;
+    }
+  }
+
+  await logAgentActivity({
+    agentName:    'orchestrator',
+    agentSource:  'vercel',
+    activityType: 'auto_action',
+    description:  `Marketing sync: ${Object.entries(syncResults).map(([k, v]) => `${k}=${v}`).join(', ')}`,
+    domain:       'marketing',
+    metadata:     { syncResults },
+  });
+
+  return NextResponse.json({ processed, errors, total: directives.length, marketing_sync: syncResults });
 }

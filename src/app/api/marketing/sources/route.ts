@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 const SOURCES = {
   shopify: {
     name: 'Shopify',
-    vars: ['SHOPIFY_ACCESS_TOKEN', 'SHOPIFY_STORE_URL'],
+    vars: ['SHOPIFY_CLIENT_ID', 'SHOPIFY_CLIENT_SECRET', 'SHOPIFY_STORE_URL'],
   },
   meta: {
     name: 'Meta Ads',
