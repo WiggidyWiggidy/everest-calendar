@@ -796,7 +796,8 @@ export async function GET(request: NextRequest) {
   // ── Marketing data sync (daily) ────────────────────────────────────────────
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://everest-calendar.vercel.app';
   const mktgSyncSecret = process.env.MARKETING_SYNC_SECRET || '';
-  const syncSources = ['meta', 'clarity', 'shopify'];
+  // Order matters: meta-campaigns discovers ads before meta-ad-insights pulls their metrics
+  const syncSources = ['meta', 'meta-campaigns', 'meta-ad-insights', 'meta-dce', 'clarity', 'shopify', 'shopify-funnel'];
   const syncResults: Record<string, string> = {};
 
   for (const source of syncSources) {

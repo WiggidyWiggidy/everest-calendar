@@ -488,6 +488,179 @@ export interface AnalystProposalPayload {
 }
 
 // ============================================
+// Meta Campaign Intelligence (auto-discovered)
+// ============================================
+
+export interface MetaCampaign {
+  id: string;
+  user_id: string;
+  meta_campaign_id: string;
+  name: string;
+  status: string;
+  objective: string | null;
+  daily_budget: number | null;
+  lifetime_budget: number | null;
+  start_time: string | null;
+  stop_time: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MetaAdset {
+  id: string;
+  user_id: string;
+  meta_adset_id: string;
+  meta_campaign_id: string;
+  name: string;
+  status: string;
+  optimization_goal: string | null;
+  daily_budget: number | null;
+  targeting: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MetaAd {
+  id: string;
+  user_id: string;
+  meta_ad_id: string;
+  meta_adset_id: string;
+  name: string;
+  status: string;
+  headline: string | null;
+  body: string | null;
+  image_url: string | null;
+  thumbnail_url: string | null;
+  link_url: string | null;
+  cta_type: string | null;
+  is_dynamic_creative: boolean;
+  asset_feed_spec: Record<string, unknown> | null;
+  creative_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MetaAdMetricDaily {
+  id: string;
+  meta_ad_id: string;
+  date: string;
+  impressions: number;
+  clicks: number;
+  spend: number;
+  ctr: number | null;
+  cpc: number | null;
+  cpm: number | null;
+  purchases: number;
+  revenue: number;
+  roas: number | null;
+  cost_per_purchase: number | null;
+  created_at: string;
+}
+
+export interface DCEMetric {
+  id: string;
+  meta_ad_id: string;
+  date: string;
+  element_type: 'image' | 'headline' | 'body' | 'call_to_action';
+  element_value: string;
+  element_label: string | null;
+  impressions: number;
+  clicks: number;
+  spend: number;
+  ctr: number | null;
+  purchases: number;
+  revenue: number;
+  created_at: string;
+}
+
+export interface ShopifyFunnelDaily {
+  id: string;
+  user_id: string;
+  date: string;
+  checkouts_started: number;
+  checkouts_completed: number;
+  checkouts_abandoned: number;
+  abandonment_rate: number | null;
+  abandoned_value: number;
+  created_at: string;
+}
+
+export type SplitTestVerdict = 'winner' | 'loser' | 'inconclusive';
+
+export interface SplitTestResult {
+  adset_name: string;
+  adset_id: string;
+  campaign_name: string;
+  ads: Array<{
+    meta_ad_id: string;
+    name: string;
+    headline: string | null;
+    body: string | null;
+    image_url: string | null;
+    cta_type: string | null;
+    link_url: string | null;
+    verdict: SplitTestVerdict;
+    metrics: {
+      spend: number;
+      impressions: number;
+      clicks: number;
+      ctr: number;
+      purchases: number;
+      revenue: number;
+      roas: number;
+      cost_per_purchase: number;
+    };
+  }>;
+}
+
+export interface CampaignRanking {
+  meta_campaign_id: string;
+  name: string;
+  status: string;
+  objective: string | null;
+  spend: number;
+  revenue: number;
+  roas: number;
+  purchases: number;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  cost_per_purchase: number;
+  adset_count: number;
+  ad_count: number;
+}
+
+export interface CampaignIntelligenceData {
+  campaigns: CampaignRanking[];
+  split_tests: SplitTestResult[];
+  dce_breakdown: Array<{
+    meta_ad_id: string;
+    ad_name: string;
+    elements: Record<string, Array<{
+      value: string;
+      label: string | null;
+      impressions: number;
+      clicks: number;
+      spend: number;
+      ctr: number;
+      purchases: number;
+      revenue: number;
+    }>>;
+  }>;
+  top_creatives: Array<MetaAd & { metrics: MetaAdMetricDaily }>;
+  funnel: {
+    impressions: number;
+    clicks: number;
+    checkouts_started: number;
+    checkouts_completed: number;
+    checkouts_abandoned: number;
+    abandonment_rate: number;
+    abandoned_value: number;
+  } | null;
+  insights: string[];
+}
+
+// ============================================
 // Upwork Candidate Pipeline
 // ============================================
 
