@@ -28,9 +28,17 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const dateStr = yesterday.toISOString().split('T')[0];
+    // Accept optional date from request body, default to yesterday
+    let dateStr: string;
+    try {
+      const body = await request.json().catch(() => ({}));
+      dateStr = body.date || '';
+    } catch { dateStr = ''; }
+    if (!dateStr) {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      dateStr = yesterday.toISOString().split('T')[0];
+    }
 
     // Fetch account-level insights
     const insightsRes = await fetch(
