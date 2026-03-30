@@ -79,13 +79,10 @@ export async function POST(request: NextRequest) {
     const timeScore = avgEngagementTime != null ? Math.min((avgEngagementTime / 120) * 100, 100) : 0;
     const engagementScore = totalTraffic > 0 ? Math.round(scrollScore * 0.6 + timeScore * 0.4) : null;
 
-    const supabase = await createClient();
-    let userId = auth.userId;
-    if (!userId) {
-      const { data: existing } = await supabase.from('marketing_metrics_daily').select('user_id').limit(1);
-      userId = existing?.[0]?.user_id;
-    }
-    if (!userId) return NextResponse.json({ error: 'No user found' }, { status: 400 });
+    // Use service client when authenticated via sync secret (no user session)
+    const { createServiceClient } = await import('@/lib/supabase/service');
+    const supabase = auth.userId ? await createClient() : createServiceClient();
+    const userId = auth.userId || '174f2dff-7a96-464c-a919-b473c328d531';
 
     const { error: upsertError } = await supabase
       .from('marketing_metrics_daily')

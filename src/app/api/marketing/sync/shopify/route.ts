@@ -60,18 +60,10 @@ export async function POST(request: NextRequest) {
     );
     const customersAcquired = uniqueEmails.size;
 
-    // Upsert into marketing_metrics_daily using service client
-    const supabase = await createClient();
-
-    // Get user ID - for sync secret auth, get first user (single-tenant)
-    let userId = auth.userId;
-    if (!userId) {
-      const { data: users } = await supabase.from('marketing_metrics_daily').select('user_id').limit(1);
-      userId = users?.[0]?.user_id;
-      if (!userId) {
-        return NextResponse.json({ error: 'No user found for metrics' }, { status: 400 });
-      }
-    }
+    // Use service client when authenticated via sync secret (no user session)
+    const { createServiceClient } = await import('@/lib/supabase/service');
+    const supabase = auth.userId ? await createClient() : createServiceClient();
+    const userId = auth.userId || '174f2dff-7a96-464c-a919-b473c328d531';
 
     const { error: upsertError } = await supabase
       .from('marketing_metrics_daily')
