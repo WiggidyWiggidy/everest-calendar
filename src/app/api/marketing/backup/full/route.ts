@@ -20,7 +20,22 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
     }
-    const userId = user?.id;
+    // For sync-secret auth, look up the first user (single-tenant app)
+    let userId = user?.id;
+    if (!userId) {
+      const { data: firstUser } = await supabase
+        .from('landing_pages')
+        .select('user_id')
+        .limit(1)
+        .single();
+      if (!firstUser?.user_id) {
+        // Fallback: query auth.users directly via service role
+        const { data: users } = await supabase.auth.admin.listUsers({ perPage: 1 });
+        userId = users?.users?.[0]?.id;
+      } else {
+        userId = firstUser.user_id;
+      }
+    }
 
     const results: Record<string, unknown> = { timestamp: new Date().toISOString() };
     const dateStr = new Date().toISOString().split('T')[0];
