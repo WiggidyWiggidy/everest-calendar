@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
         }
 
         const leadRes = await fetch(
-          `https://graph.facebook.com/v21.0/${leadgenId}?access_token=${metaToken}`
+          `https://graph.facebook.com/v25.0/${leadgenId}?access_token=${metaToken}`
         );
 
         if (!leadRes.ok) {

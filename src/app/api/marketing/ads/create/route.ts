@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
 
     // Step 1: Create campaign
     const campaignRes = await fetch(
-      `https://graph.facebook.com/v21.0/${adAccountId}/campaigns`,
+      `https://graph.facebook.com/v25.0/${adAccountId}/campaigns`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
 
     // Step 2: Create ad set
     const adsetRes = await fetch(
-      `https://graph.facebook.com/v21.0/${adAccountId}/adsets`,
+      `https://graph.facebook.com/v25.0/${adAccountId}/adsets`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
 
     // Step 3: Upload image to Meta
     const imageRes = await fetch(
-      `https://graph.facebook.com/v21.0/${adAccountId}/adimages`,
+      `https://graph.facebook.com/v25.0/${adAccountId}/adimages`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
 
     // Step 4: Create ad creative on Meta
     const adCreativeRes = await fetch(
-      `https://graph.facebook.com/v21.0/${adAccountId}/adcreatives`,
+      `https://graph.facebook.com/v25.0/${adAccountId}/adcreatives`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
 
     // Step 5: Create the ad
     const adRes = await fetch(
-      `https://graph.facebook.com/v21.0/${adAccountId}/ads`,
+      `https://graph.facebook.com/v25.0/${adAccountId}/ads`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

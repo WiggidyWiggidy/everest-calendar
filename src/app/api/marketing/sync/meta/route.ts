@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
 
     // Fetch account-level insights
     const insightsRes = await fetch(
-      `https://graph.facebook.com/v21.0/${adAccountId}/insights?` +
+      `https://graph.facebook.com/v25.0/${adAccountId}/insights?` +
       `fields=spend,impressions,clicks,ctr,cpm,cpc,actions,action_values,purchase_roas` +
       `&time_range={"since":"${dateStr}","until":"${dateStr}"}` +
       `&access_token=${metaToken}`

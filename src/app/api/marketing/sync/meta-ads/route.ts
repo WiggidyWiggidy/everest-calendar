@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     'actions', 'action_values', 'purchase_roas',
   ].join(',');
 
-  const insightsUrl = new URL(`https://graph.facebook.com/v21.0/${adAccountId}/insights`);
+  const insightsUrl = new URL(`https://graph.facebook.com/v25.0/${adAccountId}/insights`);
   insightsUrl.searchParams.set('level', 'ad');
   insightsUrl.searchParams.set('fields', fields);
   insightsUrl.searchParams.set('time_increment', '1'); // daily
