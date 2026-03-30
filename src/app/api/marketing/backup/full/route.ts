@@ -20,9 +20,13 @@ export async function POST(request: NextRequest) {
     if (isSyncAuth) {
       // Use service role client to bypass RLS
       supabase = createServiceClient();
-      // Look up first user (single-tenant app)
-      const { data: users } = await supabase.auth.admin.listUsers({ perPage: 1 });
-      userId = users?.users?.[0]?.id;
+      // Single-tenant: get user_id from existing data (service role bypasses RLS)
+      const { data: row } = await supabase
+        .from('calendar_events')
+        .select('user_id')
+        .limit(1)
+        .single();
+      userId = row?.user_id;
     } else {
       supabase = await createClient();
       const { data: { user } } = await supabase.auth.getUser();
