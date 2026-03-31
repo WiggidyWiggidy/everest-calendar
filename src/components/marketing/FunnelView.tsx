@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Loader2, ExternalLink, ChevronDown, ArrowRight, TrendingDown } from 'lucide-react';
 import type { LandingPage, LandingPageStatus, MarketingMetricDaily } from '@/types';
 
@@ -31,7 +31,7 @@ function fmt(n: number | null | undefined, isPercent = false, prefix = ''): stri
   return `${prefix}${Number(n).toLocaleString('en-AU')}`;
 }
 
-function DropOff({ from, to, label }: { from: number; to: number; label: string }) {
+function DropOff({ from, to }: { from: number; to: number; label: string }) {
   const pct = from > 0 ? (to / from) * 100 : 0;
   const dropPct = 100 - pct;
   return (

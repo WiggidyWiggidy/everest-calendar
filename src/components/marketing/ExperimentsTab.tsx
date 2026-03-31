@@ -384,7 +384,7 @@ export function ExperimentsTab({ experiments, onRefresh, prefillType }: Props) {
         <div className="text-center py-12 text-gray-400">
           <FlaskConical className="h-8 w-8 mx-auto mb-2 opacity-40" />
           <div className="text-sm">No experiments yet</div>
-          <div className="text-xs mt-1">Click "AI Propose" to generate data-backed experiments, or create manually</div>
+          <div className="text-xs mt-1">Click &quot;AI Propose&quot; to generate data-backed experiments, or create manually</div>
         </div>
       )}
 

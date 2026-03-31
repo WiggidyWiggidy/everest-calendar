@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Loader2, TrendingUp, TrendingDown, ChevronDown, ChevronRight, ExternalLink, Trophy, X, Minus } from 'lucide-react';
+import { Loader2, ChevronDown, ChevronRight, ExternalLink, Trophy, X, Minus } from 'lucide-react';
 import type { CampaignIntelligenceData, SplitTestResult } from '@/types';
 
 function fmt(n: number | null | undefined, prefix = '', suffix = '', dec = 1): string {
@@ -350,7 +350,7 @@ export function CampaignsView() {
       {isEmpty && !loading && (
         <div className="text-center py-16 bg-white border border-gray-100 rounded-xl">
           <div className="text-gray-400 text-sm mb-3">No campaign data yet.</div>
-          <div className="text-xs text-gray-400 mb-4">Click "Sync from Meta" to discover your campaigns, adsets, and ads.</div>
+          <div className="text-xs text-gray-400 mb-4">Click &quot;Sync from Meta&quot; to discover your campaigns, adsets, and ads.</div>
           <button
             onClick={handleDiscoverCampaigns}
             disabled={syncing}
