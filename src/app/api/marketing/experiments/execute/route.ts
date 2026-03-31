@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 import { auditLog, checkThrottle, recordThrottle } from '@/lib/marketing-safety';
 import type { PageExecutionSpec, CreativeExecutionSpec } from '@/types';
 
@@ -7,12 +8,23 @@ import type { PageExecutionSpec, CreativeExecutionSpec } from '@/types';
 // landing_page -> Shopify page builder
 // creative -> Ad creative + Meta ad creation
 // copy -> AI variation of existing page
+// Supports both user session auth and sync secret auth
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    let userId: string;
+    let supabase;
+    const syncSecret = request.headers.get('x-sync-secret');
+
+    if (syncSecret === process.env.MARKETING_SYNC_SECRET) {
+      userId = '174f2dff-7a96-464c-a919-b473c328d531';
+      supabase = createServiceClient();
+    } else {
+      supabase = await createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      userId = user.id;
+    }
 
     const { experiment_id } = await request.json();
     if (!experiment_id) {
@@ -24,7 +36,7 @@ export async function POST(request: NextRequest) {
       .from('marketing_experiments')
       .select('*')
       .eq('id', experiment_id)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .single();
 
     if (fetchErr || !experiment) {
@@ -50,7 +62,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Throttle check
-        const throttle = await checkThrottle(supabase, user.id, 'page_publish');
+        const throttle = await checkThrottle(supabase, userId, 'page_publish');
         if (!throttle.allowed) {
           return NextResponse.json({ error: `Page creation throttled (${throttle.count}/${throttle.limit} today)` }, { status: 429 });
         }
@@ -60,7 +72,7 @@ export async function POST(request: NextRequest) {
         const { data: pageRecord, error: pageErr } = await supabase
           .from('landing_pages')
           .insert({
-            user_id: user.id,
+            user_id: userId,
             name: pageName,
             shopify_url: `https://everestlabs.co/pages/${pageName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
             status: 'testing',
@@ -80,6 +92,7 @@ export async function POST(request: NextRequest) {
           headers: {
             'Content-Type': 'application/json',
             cookie: request.headers.get('cookie') || '',
+            'x-sync-secret': process.env.MARKETING_SYNC_SECRET || '',
           },
           body: JSON.stringify({
             landing_page_id: pageRecord.id,
@@ -100,7 +113,7 @@ export async function POST(request: NextRequest) {
           results.shopify_error = errData;
         }
 
-        await recordThrottle(supabase, user.id, 'page_publish');
+        await recordThrottle(supabase, userId, 'page_publish');
         break;
       }
 
@@ -117,7 +130,7 @@ export async function POST(request: NextRequest) {
           const { data: adCreative, error: adErr } = await supabase
             .from('ad_creatives')
             .insert({
-              user_id: user.id,
+              user_id: userId,
               experiment_id: experiment.id,
               headline: creative.headline,
               body_copy: creative.body_copy,
@@ -146,6 +159,7 @@ export async function POST(request: NextRequest) {
                 headers: {
                   'Content-Type': 'application/json',
                   cookie: request.headers.get('cookie') || '',
+            'x-sync-secret': process.env.MARKETING_SYNC_SECRET || '',
                 },
                 body: JSON.stringify({
                   image_url: creative.image_url,
@@ -210,7 +224,7 @@ export async function POST(request: NextRequest) {
         const { data: proposal } = await supabase
           .from('page_proposals')
           .insert({
-            user_id: user.id,
+            user_id: userId,
             landing_page_id: landingPageId,
             diagnosis: experiment.hypothesis || 'AI-generated variation based on experiment hypothesis',
             proposed_sections: spec.proposed_sections || [],
@@ -230,6 +244,7 @@ export async function POST(request: NextRequest) {
           headers: {
             'Content-Type': 'application/json',
             cookie: request.headers.get('cookie') || '',
+            'x-sync-secret': process.env.MARKETING_SYNC_SECRET || '',
           },
           body: JSON.stringify({
             landing_page_id: landingPageId,
@@ -248,6 +263,7 @@ export async function POST(request: NextRequest) {
               headers: {
                 'Content-Type': 'application/json',
                 cookie: request.headers.get('cookie') || '',
+            'x-sync-secret': process.env.MARKETING_SYNC_SECRET || '',
               },
               body: JSON.stringify({
                 landing_page_id: landingPageId,
@@ -284,11 +300,11 @@ export async function POST(request: NextRequest) {
         updated_at: new Date().toISOString(),
       })
       .eq('id', experiment_id)
-      .eq('user_id', user.id);
+      .eq('user_id', userId);
 
     // Audit log
     await auditLog(
-      supabase, user.id,
+      supabase, userId,
       'experiment_executed',
       'marketing_experiment',
       experiment_id,

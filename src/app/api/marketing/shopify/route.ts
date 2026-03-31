@@ -344,9 +344,20 @@ function generateStickyBar(pageTitle: string, productPrice: string | undefined, 
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    let userId: string;
+    let supabase;
+    const syncSecret = request.headers.get('x-sync-secret');
+
+    if (syncSecret === process.env.MARKETING_SYNC_SECRET) {
+      const { createServiceClient } = await import('@/lib/supabase/service');
+      userId = '174f2dff-7a96-464c-a919-b473c328d531';
+      supabase = createServiceClient();
+    } else {
+      supabase = await createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      userId = user.id;
+    }
 
     const body = await request.json() as {
       landing_page_id: string;
@@ -440,7 +451,7 @@ export async function POST(request: NextRequest) {
         .from('landing_pages')
         .update({ shopify_page_id: shopifyPageId, status: 'testing', updated_at: new Date().toISOString() })
         .eq('id', landing_page_id)
-        .eq('user_id', user.id);
+        .eq('user_id', userId);
     }
 
     return NextResponse.json({
