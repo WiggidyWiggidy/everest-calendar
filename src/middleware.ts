@@ -1,9 +1,16 @@
 // Next.js Middleware: auth session refresh + route protection
-// Marketing API routes with x-sync-secret bypass auth (see lib/supabase/middleware.ts)
-import { type NextRequest } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import { updateSession } from '@/lib/supabase/middleware';
 
 export async function middleware(request: NextRequest) {
+  // Marketing API routes with sync secret bypass auth entirely
+  if (
+    request.nextUrl.pathname.startsWith('/api/marketing/') &&
+    request.headers.get('x-sync-secret') === process.env.MARKETING_SYNC_SECRET
+  ) {
+    return NextResponse.next();
+  }
+
   return await updateSession(request);
 }
 
