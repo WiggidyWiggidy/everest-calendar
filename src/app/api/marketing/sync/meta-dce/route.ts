@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const DEFAULT_USER_ID = '174f2dff-7a96-464c-a919-b473c328d531';
 
 async function authenticateSync(request: NextRequest) {

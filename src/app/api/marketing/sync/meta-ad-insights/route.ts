@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const DEFAULT_USER_ID = '174f2dff-7a96-464c-a919-b473c328d531';
 
 async function authenticateSync(request: NextRequest) {
@@ -70,7 +71,7 @@ export async function POST(request: NextRequest) {
     const fields = 'ad_id,impressions,clicks,spend,ctr,cpc,cpm,actions,action_values,purchase_roas';
 
     // Fetch insights at ad level for the entire account
-    let allRows: MetaInsightRow[] = [];
+    const allRows: MetaInsightRow[] = [];
     let nextUrl: string | null = `https://graph.facebook.com/v25.0/${adAccountId}/insights?` +
       `level=ad&fields=${fields}&time_increment=1` +
       `&time_range=${encodeURIComponent(JSON.stringify({ since, until }))}` +
