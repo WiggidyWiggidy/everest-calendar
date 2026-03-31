@@ -49,13 +49,7 @@ export async function updateSession(request: NextRequest) {
     (request.nextUrl.pathname.startsWith('/api/approve')) ||
     (request.nextUrl.pathname.startsWith('/approve')) ||
     (request.nextUrl.pathname.startsWith('/api/cron/') && (request.headers.get('x-cron-secret') !== null || request.nextUrl.searchParams.has('secret'))) ||
-    (request.nextUrl.pathname.startsWith('/api/marketing/sync/') && request.headers.get('x-sync-secret') !== null) ||
-    (request.nextUrl.pathname.startsWith('/api/marketing/backfill') && request.headers.get('x-sync-secret') !== null) ||
-    (request.nextUrl.pathname.startsWith('/api/marketing/backup/') && request.headers.get('x-sync-secret') !== null) ||
-    (request.nextUrl.pathname.startsWith('/api/marketing/experiments/execute') && request.headers.get('x-sync-secret') !== null) ||
-    (request.nextUrl.pathname.startsWith('/api/marketing/analyse-strategy') && request.headers.get('x-sync-secret') !== null) ||
-    (request.nextUrl.pathname.startsWith('/api/marketing/shopify') && request.headers.get('x-sync-secret') !== null) ||
-    (request.nextUrl.pathname.startsWith('/api/marketing/learnings') && request.headers.get('x-sync-secret') !== null) ||
+    (request.nextUrl.pathname.startsWith('/api/marketing/') && request.headers.get('x-sync-secret') !== null) ||
     (request.nextUrl.pathname === '/api/marketing/subscribe' && request.method === 'POST') ||
     (request.nextUrl.pathname === '/api/webhooks/meta-leads') ||
     (request.nextUrl.pathname === '/api/marketing/survey' && request.method === 'POST') ||
