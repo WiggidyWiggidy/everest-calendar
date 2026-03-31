@@ -8,16 +8,17 @@ export async function GET() {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { data, error } = await supabase
-      .from('marketing_experiments')
+      .from('marketing_learnings')
       .select('*')
       .eq('user_id', user.id)
-      .order('ice_score', { ascending: false, nullsFirst: false })
+      .eq('is_active', true)
+      .order('category')
       .order('created_at', { ascending: false });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ experiments: data ?? [] });
+    return NextResponse.json({ learnings: data ?? [] });
   } catch (err) {
-    console.error('marketing/experiments GET error:', err);
+    console.error('marketing/learnings GET error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -29,39 +30,26 @@ export async function POST(request: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await request.json();
-    const { name, type, hypothesis, primary_metric, start_date,
-      ice_impact, ice_confidence, ice_ease,
-      execution_spec, rationale, data_sources,
-      target_metric_value, expected_lift_pct, baseline_value, notes } = body;
-    if (!name || !type) return NextResponse.json({ error: 'name and type are required' }, { status: 400 });
+    const { category, learning, source } = body;
+    if (!category || !learning) {
+      return NextResponse.json({ error: 'category and learning are required' }, { status: 400 });
+    }
 
     const { data, error } = await supabase
-      .from('marketing_experiments')
+      .from('marketing_learnings')
       .insert({
-        name, type,
-        hypothesis: hypothesis || null,
-        primary_metric: primary_metric || null,
-        start_date: start_date || null,
-        baseline_value: baseline_value ?? null,
-        notes: notes || null,
-        status: 'draft',
         user_id: user.id,
-        ice_impact: ice_impact ?? null,
-        ice_confidence: ice_confidence ?? null,
-        ice_ease: ice_ease ?? null,
-        execution_spec: execution_spec ?? null,
-        rationale: rationale || null,
-        data_sources: data_sources ?? null,
-        target_metric_value: target_metric_value ?? null,
-        expected_lift_pct: expected_lift_pct ?? null,
+        category,
+        learning,
+        source: source || 'tom_verbal',
       })
       .select()
       .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ success: true, experiment: data });
+    return NextResponse.json({ success: true, learning: data });
   } catch (err) {
-    console.error('marketing/experiments POST error:', err);
+    console.error('marketing/learnings POST error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -77,7 +65,7 @@ export async function PATCH(request: NextRequest) {
     if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
 
     const { data, error } = await supabase
-      .from('marketing_experiments')
+      .from('marketing_learnings')
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', id)
       .eq('user_id', user.id)
@@ -85,9 +73,34 @@ export async function PATCH(request: NextRequest) {
       .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ success: true, experiment: data });
+    return NextResponse.json({ success: true, learning: data });
   } catch (err) {
-    console.error('marketing/experiments PATCH error:', err);
+    console.error('marketing/learnings PATCH error:', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) return NextResponse.json({ error: 'id query param required' }, { status: 400 });
+
+    // Soft delete
+    const { error } = await supabase
+      .from('marketing_learnings')
+      .update({ is_active: false, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('user_id', user.id);
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error('marketing/learnings DELETE error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
