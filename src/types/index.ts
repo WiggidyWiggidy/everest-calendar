@@ -283,28 +283,11 @@ export interface MarketingMetricDaily {
   updated_at: string;
 }
 
-export type ExperimentType = 'landing_page' | 'creative' | 'copy' | 'offer' | 'audience' | 'email';
+export type ExperimentType = 'landing_page' | 'creative' | 'copy' | 'offer' | 'audience' | 'email' | 'attribution' | 'ux';
 export type ExperimentStatus = 'draft' | 'running' | 'paused' | 'completed' | 'archived';
 export type ExperimentResult = 'winner' | 'loser' | 'inconclusive' | null;
 
-export interface MarketingExperiment {
-  id: string;
-  user_id: string;
-  name: string;
-  type: ExperimentType;
-  hypothesis: string | null;
-  status: ExperimentStatus;
-  start_date: string | null;
-  end_date: string | null;
-  primary_metric: string | null;
-  baseline_value: number | null;
-  result_value: number | null;
-  lift_percent: number | null;
-  result: ExperimentResult;
-  notes: string | null;
-  created_at: string;
-  updated_at: string;
-}
+// MarketingExperiment defined below with ICE fields (see "Extended Marketing Experiment" section)
 
 export type AssetType = 'creative' | 'copy' | 'landing_page' | 'video' | 'email';
 export type AssetStatus = 'draft' | 'in_review' | 'approved' | 'live' | 'archived' | 'rejected';
@@ -658,6 +641,90 @@ export interface CampaignIntelligenceData {
     abandoned_value: number;
   } | null;
   insights: string[];
+}
+
+// ============================================
+// Marketing Learnings (Tom's teachings)
+// ============================================
+
+export type LearningCategory = 'market' | 'product' | 'creative' | 'funnel' | 'audience' | 'pricing' | 'competitor' | 'constraint';
+
+export interface MarketingLearning {
+  id: string;
+  user_id: string;
+  category: LearningCategory;
+  learning: string;
+  source: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============================================
+// Experiment Execution Spec
+// ============================================
+
+export interface PageExecutionSpec {
+  page_title: string;
+  page_type: 'product' | 'landing' | 'funnel';
+  variant_id?: string;
+  product_price?: string;
+  sections: Array<{
+    type: SectionType;
+    headline: string;
+    body: string;
+    image_url?: string;
+    cta_text?: string;
+    cta_url?: string;
+    notes?: string;
+  }>;
+}
+
+export interface CreativeExecutionSpec {
+  creatives: Array<{
+    headline: string;
+    body_copy: string;
+    cta_text: string;
+    image_url?: string;
+    target_audience?: Record<string, unknown>;
+    daily_budget?: number;
+    format?: '1080x1080' | '1200x628' | '1080x1920';
+  }>;
+}
+
+export type ExecutionSpec = PageExecutionSpec | CreativeExecutionSpec | Record<string, unknown>;
+
+// ============================================
+// Extended Marketing Experiment (with ICE)
+// ============================================
+
+export interface MarketingExperiment {
+  id: string;
+  user_id: string;
+  name: string;
+  type: ExperimentType;
+  hypothesis: string | null;
+  status: 'draft' | 'running' | 'paused' | 'completed' | 'archived';
+  start_date: string | null;
+  end_date: string | null;
+  primary_metric: string | null;
+  baseline_value: number | null;
+  result_value: number | null;
+  lift_percent: number | null;
+  result: 'winner' | 'loser' | 'inconclusive' | null;
+  notes: string | null;
+  ice_impact: number | null;
+  ice_confidence: number | null;
+  ice_ease: number | null;
+  ice_score: number | null;
+  target_metric_value: number | null;
+  expected_lift_pct: number | null;
+  rationale: string | null;
+  execution_spec: ExecutionSpec | null;
+  data_sources: string[] | null;
+  blocking_experiments: string[] | null;
+  created_at: string;
+  updated_at: string;
 }
 
 // ============================================
