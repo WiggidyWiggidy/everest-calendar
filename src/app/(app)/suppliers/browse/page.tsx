@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import {
   Droplets, ShowerHead, Zap, Box, Package, Wrench,
-  ExternalLink, MapPin, Star, TrendingUp, ChevronDown, ChevronRight,
-  Search, Filter
+  ExternalLink, MapPin, Star, ChevronDown, ChevronRight,
+  Search
 } from 'lucide-react';
 
 interface SupplierOption {
