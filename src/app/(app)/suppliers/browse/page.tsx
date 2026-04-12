@@ -27,6 +27,7 @@ interface SupplierOption {
 }
 
 const GROUP_CONFIG: Record<string, { label: string; icon: typeof Droplets; color: string; bg: string }> = {
+  enclosure: { label: 'Shell / Enclosure', icon: Box, color: 'text-red-600', bg: 'bg-red-50 border-red-200' },
   water_system: { label: 'Water System', icon: Droplets, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200' },
   bathroom: { label: 'Bathroom', icon: ShowerHead, color: 'text-cyan-600', bg: 'bg-cyan-50 border-cyan-200' },
   electrical: { label: 'Electrical', icon: Zap, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200' },
@@ -46,6 +47,8 @@ const COMPONENT_LABELS: Record<string, string> = {
   xpe_foam: 'XPE Closed-Cell Foam',
   eva_foam: 'EVA High-Density Foam',
   epdm_gasket: 'EPDM Seal Strip',
+  outer_shell: 'Aluminium Shell Fabrication (Laser+Bend)',
+  foam_cutting: 'Custom Foam CNC Cutting',
   fill_cap_gland: 'M50 Cable Gland / Fill Cap',
   handles: 'Recessed Handle (Nylon)',
   braided_hose: 'Braided Hose 1/2"',
