@@ -26,6 +26,7 @@ const navItems = [
   { href: '/today',          label: 'Today',        icon: Sun },
   { href: '/inbox',          label: 'Inbox',        icon: Inbox },
   { href: '/suppliers',     label: 'Suppliers',    icon: Factory },
+  { href: '/suppliers/browse', label: '1688 Browse', icon: Factory },
   { href: '/marketing',     label: 'Marketing',    icon: TrendingUp },
   { href: '/dashboard',      label: 'Calendar',     icon: LayoutDashboard },
   { href: '/settings',      label: 'Settings',     icon: Settings },
