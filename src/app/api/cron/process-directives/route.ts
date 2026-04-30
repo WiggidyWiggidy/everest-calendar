@@ -802,16 +802,17 @@ export async function GET(request: NextRequest) {
   //  - meta-dce per-asset breakdowns can run after extract-assets (but doesn't depend on it).
   //  - ga4-pages provides per-page funnel depth alongside site-aggregate ga4.
   const syncSources = [
-    'meta',                // site-aggregate Meta insights
-    'meta-campaigns',      // structural: campaigns + adsets + ads + asset_feed_spec
-    'extract-assets',      // normalize asset_feed_spec → meta_creative_assets (KRYO + others)
-    'meta-ad-insights',    // per-ad daily metrics
-    'meta-dce',            // per-DCE-asset breakdowns → meta_dce_metrics
-    'clarity',             // Clarity engagement + per-URL rage/dead clicks
-    'shopify',             // site-aggregate Shopify revenue/orders
-    'shopify-funnel',      // checkout abandonment funnel
-    'ga4',                 // site-aggregate GA4 sessions/bounce
-    'ga4-pages',           // per-page GA4 (KRYO pages by default)
+    'meta',                       // site-aggregate Meta insights
+    'meta-campaigns',             // structural: campaigns + adsets + ads + asset_feed_spec
+    'extract-assets',             // normalize asset_feed_spec → meta_creative_assets
+    'resolve-meta-asset-urls',    // resolve image hash → URL + video_id → URL on extracted assets
+    'meta-ad-insights',           // per-ad daily metrics
+    'meta-dce',                   // per-DCE-asset breakdowns → meta_dce_metrics + meta_asset_performance_daily
+    'clarity',                    // Clarity engagement + per-URL rage/dead clicks
+    'shopify',                    // site-aggregate Shopify revenue/orders
+    'shopify-funnel',             // checkout abandonment funnel
+    'ga4',                        // site-aggregate GA4 sessions/bounce
+    'ga4-pages',                  // per-page GA4 (ice_shower pages by default)
   ];
   const syncResults: Record<string, string> = {};
 
