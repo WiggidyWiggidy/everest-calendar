@@ -53,7 +53,12 @@ export async function updateSession(request: NextRequest) {
     (request.nextUrl.pathname === '/api/marketing/subscribe' && request.method === 'POST') ||
     (request.nextUrl.pathname === '/api/webhooks/meta-leads') ||
     (request.nextUrl.pathname === '/api/marketing/survey' && request.method === 'POST') ||
-    (request.nextUrl.pathname === '/api/marketing/token-health' && request.headers.get('x-sync-secret') !== null);
+    (request.nextUrl.pathname === '/api/marketing/token-health' && request.headers.get('x-sync-secret') !== null) ||
+    // Phase 2 attribution pipeline:
+    // - Storefront pixel: public POST/OPTIONS (CORS); HMAC + payload validation in handler.
+    // - Shopify order-created webhook: Shopify-signed HMAC (verified in handler).
+    (request.nextUrl.pathname === '/api/marketing/track/session') ||
+    (request.nextUrl.pathname === '/api/webhooks/shopify/order-created' && request.method === 'POST');
 
   if (!user && !isAuthPage && !isApiKeyRoute) {
     const url = request.nextUrl.clone();
