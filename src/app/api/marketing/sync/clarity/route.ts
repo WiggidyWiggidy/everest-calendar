@@ -101,10 +101,82 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: upsertError.message }, { status: 500 });
     }
 
+    // Phase 2 W3: emit per-URL friction rows into clarity_friction_elements.
+    // Clarity API exposes per-URL aggregates; per-element selectors aren't in the public API yet,
+    // so we use element_selector='page_aggregate' as a placeholder. When Clarity exposes element-
+    // level heatmap data (or we wire a custom storefront pixel), this same table absorbs it.
+    const ragePerUrl = clarityData.find(m => m.metricName === 'RageClickCount')?.information ?? [];
+    const deadPerUrl = clarityData.find(m => m.metricName === 'DeadClickCount')?.information ?? [];
+
+    // Collect unique URLs that appear in either rage or dead click metric
+    const allUrls = new Set<string>([
+      ...ragePerUrl.map(r => r.dimensionValue),
+      ...deadPerUrl.map(r => r.dimensionValue),
+    ]);
+
+    if (allUrls.size > 0) {
+      // Lookup landing_page_id by URL match for the rows we're about to write
+      const { data: lps } = await supabase
+        .from('landing_pages')
+        .select('id, shopify_url')
+        .eq('user_id', userId);
+      const lpByPath: Record<string, string> = {};
+      for (const lp of (lps ?? []) as Array<{ id: string; shopify_url: string | null }>) {
+        if (lp.shopify_url) {
+          try { lpByPath[new URL(lp.shopify_url).pathname] = lp.id; } catch { /* ignore malformed */ }
+        }
+      }
+
+      // Build per-URL counts. Compute Z-score across the day's URLs to flag top offenders.
+      const rageMap = new Map<string, number>();
+      ragePerUrl.forEach(r => rageMap.set(r.dimensionValue, r.metricValue ?? 0));
+      const deadMap = new Map<string, number>();
+      deadPerUrl.forEach(d => deadMap.set(d.dimensionValue, d.metricValue ?? 0));
+      const rageVals = Array.from(rageMap.values());
+      const mean = rageVals.length ? rageVals.reduce((a, b) => a + b, 0) / rageVals.length : 0;
+      const variance = rageVals.length ? rageVals.reduce((a, b) => a + (b - mean) ** 2, 0) / rageVals.length : 0;
+      const sd = Math.sqrt(variance) || 1;
+
+      // Identify top-3 by rage count
+      const topUrls = new Set<string>(
+        Array.from(rageMap.entries())
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3)
+          .map(([u]) => u)
+      );
+
+      const frictionRows = Array.from(allUrls).map(url => {
+        let path = url;
+        try { path = new URL(url).pathname; } catch { /* keep raw */ }
+        const rage = rageMap.get(url) ?? 0;
+        const dead = deadMap.get(url) ?? 0;
+        return {
+          date: dateStr,
+          landing_page_id: lpByPath[path] ?? null,
+          page_url: url,
+          element_selector: 'page_aggregate',
+          rage_click_count: rage,
+          dead_click_count: dead,
+          rage_click_zscore: sd > 0 ? Number(((rage - mean) / sd).toFixed(3)) : null,
+          is_top_offender: topUrls.has(url),
+          raw_clarity_payload: { source: 'live-insights', day_offset: 1 },
+        };
+      });
+
+      const { error: frictionErr } = await supabase
+        .from('clarity_friction_elements')
+        .upsert(frictionRows, { onConflict: 'date,page_url,element_selector' });
+
+      if (frictionErr) {
+        console.warn('clarity_friction_elements upsert (non-fatal):', frictionErr.message);
+      }
+    }
+
     return NextResponse.json({
       synced: true,
       date: dateStr,
       metrics: { engagementScore, rageClicks, deadClicks, avgScrollDepth },
+      friction_urls: allUrls.size,
     });
   } catch (err) {
     console.error('sync/clarity error:', err);
