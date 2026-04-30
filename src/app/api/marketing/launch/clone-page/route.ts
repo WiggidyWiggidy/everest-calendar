@@ -92,31 +92,74 @@ export async function POST(request: NextRequest) {
     // If overrides supplied but none matched, soft-warn (not 422) — title still gets the new value, which IS the H1.
     const overridesSuppliedButUnmatched = (body.overrides?.length ?? 0) > 0 && appliedChanges.length === 0;
 
-    // 3. Duplicate the product via Shopify's product duplicate endpoint.
-    // This preserves theme template, images, metafields — the new product page renders the same long-form layout.
-    const dupRes = await fetch(
-      `https://${shopifyUrl}/admin/api/2024-01/products/${sourceProductId}/duplicate.json`,
+    // 3. Duplicate the product via Shopify's GraphQL productDuplicate mutation (2025-04).
+    // REST `/admin/api/<v>/products/{id}/duplicate.json` was deprecated for new apps in
+    // April 2025 — Shopify now requires GraphQL for new public apps. Returns 406 on REST.
+    const gqlRes = await fetch(
+      `https://${shopifyUrl}/admin/api/2025-04/graphql.json`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           'X-Shopify-Access-Token': shopifyToken,
         },
         body: JSON.stringify({
-          new_title: body.target_name,
-          include_images: true,
-          new_status: 'draft', // safety: not visible in storefront until approval
+          query: `
+            mutation Duplicate($productId: ID!, $newTitle: String!, $newStatus: ProductStatus, $includeImages: Boolean) {
+              productDuplicate(
+                productId: $productId,
+                newTitle: $newTitle,
+                newStatus: $newStatus,
+                includeImages: $includeImages
+              ) {
+                newProduct { id handle title status }
+                userErrors { field message }
+              }
+            }
+          `,
+          variables: {
+            productId: `gid://shopify/Product/${sourceProductId}`,
+            newTitle: body.target_name,
+            newStatus: 'DRAFT',
+            includeImages: true,
+          },
         }),
       }
     );
-    if (!dupRes.ok) {
+    if (!gqlRes.ok) {
       return NextResponse.json({
-        error: `Shopify product duplicate failed: ${dupRes.status}`,
-        detail: await dupRes.text().catch(() => ''),
+        error: `Shopify GraphQL productDuplicate HTTP ${gqlRes.status}`,
+        detail: await gqlRes.text().catch(() => ''),
       }, { status: 502 });
     }
-    const dupPayload = await dupRes.json();
-    const dup = dupPayload.product;
+    const gqlPayload = await gqlRes.json();
+    const userErrors = gqlPayload?.data?.productDuplicate?.userErrors ?? [];
+    if (userErrors.length > 0) {
+      return NextResponse.json({
+        error: 'productDuplicate userErrors',
+        detail: userErrors,
+      }, { status: 502 });
+    }
+    if (gqlPayload?.errors) {
+      return NextResponse.json({
+        error: 'productDuplicate GraphQL errors',
+        detail: gqlPayload.errors,
+      }, { status: 502 });
+    }
+    const newProduct = gqlPayload?.data?.productDuplicate?.newProduct;
+    if (!newProduct?.id) {
+      return NextResponse.json({
+        error: 'productDuplicate response missing newProduct',
+        detail: JSON.stringify(gqlPayload).slice(0, 500),
+      }, { status: 502 });
+    }
+    // Convert GID like 'gid://shopify/Product/123456' to numeric '123456' for REST follow-up calls
+    const dup = {
+      id: newProduct.id.replace(/^gid:\/\/shopify\/Product\//, ''),
+      handle: newProduct.handle,
+      title: newProduct.title,
+    };
     if (!dup?.id) {
       return NextResponse.json({ error: 'Shopify duplicate response missing product id', detail: JSON.stringify(dupPayload).slice(0, 500) }, { status: 502 });
     }
