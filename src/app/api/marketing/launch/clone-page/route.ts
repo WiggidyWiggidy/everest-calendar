@@ -36,6 +36,9 @@ interface CloneRequest {
   // The long-form sections live in the theme template, not body_html — those render automatically
   // from the duplicated product's templating.
   overrides?: Array<{ find: string; replace: string; reason?: string }>;
+  // Full replacement of body_html with composed premium sections (from src/lib/page-composer).
+  // When supplied, the find/replace `overrides` array is ignored. Use one or the other.
+  body_html_full_replace?: string;
   hypothesis?: string;
 }
 
@@ -78,10 +81,15 @@ export async function POST(request: NextRequest) {
     const sourceProductId: number = sourceProduct.id;
     const sourceBodyHtml: string = sourceProduct.body_html ?? '';
 
-    // 2. Compute the variant body_html (with overrides applied) BEFORE duplicating, so we can validate
+    // 2. Compute the variant body_html.
+    // Two modes: (a) full replace from composed premium sections, or (b) find/replace overrides.
     let variantBodyHtml = sourceBodyHtml;
     const appliedChanges: Array<{ find: string; replace: string; reason?: string }> = [];
-    if (body.overrides?.length) {
+    let fullReplaceApplied = false;
+    if (typeof body.body_html_full_replace === 'string' && body.body_html_full_replace.length > 0) {
+      variantBodyHtml = body.body_html_full_replace;
+      fullReplaceApplied = true;
+    } else if (body.overrides?.length) {
       for (const o of body.overrides) {
         if (variantBodyHtml.includes(o.find)) {
           variantBodyHtml = variantBodyHtml.split(o.find).join(o.replace);
@@ -90,7 +98,7 @@ export async function POST(request: NextRequest) {
       }
     }
     // If overrides supplied but none matched, soft-warn (not 422) — title still gets the new value, which IS the H1.
-    const overridesSuppliedButUnmatched = (body.overrides?.length ?? 0) > 0 && appliedChanges.length === 0;
+    const overridesSuppliedButUnmatched = !fullReplaceApplied && (body.overrides?.length ?? 0) > 0 && appliedChanges.length === 0;
 
     // 3. Duplicate the product via Shopify's GraphQL productDuplicate mutation (2025-04).
     // REST `/admin/api/<v>/products/{id}/duplicate.json` was deprecated for new apps in
@@ -166,8 +174,8 @@ export async function POST(request: NextRequest) {
     const newProductId: string = String(dup.id);
     const newHandle: string = dup.handle;
 
-    // 4. If we have applied changes, PATCH the duplicate's body_html with the modified version.
-    if (appliedChanges.length > 0) {
+    // 4. If we have applied changes (find/replace OR full replace), PATCH the duplicate's body_html.
+    if (appliedChanges.length > 0 || fullReplaceApplied) {
       const updateRes = await fetch(
         `https://${shopifyUrl}/admin/api/2024-01/products/${newProductId}.json`,
         {
@@ -224,7 +232,7 @@ export async function POST(request: NextRequest) {
       { source_handle: SOURCE_PRODUCT_HANDLE, source_id: sourceProductId, status: 'active' },
       { handle: newHandle, status: 'draft', title: body.target_name },
       'scheduled_agent',
-      { variant_angle: body.variant_angle, changes_applied: appliedChanges, overrides_unmatched: overridesSuppliedButUnmatched, landing_page_id: lpRow?.id },
+      { variant_angle: body.variant_angle, changes_applied: appliedChanges, overrides_unmatched: overridesSuppliedButUnmatched, full_replace_applied: fullReplaceApplied, body_html_bytes: variantBodyHtml.length, landing_page_id: lpRow?.id },
     );
 
     return NextResponse.json({
@@ -235,6 +243,8 @@ export async function POST(request: NextRequest) {
       preview_url: previewUrl,
       preview_url_admin: `https://${shopifyUrl}/admin/products/${newProductId}`,
       changes_applied: appliedChanges.length,
+      full_replace_applied: fullReplaceApplied,
+      body_html_bytes: variantBodyHtml.length,
       overrides_supplied_but_unmatched: overridesSuppliedButUnmatched,
       title_was_overridden: true,
       product_status: 'draft',
