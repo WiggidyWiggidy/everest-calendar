@@ -829,6 +829,23 @@ export async function GET(request: NextRequest) {
     syncResults['process-attribution'] = (e as Error).message;
   }
 
+  // Pre-compute marketing_findings cache so future sessions don't re-derive insights via Opus.
+  // Pure SQL RPC, zero LLM cost. Reads top_ad / hero_day / angle_distribution / funnel_baseline /
+  // anomaly_state / lp_control / next_test summaries into a single readable table.
+  try {
+    const findingsRes = await fetch(`${baseUrl}/api/marketing/launch/refresh-findings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-sync-secret': mktgSyncSecret },
+      body: JSON.stringify({}),
+    });
+    const findingsData = await findingsRes.json();
+    syncResults['refresh-findings'] = findingsRes.ok
+      ? `ok categories=${(findingsData.categories ?? []).map((c: { category: string; n: number }) => c.category + '/' + c.n).join(',')}`
+      : (findingsData.error || `${findingsRes.status}`);
+  } catch (e) {
+    syncResults['refresh-findings'] = (e as Error).message;
+  }
+
   await logAgentActivity({
     agentName:    'orchestrator',
     agentSource:  'vercel',
