@@ -39,6 +39,11 @@ export async function updateSession(request: NextRequest) {
   const isAuthPage = request.nextUrl.pathname.startsWith('/login') ||
                      request.nextUrl.pathname.startsWith('/signup');
 
+  // /dev/* are internal QA routes (e.g., /dev/section-preview) — only served in development.
+  // In production these 404 because they sit alongside Next.js app routes that aren't deployed.
+  const isDevPreviewRoute =
+    process.env.NODE_ENV === 'development' && request.nextUrl.pathname.startsWith('/dev/');
+
   // API routes that use X-API-Key auth (not session) must be exempt from redirect
   const isApiKeyRoute =
     (request.nextUrl.pathname.startsWith('/api/candidates') && request.method === 'POST') ||
@@ -60,7 +65,7 @@ export async function updateSession(request: NextRequest) {
     (request.nextUrl.pathname === '/api/marketing/track/session') ||
     (request.nextUrl.pathname === '/api/webhooks/shopify/order-created' && request.method === 'POST');
 
-  if (!user && !isAuthPage && !isApiKeyRoute) {
+  if (!user && !isAuthPage && !isApiKeyRoute && !isDevPreviewRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
