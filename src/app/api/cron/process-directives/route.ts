@@ -813,6 +813,22 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // Phase 2 W2: After raw syncs land, run the attribution RPCs.
+  // Computes ad_metrics_daily (channel-agnostic attributed) + lp_funnel_daily for yesterday.
+  try {
+    const attrRes = await fetch(`${baseUrl}/api/marketing/launch/process-attribution`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-sync-secret': mktgSyncSecret },
+      body: JSON.stringify({}),
+    });
+    const attrData = await attrRes.json();
+    syncResults['process-attribution'] = attrRes.ok
+      ? `ok rows=${JSON.stringify(attrData.results?.[0] ?? {})}`
+      : (attrData.error || `${attrRes.status}`);
+  } catch (e) {
+    syncResults['process-attribution'] = (e as Error).message;
+  }
+
   await logAgentActivity({
     agentName:    'orchestrator',
     agentSource:  'vercel',
