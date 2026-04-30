@@ -796,8 +796,23 @@ export async function GET(request: NextRequest) {
   // ── Marketing data sync (daily) ────────────────────────────────────────────
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://everest-calendar.vercel.app';
   const mktgSyncSecret = process.env.MARKETING_SYNC_SECRET || '';
-  // Order matters: meta-campaigns discovers ads before meta-ad-insights pulls their metrics
-  const syncSources = ['meta', 'meta-campaigns', 'meta-ad-insights', 'meta-dce', 'clarity', 'shopify', 'shopify-funnel'];
+  // Order matters:
+  //  - meta-campaigns discovers ads before meta-ad-insights pulls their metrics.
+  //  - extract-assets normalizes asset_feed_spec into meta_creative_assets after meta-campaigns.
+  //  - meta-dce per-asset breakdowns can run after extract-assets (but doesn't depend on it).
+  //  - ga4-pages provides per-page funnel depth alongside site-aggregate ga4.
+  const syncSources = [
+    'meta',                // site-aggregate Meta insights
+    'meta-campaigns',      // structural: campaigns + adsets + ads + asset_feed_spec
+    'extract-assets',      // normalize asset_feed_spec → meta_creative_assets (KRYO + others)
+    'meta-ad-insights',    // per-ad daily metrics
+    'meta-dce',            // per-DCE-asset breakdowns → meta_dce_metrics
+    'clarity',             // Clarity engagement + per-URL rage/dead clicks
+    'shopify',             // site-aggregate Shopify revenue/orders
+    'shopify-funnel',      // checkout abandonment funnel
+    'ga4',                 // site-aggregate GA4 sessions/bounce
+    'ga4-pages',           // per-page GA4 (KRYO pages by default)
+  ];
   const syncResults: Record<string, string> = {};
 
   for (const source of syncSources) {
