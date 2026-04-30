@@ -9,14 +9,16 @@ import { CampaignsView } from './CampaignsView';
 import { FunnelView } from './FunnelView';
 import { ExperimentsTab } from './ExperimentsTab';
 import { ContentView } from './ContentView';
+import { Phase2InsightsPanel } from './Phase2InsightsPanel';
 
-type View = 'pulse' | 'campaigns' | 'funnel' | 'experiments' | 'content';
+type View = 'insights' | 'pulse' | 'campaigns' | 'funnel' | 'experiments' | 'content';
 
 interface PageWithProposal extends LandingPage {
   latest_proposal: { id: string; status: string } | null;
 }
 
 const VIEWS: { key: View; label: string }[] = [
+  { key: 'insights', label: 'Insights' },
   { key: 'pulse', label: 'Pulse' },
   { key: 'campaigns', label: 'Campaigns' },
   { key: 'funnel', label: 'Funnel' },
@@ -25,7 +27,7 @@ const VIEWS: { key: View; label: string }[] = [
 ];
 
 export function MarketingDashboard() {
-  const [activeView, setActiveView] = useState<View>('pulse');
+  const [activeView, setActiveView] = useState<View>('insights');
   const [loading, setLoading] = useState(true);
   const [history, setHistory] = useState<MarketingMetricDaily[]>([]);
   const [today, setToday] = useState<MarketingMetricDaily | null>(null);
@@ -118,6 +120,11 @@ export function MarketingDashboard() {
 
       {/* View content */}
       <div className="flex-1 overflow-y-auto">
+        {activeView === 'insights' && (
+          <div className="p-6">
+            <Phase2InsightsPanel />
+          </div>
+        )}
         {activeView === 'pulse' && (
           <PulseView
             history={history}
