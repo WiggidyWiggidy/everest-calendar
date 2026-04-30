@@ -179,10 +179,14 @@ export async function POST(request: NextRequest) {
         } else if (kind === 'ad_creative') {
           // Until Meta billing is settled + token has ads_management scope, we don't push to Meta API.
           // Just mark the ad_creative as ready_to_promote so /promote-ads can fire later.
-          await sb
+          const { error: adErr } = await sb
             .from('ad_creatives')
             .update({ status: 'ready_to_promote', updated_at: new Date().toISOString() })
             .eq('id', resourceId);
+          if (adErr) {
+            results.push({ inbox_id: row.id, status: 'failed', reason: `ad_creatives status flip failed: ${adErr.message}` });
+            continue;
+          }
 
           await auditLog(
             sb,
