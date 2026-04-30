@@ -1,0 +1,209 @@
+{% comment %}
+  KRYO Hero — full-width hero, eight-sleep tier.
+  Reads content from product.metafields.kryo.* with section.settings.* fallback.
+  Pure HTML + scoped CSS. Native HTML5 <video> for hero loop, <picture> fallback.
+  Class prefix `kryo-sec-hero-*` — won't collide with theme or AI Magic genblock sections.
+{% endcomment %}
+
+{%- assign eyebrow = product.metafields.kryo.hero_eyebrow | default: section.settings.eyebrow -%}
+{%- assign headline = product.metafields.kryo.hero_headline | default: section.settings.headline | default: product.title -%}
+{%- assign sub = product.metafields.kryo.hero_sub | default: section.settings.sub -%}
+{%- assign cta_text = product.metafields.kryo.hero_cta_text | default: section.settings.cta_text | default: 'Reserve your unit' -%}
+{%- assign cta_href = section.settings.cta_href | default: '#ProductForm' -%}
+{%- assign poster_url = section.settings.poster_url -%}
+{%- assign video_mp4 = section.settings.video_mp4 -%}
+
+{% style %}
+  .kryo-sec-hero-{{ section.id }} {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    min-height: 88vh;
+    color: #ffffff;
+    background: #0a0a0a;
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    box-sizing: border-box;
+    width: 100%;
+  }
+  .kryo-sec-hero-{{ section.id }} *,
+  .kryo-sec-hero-{{ section.id }} *::before,
+  .kryo-sec-hero-{{ section.id }} *::after { box-sizing: border-box; }
+  .kryo-sec-hero-{{ section.id }}__media-wrap {
+    position: absolute; inset: 0; z-index: -1;
+  }
+  .kryo-sec-hero-{{ section.id }}__media {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+  }
+  .kryo-sec-hero-{{ section.id }}__scrim {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,0.20) 0%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.88) 100%);
+  }
+  .kryo-sec-hero-{{ section.id }}__content {
+    position: relative;
+    width: 100%;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 80px 24px;
+    min-height: inherit;
+    display: flex; flex-direction: column; justify-content: flex-end; gap: 18px;
+  }
+  .kryo-sec-hero-{{ section.id }}__eyebrow {
+    margin: 0;
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: rgba(255,255,255,0.78);
+  }
+  .kryo-sec-hero-{{ section.id }}__headline {
+    margin: 0;
+    font-size: clamp(2.4rem, 5.5vw, 4.6rem);
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+    max-width: 18ch;
+    color: #ffffff;
+  }
+  .kryo-sec-hero-{{ section.id }}__sub {
+    margin: 4px 0 0 0;
+    font-size: clamp(1rem, 1.4vw, 1.2rem);
+    line-height: 1.5;
+    color: rgba(255,255,255,0.84);
+    max-width: 56ch;
+  }
+  .kryo-sec-hero-{{ section.id }}__badges {
+    list-style: none;
+    padding: 0;
+    margin: 12px 0 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 22px;
+  }
+  .kryo-sec-hero-{{ section.id }}__badges li {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: rgba(255,255,255,0.88);
+  }
+  .kryo-sec-hero-{{ section.id }}__badge-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px; height: 22px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.14);
+    color: #ffffff;
+    flex-shrink: 0;
+  }
+  .kryo-sec-hero-{{ section.id }}__cta-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+  .kryo-sec-hero-{{ section.id }}__cta {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 16px 32px;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #0a0a0a;
+    font-weight: 600; font-size: 16px;
+    text-decoration: none;
+    transition: transform 160ms ease, opacity 160ms ease;
+  }
+  .kryo-sec-hero-{{ section.id }}__cta:hover { transform: translateY(-1px); opacity: 0.92; }
+  @media (max-width: 640px) {
+    .kryo-sec-hero-{{ section.id }} { min-height: 78vh; }
+    .kryo-sec-hero-{{ section.id }}__content { padding: 96px 20px; }
+    .kryo-sec-hero-{{ section.id }}__headline { font-size: clamp(2rem, 9vw, 3rem); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .kryo-sec-hero-{{ section.id }} * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+{% endstyle %}
+
+<section class="kryo-sec-hero kryo-sec-hero-{{ section.id }}" data-section-id="{{ section.id }}" data-section-type="kryo-hero-video">
+  <div class="kryo-sec-hero-{{ section.id }}__media-wrap">
+    {%- if video_mp4 != blank -%}
+      <video class="kryo-sec-hero-{{ section.id }}__media" autoplay muted loop playsinline preload="metadata"
+        {%- if poster_url != blank %} poster="{{ poster_url }}"{% endif -%}>
+        <source src="{{ video_mp4 }}" type="video/mp4">
+      </video>
+    {%- elsif poster_url != blank -%}
+      <img class="kryo-sec-hero-{{ section.id }}__media" src="{{ poster_url }}" alt="{{ headline | escape }}" loading="eager" fetchpriority="high">
+    {%- elsif product.featured_media != blank -%}
+      <img class="kryo-sec-hero-{{ section.id }}__media" src="{{ product.featured_media | image_url: width: 1920 }}" alt="{{ product.title | escape }}" loading="eager" fetchpriority="high">
+    {%- endif -%}
+    <div class="kryo-sec-hero-{{ section.id }}__scrim"></div>
+  </div>
+
+  <div class="kryo-sec-hero-{{ section.id }}__content">
+    {%- if eyebrow != blank -%}
+      <p class="kryo-sec-hero-{{ section.id }}__eyebrow">{{ eyebrow | escape }}</p>
+    {%- endif -%}
+    <h1 class="kryo-sec-hero-{{ section.id }}__headline">{{ headline | escape }}</h1>
+    {%- if sub != blank -%}
+      <p class="kryo-sec-hero-{{ section.id }}__sub">{{ sub | escape }}</p>
+    {%- endif -%}
+    {%- if section.blocks.size > 0 -%}
+      <ul class="kryo-sec-hero-{{ section.id }}__badges">
+        {%- for block in section.blocks -%}
+          {%- if block.type == 'badge' and block.settings.label != blank -%}
+            <li {{ block.shopify_attributes }}>
+              <span class="kryo-sec-hero-{{ section.id }}__badge-icon" aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </span>
+              {{ block.settings.label | escape }}
+            </li>
+          {%- endif -%}
+        {%- endfor -%}
+      </ul>
+    {%- endif -%}
+    <div class="kryo-sec-hero-{{ section.id }}__cta-row">
+      <a href="{{ cta_href }}" class="kryo-sec-hero-{{ section.id }}__cta">
+        {{ cta_text | escape }}
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+      </a>
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "KRYO Hero",
+  "tag": "section",
+  "class": "kryo-section",
+  "settings": [
+    { "type": "header", "content": "Content (overrideable per-product via metafields kryo.hero_*)" },
+    { "type": "text", "id": "eyebrow", "label": "Eyebrow", "default": "KRYO V4" },
+    { "type": "text", "id": "headline", "label": "Headline", "default": "A 1°C cold plunge inside your shower." },
+    { "type": "textarea", "id": "sub", "label": "Sub-headline" },
+    { "type": "header", "content": "Media" },
+    { "type": "url", "id": "video_mp4", "label": "Hero video MP4 URL (optional)" },
+    { "type": "url", "id": "poster_url", "label": "Hero poster image URL (falls back to product featured image)" },
+    { "type": "header", "content": "CTA" },
+    { "type": "text", "id": "cta_text", "label": "CTA text", "default": "Reserve your unit" },
+    { "type": "text", "id": "cta_href", "label": "CTA href (e.g. #ProductForm)", "default": "#ProductForm" }
+  ],
+  "blocks": [
+    {
+      "type": "badge",
+      "name": "Trust badge",
+      "settings": [
+        { "type": "text", "id": "label", "label": "Label" }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "KRYO Hero",
+      "blocks": [
+        { "type": "badge", "settings": { "label": "Same-week Dubai dispatch" } },
+        { "type": "badge", "settings": { "label": "AED 3,990 starting" } },
+        { "type": "badge", "settings": { "label": "30-day performance guarantee" } }
+      ]
+    }
+  ],
+  "enabled_on": {
+    "templates": ["product"]
+  }
+}
+{% endschema %}
