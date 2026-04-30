@@ -160,8 +160,8 @@ export async function POST(request: NextRequest) {
       handle: newProduct.handle,
       title: newProduct.title,
     };
-    if (!dup?.id) {
-      return NextResponse.json({ error: 'Shopify duplicate response missing product id', detail: JSON.stringify(dupPayload).slice(0, 500) }, { status: 502 });
+    if (!dup.id) {
+      return NextResponse.json({ error: 'Shopify duplicate response missing product id', detail: JSON.stringify(gqlPayload).slice(0, 500) }, { status: 502 });
     }
     const newProductId: string = String(dup.id);
     const newHandle: string = dup.handle;
