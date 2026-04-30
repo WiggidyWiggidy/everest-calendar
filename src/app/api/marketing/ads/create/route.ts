@@ -13,6 +13,7 @@ export async function POST(request: NextRequest) {
       adset_name,
       daily_budget,
       target_audience,
+      landing_url,    // optional override; defaults to /products/kryo_ if missing
     } = await request.json();
 
     if (!ad_creative_id) {
@@ -116,20 +117,41 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 4: Create ad creative on Meta
+    // UTM contract: every link emits utm_source=meta + utm_medium=paid + UTM template tokens
+    // ({{campaign.id}}, {{adset.id}}, {{ad.id}}) which Meta substitutes at click-time.
+    // This solves the chicken-and-egg of needing the ad_id in the URL before the ad exists.
+    // Caller can override the base URL by passing `landing_url` in the request body — defaults to
+    // the canonical KRYO product page if not provided.
+    const baseLandingUrl =
+      (typeof landing_url === 'string' && landing_url.length > 0)
+        ? landing_url
+        : (process.env.SHOPIFY_STORE_URL
+            ? `https://${process.env.SHOPIFY_STORE_URL}/products/kryo_`
+            : 'https://everestlabs.co/products/kryo_');
+    const utmTaggedLink = (() => {
+      const url = new URL(baseLandingUrl);
+      url.searchParams.set('utm_source', 'meta');
+      url.searchParams.set('utm_medium', 'paid');
+      url.searchParams.set('utm_campaign', '{{campaign.id}}');
+      url.searchParams.set('utm_content', '{{ad.id}}');
+      // Meta auto-decodes {{}} tokens at click-time even when URL-encoded.
+      return url.toString();
+    })();
+
     const adCreativeRes = await fetch(
       `https://graph.facebook.com/v25.0/${adAccountId}/adcreatives`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: creative.headline || 'ISU-001 Ad',
+          name: creative.headline || 'KRYO Ad',
           object_story_spec: {
             page_id: process.env.META_PAGE_ID,
             link_data: {
               image_hash: imageHash,
-              link: process.env.SHOPIFY_STORE_URL ? `https://${process.env.SHOPIFY_STORE_URL}` : 'https://everestlabs.com',
+              link: utmTaggedLink,
               message: creative.body_copy || '',
-              name: creative.headline || 'ISU-001 Portable Ice Shower',
+              name: creative.headline || 'KRYO',
               call_to_action: { type: 'SHOP_NOW' },
             },
           },
