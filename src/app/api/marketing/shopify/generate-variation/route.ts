@@ -2,6 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getShopifyToken, getShopifyStoreUrl } from '@/lib/shopify-auth';
 
+// Skill mode (preferred for autonomous /launch-kryo flow):
+// When the skill (running in Claude Code with free Max OAuth) has already generated the
+// variant body_html via in-session conversation, it POSTs here with x-sync-secret +
+// { landing_page_id, body_html, changes } and we skip the Anthropic API call entirely.
+// This eliminates paid LLM costs from the autonomous loop.
+//
+// Legacy dashboard mode (still supported): when called from the web dashboard with a
+// Supabase user session and { landing_page_id, proposal_id }, the route falls back to
+// calling Anthropic API key Sonnet 4. This path will be deprecated once the dashboard
+// migrates to the skill-driven flow.
+function isSkillMode(request: NextRequest): boolean {
+  const secret = request.headers.get('x-sync-secret');
+  return Boolean(secret && secret === process.env.MARKETING_SYNC_SECRET);
+}
+
 const AVAILABLE_SECTION_TYPES = [
   'hero — Bold headline, body copy, CTA button, optional image (dark background)',
   'key_benefits — 3-column numbered benefit cards',
@@ -23,14 +38,31 @@ interface VariationChange {
 
 export async function POST(request: NextRequest) {
   try {
+    const skillMode = isSkillMode(request);
+    const reqBody = await request.json() as {
+      landing_page_id: string;
+      proposal_id?: string;
+      body_html?: string;          // skill-mode only: pre-generated HTML from Claude Code OAuth session
+      changes?: VariationChange[]; // skill-mode only
+    };
+    const { landing_page_id, proposal_id, body_html: skillBodyHtml, changes: skillChanges } = reqBody;
+
+    // Skill mode fast-path: skip the Anthropic API call entirely. Just validate + return.
+    if (skillMode) {
+      if (!landing_page_id || !skillBodyHtml || skillBodyHtml.length < 500) {
+        return NextResponse.json({ error: 'Skill mode requires landing_page_id and a non-empty body_html (>=500 chars).' }, { status: 400 });
+      }
+      return NextResponse.json({
+        body_html: skillBodyHtml,
+        changes: skillChanges ?? [],
+        mode: 'skill',
+      });
+    }
+
+    // Legacy dashboard mode below — kept for backward compatibility, but uses paid Anthropic API key.
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const { landing_page_id, proposal_id } = await request.json() as {
-      landing_page_id: string;
-      proposal_id: string;
-    };
 
     if (!landing_page_id || !proposal_id) {
       return NextResponse.json({ error: 'landing_page_id and proposal_id are required' }, { status: 400 });
