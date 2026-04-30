@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
         if (kind === 'landing_page') {
           const { data: lp } = await sb
             .from('landing_pages')
-            .select('shopify_page_id, name, status')
+            .select('shopify_page_id, name, status, page_type')
             .eq('id', resourceId)
             .eq('user_id', TOM_USER_ID)
             .single();
@@ -112,39 +112,70 @@ export async function POST(request: NextRequest) {
             continue;
           }
 
-          // Snapshot before publish
-          await snapshotShopifyPage(sb, TOM_USER_ID, lp.shopify_page_id, shopifyUrl, shopifyToken, 'pre_publish');
+          // Branch on page_type. clone-page now creates page_type='product' (Shopify Product Duplicate),
+          // not page_type='page' (Shopify custom page). Publish path differs.
+          if (lp.page_type === 'product') {
+            // Set product status to 'active' (publishes to storefront)
+            const pubRes = await fetch(
+              `https://${shopifyUrl}/admin/api/2024-01/products/${lp.shopify_page_id}.json`,
+              {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': shopifyToken },
+                body: JSON.stringify({ product: { id: parseInt(lp.shopify_page_id, 10), status: 'active', published: true } }),
+              }
+            );
+            if (!pubRes.ok) {
+              results.push({ inbox_id: row.id, status: 'failed', reason: `Shopify product publish ${pubRes.status}: ${await pubRes.text().catch(() => '')}` });
+              continue;
+            }
+            const pubData = await pubRes.json();
+            const productHandle = pubData.product?.handle;
 
-          const pub = await publishShopifyPage(shopifyUrl, shopifyToken, lp.shopify_page_id);
-          if (!pub.ok) {
-            results.push({ inbox_id: row.id, status: 'failed', reason: pub.error });
-            continue;
+            await sb.from('landing_pages').update({ status: 'monitoring', updated_at: new Date().toISOString() }).eq('id', resourceId);
+
+            await auditLog(
+              sb, TOM_USER_ID, 'product_published_via_inbox_approval', 'shopify_product',
+              lp.shopify_page_id, { status: 'draft' }, { status: 'active', handle: productHandle },
+              'scheduled_agent',
+              { landing_page_id: resourceId, launch_run_id: launchRunId, inbox_id: row.id },
+            );
+
+            results.push({
+              inbox_id: row.id,
+              status: 'published',
+              landing_page_id: resourceId,
+              handle: productHandle,
+              preview_url: productHandle ? `https://${shopifyUrl}/products/${productHandle}` : null,
+              page_type: 'product',
+            });
+          } else {
+            // Legacy path: Shopify Page (page_type='page'). Kept for backward compatibility.
+            await snapshotShopifyPage(sb, TOM_USER_ID, lp.shopify_page_id, shopifyUrl, shopifyToken, 'pre_publish');
+
+            const pub = await publishShopifyPage(shopifyUrl, shopifyToken, lp.shopify_page_id);
+            if (!pub.ok) {
+              results.push({ inbox_id: row.id, status: 'failed', reason: pub.error });
+              continue;
+            }
+
+            await sb.from('landing_pages').update({ status: 'monitoring', updated_at: new Date().toISOString() }).eq('id', resourceId);
+
+            await auditLog(
+              sb, TOM_USER_ID, 'page_published_via_inbox_approval', 'shopify_page',
+              lp.shopify_page_id, { published: false }, { published: true, handle: pub.handle },
+              'scheduled_agent',
+              { landing_page_id: resourceId, launch_run_id: launchRunId, inbox_id: row.id },
+            );
+
+            results.push({
+              inbox_id: row.id,
+              status: 'published',
+              landing_page_id: resourceId,
+              handle: pub.handle,
+              preview_url: pub.handle ? `https://${shopifyUrl}/pages/${pub.handle}` : null,
+              page_type: 'page',
+            });
           }
-
-          await sb
-            .from('landing_pages')
-            .update({ status: 'monitoring', updated_at: new Date().toISOString() })
-            .eq('id', resourceId);
-
-          await auditLog(
-            sb,
-            TOM_USER_ID,
-            'page_published_via_inbox_approval',
-            'shopify_page',
-            lp.shopify_page_id,
-            { published: false },
-            { published: true, handle: pub.handle },
-            'scheduled_agent',
-            { landing_page_id: resourceId, launch_run_id: launchRunId, inbox_id: row.id },
-          );
-
-          results.push({
-            inbox_id: row.id,
-            status: 'published',
-            landing_page_id: resourceId,
-            handle: pub.handle,
-            preview_url: pub.handle ? `https://${shopifyUrl}/pages/${pub.handle}` : null,
-          });
         } else if (kind === 'ad_creative') {
           // Until Meta billing is settled + token has ads_management scope, we don't push to Meta API.
           // Just mark the ad_creative as ready_to_promote so /promote-ads can fire later.
