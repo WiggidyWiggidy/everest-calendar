@@ -1,0 +1,152 @@
+{%- comment -%}
+  Everest Labs attribution pixel.
+  Drop into theme.liquid (just before </body>) to start populating attribution_touches.
+  Closes the performance feedback loop: storefront events → Supabase → asset performance scoring.
+
+  Captures these events:
+    - session_start  (first page view per session)
+    - page_view       (every page load)
+    - product_view    (on /products/* pages)
+    - add_to_cart     (Shopify Web Pixel hook)
+    - checkout_start  (on /checkouts/* navigation)
+    - order_placed    (handled by Shopify webhook server-side, not this pixel)
+
+  POSTs to /api/marketing/sync/storefront-event on the everest-calendar.vercel.app deploy.
+
+  No PII collected. Only:
+    - utm_* params (from URL)
+    - landing_page_id (from page metafield if KRYO variant)
+    - shopify_product_id (from product page)
+    - device_type (sniff)
+    - referrer (document.referrer)
+
+  Idempotent — survives re-renders, dedupes session_start by sessionStorage flag.
+{%- endcomment -%}
+
+<script id="everest-attribution-pixel" data-pixel-version="1.0">
+(function() {
+  var EL_API = 'https://everest-calendar.vercel.app/api/marketing/sync/storefront-event';
+  var SESSION_KEY = '__el_sess';
+  var SESSION_TTL = 30 * 60 * 1000; // 30 min sliding window
+
+  function getOrCreateSession() {
+    var raw = sessionStorage.getItem(SESSION_KEY);
+    var now = Date.now();
+    if (raw) {
+      try {
+        var parsed = JSON.parse(raw);
+        if (now - parsed.last < SESSION_TTL) {
+          parsed.last = now;
+          sessionStorage.setItem(SESSION_KEY, JSON.stringify(parsed));
+          return { id: parsed.id, isNew: false };
+        }
+      } catch (e) {}
+    }
+    var id = 'el_' + now + '_' + Math.random().toString(36).slice(2, 10);
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ id: id, last: now, started: now }));
+    return { id: id, isNew: true };
+  }
+
+  function getUtm() {
+    var p = new URLSearchParams(window.location.search);
+    var out = {};
+    ['utm_source','utm_medium','utm_campaign','utm_content','utm_term'].forEach(function(k) {
+      var v = p.get(k);
+      if (v) out[k] = v;
+    });
+    return out;
+  }
+
+  function deviceType() {
+    var ua = navigator.userAgent;
+    if (/iPad|tablet/i.test(ua)) return 'tablet';
+    if (/Mobile|iPhone|Android/i.test(ua)) return 'mobile';
+    return 'desktop';
+  }
+
+  function send(eventType, extra) {
+    extra = extra || {};
+    var session = getOrCreateSession();
+    var payload = Object.assign({
+      event_type: eventType,
+      session_id: session.id,
+      page_path: window.location.pathname,
+      referrer: document.referrer || null,
+      device_type: deviceType(),
+      ts: new Date().toISOString(),
+    }, getUtm(), extra);
+
+    // Use fetch with keepalive so events flush even on navigation away
+    try {
+      fetch(EL_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        keepalive: true,
+        mode: 'no-cors',
+      }).catch(function() {});
+    } catch (e) {
+      // sendBeacon fallback
+      try {
+        var blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+        navigator.sendBeacon(EL_API, blob);
+      } catch (e2) {}
+    }
+    return session;
+  }
+
+  // Page-context helpers populated from Liquid below
+  var ctx = {
+    {% if product %}
+      shopify_product_id: '{{ product.id }}',
+      shopify_product_handle: '{{ product.handle }}',
+      shopify_variant_id: '{{ product.selected_or_first_available_variant.id }}',
+    {% endif %}
+    {% if request.page_type %}
+      page_type: '{{ request.page_type }}',
+    {% endif %}
+    locale: '{{ request.locale.iso_code | default: "en" }}',
+    market_handle: '{{ localization.market.handle | default: "primary" }}',
+  };
+
+  // Fire on initial load
+  var sess = send('page_view', ctx);
+  if (sess.isNew) {
+    send('session_start', ctx);
+  }
+  if (ctx.shopify_product_id) {
+    send('product_view', ctx);
+  }
+
+  // Fire ATC via Shopify Web Pixel hook if available, else listen for cart/add fetch
+  if (window.Shopify && window.Shopify.analytics && window.Shopify.analytics.subscribe) {
+    try {
+      window.Shopify.analytics.subscribe('product_added_to_cart', function(event) {
+        var line = (event && event.data && event.data.cartLine) || {};
+        send('add_to_cart', Object.assign({}, ctx, {
+          shopify_variant_id: line.merchandise && line.merchandise.id,
+          quantity: line.quantity,
+          event_value: line.cost && line.cost.totalAmount && line.cost.totalAmount.amount,
+        }));
+      });
+      window.Shopify.analytics.subscribe('checkout_started', function(event) {
+        send('checkout_start', Object.assign({}, ctx, {
+          event_value: event && event.data && event.data.checkout && event.data.checkout.totalPrice && event.data.checkout.totalPrice.amount,
+        }));
+      });
+    } catch (e) {}
+  } else {
+    // Fallback: monkey-patch fetch for /cart/add
+    var originalFetch = window.fetch;
+    window.fetch = function(url, opts) {
+      try {
+        var u = typeof url === 'string' ? url : (url && url.url) || '';
+        if (/\/cart\/add/.test(u)) {
+          send('add_to_cart', ctx);
+        }
+      } catch (e) {}
+      return originalFetch.apply(this, arguments);
+    };
+  }
+})();
+</script>
