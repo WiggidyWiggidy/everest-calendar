@@ -88,6 +88,7 @@ export async function POST(request: NextRequest) {
     const sb = svcClient();
 
     // Pull image-asset rows needing URL resolution
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { data: imageRows, error: imgErr } = await sb
       .from('meta_creative_assets')
       .select('id, meta_ad_id, asset_image_hash, asset_video_id, meta_ads!inner(product_line)')
