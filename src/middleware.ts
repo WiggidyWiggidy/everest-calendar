@@ -11,6 +11,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // PUBLIC pixel endpoint — called from storefront browsers (no x-sync-secret possible).
+  // The route does its own validation (event_type whitelist + session_id requirement).
+  if (path === '/api/marketing/sync/storefront-event') {
+    return NextResponse.next();
+  }
+
   // Cron routes with secret = bypass auth
   if (path.startsWith('/api/cron/') && (request.headers.get('x-cron-secret') !== null || request.nextUrl.searchParams.has('secret'))) {
     return NextResponse.next();
