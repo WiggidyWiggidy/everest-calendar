@@ -140,5 +140,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ error: 'Send multipart/form-data or application/json' }, { status: 415 });
 }
 
-// Increase body size limit for large image uploads (Next.js default is 1MB)
-export const config = { api: { bodyParser: false } };
+// App Router note: body parsing happens via request.formData() / request.json() directly.
+// Increase max payload via Vercel's body size limit (50MB by default for hobby; raise via vercel.json if needed).
+export const runtime = 'nodejs';
+export const maxDuration = 60;
