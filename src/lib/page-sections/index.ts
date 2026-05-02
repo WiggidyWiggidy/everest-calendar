@@ -16,6 +16,8 @@ export type {
   MetricsScrollProps,
   RiskReversalProps,
   CryoEngineDeepDiveProps,
+  PressLogosProps,
+  LifestyleStripProps,
 } from './types';
 
 export { BASE_CSS } from './_helpers';
@@ -30,6 +32,8 @@ export { renderFaqWithSchema } from './faqWithSchema';
 export { renderMetricsScroll } from './metricsScroll';
 export { renderRiskReversal } from './riskReversal';
 export { renderCryoEngineDeepDive } from './cryoEngineDeepDive';
+export { renderPressLogos } from './pressLogos';
+export { renderLifestyleStrip } from './lifestyleStrip';
 
 import type { SectionSpec, SectionOutput } from './types';
 import { renderHeroVideo } from './heroVideo';
@@ -42,6 +46,8 @@ import { renderFaqWithSchema } from './faqWithSchema';
 import { renderMetricsScroll } from './metricsScroll';
 import { renderRiskReversal } from './riskReversal';
 import { renderCryoEngineDeepDive } from './cryoEngineDeepDive';
+import { renderPressLogos } from './pressLogos';
+import { renderLifestyleStrip } from './lifestyleStrip';
 
 // Dispatcher: render a section by spec.
 export function renderSection(spec: SectionSpec): SectionOutput {
@@ -56,6 +62,8 @@ export function renderSection(spec: SectionSpec): SectionOutput {
     case 'metrics_scroll':        return renderMetricsScroll(spec.props);
     case 'risk_reversal':         return renderRiskReversal(spec.props);
     case 'cryo_engine_deep_dive': return renderCryoEngineDeepDive(spec.props);
+    case 'press_logos':           return renderPressLogos(spec.props);
+    case 'lifestyle_strip':       return renderLifestyleStrip(spec.props);
     default: {
       const _exhaustive: never = spec;
       throw new Error(`Unknown section type: ${JSON.stringify(_exhaustive)}`);

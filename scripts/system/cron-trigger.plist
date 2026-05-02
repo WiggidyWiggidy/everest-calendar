@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ai.everestlabs.kryo-page-swarm.plist
+  OpenClaw-style LaunchAgent. Fires the autonomous swarm-loop on cron schedule.
+  Claude Code is NOT in this loop.
+
+  Install:
+    cp scripts/system/cron-trigger.plist ~/Library/LaunchAgents/ai.everestlabs.kryo-page-swarm.plist
+    launchctl load ~/Library/LaunchAgents/ai.everestlabs.kryo-page-swarm.plist
+
+  Verify:
+    launchctl list | grep kryo-page-swarm
+
+  Logs:
+    tail -f /tmp/kryo-swarm.log
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>ai.everestlabs.kryo-page-swarm</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/bin/bash</string>
+      <string>-c</string>
+      <string>set -a; source /Users/happy/Desktop/Claude\ Project/everest-calendar/.env.local; set +a; /usr/local/bin/node /Users/happy/Desktop/Claude\ Project/everest-calendar/scripts/system/swarm-loop.mjs --angle athlete_recovery --attempts 3 --threshold 75 >> /tmp/kryo-swarm.log 2>&amp;1</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <array>
+      <!-- Daily at 7am Guangzhou time -->
+      <dict><key>Hour</key><integer>7</integer><key>Minute</key><integer>0</integer></dict>
+    </array>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/kryo-swarm.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/tmp/kryo-swarm.log</string>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/happy/Desktop/Claude Project/everest-calendar</string>
+</dict>
+</plist>

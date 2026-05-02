@@ -1,0 +1,87 @@
+{
+  "url": "https://www.eightsleep.com/product/pod-4-ultra/",
+  "captured_at": "2026-05-02T12:38:39.841Z",
+  "section_count": 3,
+  "sections": [
+    {
+      "index": 0,
+      "heading_level": "h2",
+      "heading": "“Never waste any time you can spend sleeping.”",
+      "y_position": 876,
+      "height": -876,
+      "paragraphs": [],
+      "h3s": [],
+      "images": [],
+      "videos": [],
+      "ctas": []
+    },
+    {
+      "index": 1,
+      "heading_level": "h2",
+      "heading": "Eight Sleep",
+      "y_position": 0,
+      "height": 685,
+      "paragraphs": [
+        "Mother's Day Sale"
+      ],
+      "h3s": [
+        "Blog",
+        "Company",
+        "Support",
+        "Legal",
+        "Social Links"
+      ],
+      "images": [
+        {
+          "src": "https://res.cloudinary.com/eightsleep/image/upload/c_fill,g_auto,f_auto,dpr_1.0,h_1000,q_80/v1774968323/404_page_vvik6h.jpg",
+          "alt": "",
+          "width": 1280,
+          "height": 1688
+        },
+        {
+          "src": "https://res.cloudinary.com/eightsleep/image/upload/c_fill,g_auto,f_auto,dpr_1.0,h_1000,q_80/v1774855001/ecap_pod_kvz34o.png",
+          "alt": "Eight Sleep branding message",
+          "width": 382,
+          "height": 576
+        }
+      ],
+      "videos": [],
+      "ctas": []
+    },
+    {
+      "index": 2,
+      "heading_level": "h2",
+      "heading": "Unlock a surprise",
+      "y_position": 685,
+      "height": 2226,
+      "paragraphs": [
+        "404: We couldn't find the page you're looking for at this specific URL.",
+        "— Frank H. Knight",
+        "MEMBER OFFER",
+        "Use your Eight Sleep App credentials to login",
+        "By signing up here I agree to receive Eight Sleep's email newsletter and special promotional offers.",
+        "Sleep",
+        "Fitness",
+        "Wellness"
+      ],
+      "h3s": [
+        "Join the sleep fitness movementSign up to stay updated on the newest in sleep technology",
+        "Blog",
+        "Company",
+        "Support",
+        "Legal",
+        "Contact Us"
+      ],
+      "images": [
+        {
+          "src": "https://res.cloudinary.com/eightsleep/image/upload/c_fill,g_auto,f_auto,dpr_1.0,h_1000/v1762295372/FSA_pwubam.png",
+          "alt": "HSA/FSA",
+          "width": 101,
+          "height": 40
+        }
+      ],
+      "videos": [],
+      "ctas": []
+    }
+  ]
+}

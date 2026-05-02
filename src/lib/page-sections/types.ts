@@ -21,7 +21,9 @@ export type PremiumSectionType =
   | 'faq_with_schema'
   | 'metrics_scroll'
   | 'risk_reversal'
-  | 'cryo_engine_deep_dive';
+  | 'cryo_engine_deep_dive'
+  | 'press_logos'
+  | 'lifestyle_strip';
 
 export interface HeroVideoProps {
   eyebrow?: string;
@@ -104,6 +106,18 @@ export interface CryoEngineDeepDiveProps {
   caption?: string;
 }
 
+export interface PressLogosProps {
+  eyebrow?: string;
+  logos: Array<{ label: string; imageUrl?: string }>;
+}
+
+export interface LifestyleStripProps {
+  headline?: string;
+  sub?: string;
+  layout?: '3up' | '2up' | 'full';
+  images: Array<{ url: string; alt?: string; caption?: string }>;
+}
+
 export type SectionSpec =
   | { type: 'hero_video'; props: HeroVideoProps }
   | { type: 'sticky_cta_bar'; props: StickyCtaBarProps }
@@ -114,7 +128,9 @@ export type SectionSpec =
   | { type: 'faq_with_schema'; props: FaqWithSchemaProps }
   | { type: 'metrics_scroll'; props: MetricsScrollProps }
   | { type: 'risk_reversal'; props: RiskReversalProps }
-  | { type: 'cryo_engine_deep_dive'; props: CryoEngineDeepDiveProps };
+  | { type: 'cryo_engine_deep_dive'; props: CryoEngineDeepDiveProps }
+  | { type: 'press_logos'; props: PressLogosProps }
+  | { type: 'lifestyle_strip'; props: LifestyleStripProps };
 
 export interface BodyHtmlSpec {
   sections: SectionSpec[];

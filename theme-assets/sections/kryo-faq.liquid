@@ -1,0 +1,213 @@
+{% comment %}
+  KRYO FAQ — accordion FAQ + objection handlers + FAQPage JSON-LD, eight-sleep tier.
+  Reads content from product.metafields.kryo.* with section.settings.* fallback.
+  Pure HTML + scoped CSS + FAQPage schema. Class prefix `kryo-sec-faq-*`.
+
+  Used by /launch-kryo-v2 FAQ Writer:
+    product.metafields.kryo.faq_eyebrow / _headline / _sub
+    product.metafields.kryo.faq_block_1_question / _answer (×6)
+{% endcomment %}
+
+{%- assign eyebrow = product.metafields.kryo.faq_eyebrow | default: section.settings.eyebrow -%}
+{%- assign headline = product.metafields.kryo.faq_headline | default: section.settings.headline -%}
+{%- assign sub = product.metafields.kryo.faq_sub | default: section.settings.sub -%}
+
+{%- capture faq_jsonld_items -%}
+  {%- assign faq_blocks = section.blocks | where: 'type', 'qa' -%}
+  {%- for block in faq_blocks -%}
+    {%- assign meta_q_key = 'faq_block_' | append: forloop.index | append: '_question' -%}
+    {%- assign meta_a_key = 'faq_block_' | append: forloop.index | append: '_answer' -%}
+    {%- assign q = product.metafields.kryo[meta_q_key] | default: block.settings.question -%}
+    {%- assign a = product.metafields.kryo[meta_a_key] | default: block.settings.answer -%}
+    {%- if q != blank and a != blank -%}
+      {
+        "@type": "Question",
+        "name": {{ q | json }},
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": {{ a | json }}
+        }
+      }{%- unless forloop.last -%},{%- endunless -%}
+    {%- endif -%}
+  {%- endfor -%}
+{%- endcapture -%}
+
+{% style %}
+  .kryo-sec-faq-{{ section.id }} {
+    background: #0a0a0a;
+    color: #ffffff;
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    padding: 96px 24px;
+    box-sizing: border-box;
+    width: 100%;
+  }
+  .kryo-sec-faq-{{ section.id }} *,
+  .kryo-sec-faq-{{ section.id }} *::before,
+  .kryo-sec-faq-{{ section.id }} *::after { box-sizing: border-box; }
+  .kryo-sec-faq-{{ section.id }}__inner {
+    max-width: 880px;
+    margin: 0 auto;
+  }
+  .kryo-sec-faq-{{ section.id }}__intro {
+    margin: 0 0 56px 0;
+  }
+  .kryo-sec-faq-{{ section.id }}__eyebrow {
+    margin: 0 0 12px 0;
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: rgba(255,255,255,0.78);
+  }
+  .kryo-sec-faq-{{ section.id }}__headline {
+    margin: 0;
+    font-size: clamp(2rem, 4.2vw, 3.4rem);
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+    color: #ffffff;
+  }
+  .kryo-sec-faq-{{ section.id }}__sub {
+    margin: 16px 0 0 0;
+    font-size: clamp(1rem, 1.3vw, 1.15rem);
+    line-height: 1.55;
+    color: rgba(255,255,255,0.78);
+  }
+  .kryo-sec-faq-{{ section.id }}__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid rgba(255,255,255,0.10);
+  }
+  .kryo-sec-faq-{{ section.id }}__item {
+    border-bottom: 1px solid rgba(255,255,255,0.10);
+  }
+  .kryo-sec-faq-{{ section.id }}__details {
+    border: none;
+    background: transparent;
+  }
+  .kryo-sec-faq-{{ section.id }}__summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 24px 0;
+    font-size: 1.1rem;
+    line-height: 1.4;
+    font-weight: 600;
+    color: #ffffff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+  }
+  .kryo-sec-faq-{{ section.id }}__summary::-webkit-details-marker { display: none; }
+  .kryo-sec-faq-{{ section.id }}__chevron {
+    flex-shrink: 0;
+    transition: transform 200ms ease;
+    color: rgba(255,255,255,0.66);
+  }
+  .kryo-sec-faq-{{ section.id }}__details[open] .kryo-sec-faq-{{ section.id }}__chevron {
+    transform: rotate(180deg);
+    color: #ffffff;
+  }
+  .kryo-sec-faq-{{ section.id }}__answer {
+    margin: 0;
+    padding: 0 0 24px 0;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: rgba(255,255,255,0.78);
+    max-width: 70ch;
+  }
+  @media (max-width: 640px) {
+    .kryo-sec-faq-{{ section.id }} { padding: 72px 20px; }
+    .kryo-sec-faq-{{ section.id }}__summary { font-size: 1rem; padding: 20px 0; }
+  }
+{% endstyle %}
+
+<section class="kryo-section kryo-sec-faq-{{ section.id }}" data-section-id="{{ section.id }}" data-section-type="kryo-faq">
+  <div class="kryo-sec-faq-{{ section.id }}__inner">
+    <div class="kryo-sec-faq-{{ section.id }}__intro">
+      {%- if eyebrow != blank -%}
+        <p class="kryo-sec-faq-{{ section.id }}__eyebrow">{{ eyebrow | escape }}</p>
+      {%- endif -%}
+      {%- if headline != blank -%}
+        <h2 class="kryo-sec-faq-{{ section.id }}__headline">{{ headline | escape }}</h2>
+      {%- endif -%}
+      {%- if sub != blank -%}
+        <p class="kryo-sec-faq-{{ section.id }}__sub">{{ sub | escape }}</p>
+      {%- endif -%}
+    </div>
+
+    <ul class="kryo-sec-faq-{{ section.id }}__list">
+      {%- for block in section.blocks -%}
+        {%- if block.type == 'qa' -%}
+          {%- assign meta_q_key = 'faq_block_' | append: forloop.index | append: '_question' -%}
+          {%- assign meta_a_key = 'faq_block_' | append: forloop.index | append: '_answer' -%}
+          {%- assign q = product.metafields.kryo[meta_q_key] | default: block.settings.question -%}
+          {%- assign a = product.metafields.kryo[meta_a_key] | default: block.settings.answer -%}
+          {%- if q != blank and a != blank -%}
+            <li class="kryo-sec-faq-{{ section.id }}__item" {{ block.shopify_attributes }}>
+              <details class="kryo-sec-faq-{{ section.id }}__details">
+                <summary class="kryo-sec-faq-{{ section.id }}__summary">
+                  <span>{{ q | escape }}</span>
+                  <svg class="kryo-sec-faq-{{ section.id }}__chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </summary>
+                <p class="kryo-sec-faq-{{ section.id }}__answer">{{ a | escape }}</p>
+              </details>
+            </li>
+          {%- endif -%}
+        {%- endif -%}
+      {%- endfor -%}
+    </ul>
+  </div>
+</section>
+
+{%- assign jsonld_trimmed = faq_jsonld_items | strip -%}
+{%- if jsonld_trimmed != blank -%}
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [{{ jsonld_trimmed }}]
+    }
+  </script>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "KRYO FAQ",
+  "tag": "section",
+  "class": "kryo-section",
+  "settings": [
+    { "type": "header", "content": "Section header (overrideable via metafields kryo.faq_*)" },
+    { "type": "text", "id": "eyebrow", "label": "Eyebrow", "default": "Questions" },
+    { "type": "text", "id": "headline", "label": "Headline", "default": "Everything that comes up before you buy." },
+    { "type": "textarea", "id": "sub", "label": "Sub-headline" }
+  ],
+  "blocks": [
+    {
+      "type": "qa",
+      "name": "Question",
+      "settings": [
+        { "type": "text", "id": "question", "label": "Question" },
+        { "type": "textarea", "id": "answer", "label": "Answer" }
+      ]
+    }
+  ],
+  "max_blocks": 12,
+  "presets": [
+    {
+      "name": "KRYO FAQ",
+      "blocks": [
+        { "type": "qa", "settings": { "question": "How fast does the water actually get cold?", "answer": "230 litres pre-chill before your session. Step-in temperature is the temperature you set, no warm-up wait." }},
+        { "type": "qa", "settings": { "question": "Does it fit a standard Dubai apartment shower?", "answer": "Yes. Standard 800×800 mm shower stall. Connects to existing cold water supply and 13A socket." }},
+        { "type": "qa", "settings": { "question": "What's the warranty?", "answer": "Two-year unit warranty plus the 30-day performance guarantee. If 1°C in 60 seconds isn't repeatable, we collect and refund." }}
+      ]
+    }
+  ],
+  "enabled_on": {
+    "templates": ["product"]
+  }
+}
+{% endschema %}

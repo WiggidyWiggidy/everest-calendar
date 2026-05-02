@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ai.everestlabs.kryo-asset-swarm.plist
+  LaunchAgent for the autonomous AI image generator.
+  Fires every 6 hours, identifies low-supply (scene_type, angle) slots, generates + QCs new assets.
+  Tom approves them via /dashboard/assets when he wakes up.
+
+  Install:
+    cp scripts/system/asset-gen-cron.plist ~/Library/LaunchAgents/ai.everestlabs.kryo-asset-swarm.plist
+    launchctl load ~/Library/LaunchAgents/ai.everestlabs.kryo-asset-swarm.plist
+    launchctl list | grep kryo-asset-swarm
+
+  Logs:
+    tail -f /tmp/kryo-asset-swarm.log
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>ai.everestlabs.kryo-asset-swarm</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/bin/bash</string>
+      <string>-c</string>
+      <string>set -a; source /Users/happy/Desktop/Claude\ Project/everest-calendar/.env.local; set +a; /usr/local/bin/node /Users/happy/Desktop/Claude\ Project/everest-calendar/scripts/system/asset-swarm-loop.mjs --gaps 3 >> /tmp/kryo-asset-swarm.log 2>&amp;1</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <array>
+      <!-- Every 6 hours: 02:00, 08:00, 14:00, 20:00 Guangzhou time -->
+      <dict><key>Hour</key><integer>2</integer><key>Minute</key><integer>0</integer></dict>
+      <dict><key>Hour</key><integer>8</integer><key>Minute</key><integer>0</integer></dict>
+      <dict><key>Hour</key><integer>14</integer><key>Minute</key><integer>0</integer></dict>
+      <dict><key>Hour</key><integer>20</integer><key>Minute</key><integer>0</integer></dict>
+    </array>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/kryo-asset-swarm.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/tmp/kryo-asset-swarm.log</string>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/happy/Desktop/Claude Project/everest-calendar</string>
+</dict>
+</plist>

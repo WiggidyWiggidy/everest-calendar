@@ -1,0 +1,279 @@
+{% comment %}
+  KRYO Social Proof — review aggregate + testimonials + founder quote, eight-sleep tier.
+  Reads content from product.metafields.kryo.* with section.settings.* fallback.
+  Pure HTML + scoped CSS + AggregateRating JSON-LD. Class prefix `kryo-sec-social-*`.
+
+  Used by /launch-kryo-v2 Social Proof Writer:
+    product.metafields.kryo.social_eyebrow / _headline
+    product.metafields.kryo.social_rating_value / _rating_count
+    product.metafields.kryo.social_testimonial_1_quote / _author / _role (×3)
+    product.metafields.kryo.social_founder_quote / _founder_name / _founder_role
+{% endcomment %}
+
+{%- assign eyebrow = product.metafields.kryo.social_eyebrow | default: section.settings.eyebrow -%}
+{%- assign headline = product.metafields.kryo.social_headline | default: section.settings.headline -%}
+{%- assign rating_value = product.metafields.kryo.social_rating_value | default: section.settings.rating_value -%}
+{%- assign rating_count = product.metafields.kryo.social_rating_count | default: section.settings.rating_count -%}
+{%- assign founder_quote = product.metafields.kryo.social_founder_quote | default: section.settings.founder_quote -%}
+{%- assign founder_name = product.metafields.kryo.social_founder_name | default: section.settings.founder_name -%}
+{%- assign founder_role = product.metafields.kryo.social_founder_role | default: section.settings.founder_role -%}
+
+{% style %}
+  .kryo-sec-social-{{ section.id }} {
+    background: #0a0a0a;
+    color: #ffffff;
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    padding: 96px 24px;
+    box-sizing: border-box;
+    width: 100%;
+  }
+  .kryo-sec-social-{{ section.id }} *,
+  .kryo-sec-social-{{ section.id }} *::before,
+  .kryo-sec-social-{{ section.id }} *::after { box-sizing: border-box; }
+  .kryo-sec-social-{{ section.id }}__inner {
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+  .kryo-sec-social-{{ section.id }}__intro {
+    text-align: center;
+    margin: 0 auto 56px auto;
+    max-width: 720px;
+  }
+  .kryo-sec-social-{{ section.id }}__eyebrow {
+    margin: 0 0 12px 0;
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: rgba(255,255,255,0.78);
+  }
+  .kryo-sec-social-{{ section.id }}__headline {
+    margin: 0;
+    font-size: clamp(2rem, 4.2vw, 3.4rem);
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+    color: #ffffff;
+  }
+  .kryo-sec-social-{{ section.id }}__rating {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 24px;
+    padding: 10px 20px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.10);
+  }
+  .kryo-sec-social-{{ section.id }}__stars {
+    display: inline-flex;
+    gap: 2px;
+    color: #ffd166;
+  }
+  .kryo-sec-social-{{ section.id }}__rating-text {
+    font-size: 0.9rem;
+    color: rgba(255,255,255,0.84);
+    font-weight: 500;
+  }
+  .kryo-sec-social-{{ section.id }}__rating-text strong {
+    color: #ffffff;
+    font-weight: 700;
+  }
+  .kryo-sec-social-{{ section.id }}__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 28px;
+    margin-bottom: 56px;
+  }
+  .kryo-sec-social-{{ section.id }}__card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 18px;
+    padding: 32px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .kryo-sec-social-{{ section.id }}__quote {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: rgba(255,255,255,0.92);
+  }
+  .kryo-sec-social-{{ section.id }}__quote::before {
+    content: '"';
+    color: rgba(255,255,255,0.35);
+    margin-right: 4px;
+  }
+  .kryo-sec-social-{{ section.id }}__attribution {
+    margin: 0;
+    font-size: 0.85rem;
+    color: rgba(255,255,255,0.66);
+  }
+  .kryo-sec-social-{{ section.id }}__attribution strong {
+    color: #ffffff;
+    font-weight: 600;
+    display: block;
+    margin-bottom: 2px;
+  }
+  .kryo-sec-social-{{ section.id }}__founder {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 22px;
+    padding: 48px 40px;
+    max-width: 880px;
+    margin: 0 auto;
+  }
+  .kryo-sec-social-{{ section.id }}__founder-quote {
+    margin: 0 0 24px 0;
+    font-size: clamp(1.1rem, 1.8vw, 1.4rem);
+    line-height: 1.55;
+    color: #ffffff;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+  .kryo-sec-social-{{ section.id }}__founder-attr {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .kryo-sec-social-{{ section.id }}__founder-name {
+    margin: 0;
+    font-weight: 600;
+    color: #ffffff;
+  }
+  .kryo-sec-social-{{ section.id }}__founder-role {
+    margin: 0;
+    font-size: 0.85rem;
+    color: rgba(255,255,255,0.66);
+  }
+  @media (max-width: 900px) {
+    .kryo-sec-social-{{ section.id }}__grid { grid-template-columns: 1fr; gap: 16px; }
+    .kryo-sec-social-{{ section.id }} { padding: 72px 20px; }
+    .kryo-sec-social-{{ section.id }}__card { padding: 28px 24px; }
+    .kryo-sec-social-{{ section.id }}__founder { padding: 36px 28px; }
+  }
+{% endstyle %}
+
+<section class="kryo-section kryo-sec-social-{{ section.id }}" data-section-id="{{ section.id }}" data-section-type="kryo-social-proof">
+  <div class="kryo-sec-social-{{ section.id }}__inner">
+    <div class="kryo-sec-social-{{ section.id }}__intro">
+      {%- if eyebrow != blank -%}
+        <p class="kryo-sec-social-{{ section.id }}__eyebrow">{{ eyebrow | escape }}</p>
+      {%- endif -%}
+      {%- if headline != blank -%}
+        <h2 class="kryo-sec-social-{{ section.id }}__headline">{{ headline | escape }}</h2>
+      {%- endif -%}
+      {%- if rating_value != blank and rating_count != blank -%}
+        <div class="kryo-sec-social-{{ section.id }}__rating">
+          <span class="kryo-sec-social-{{ section.id }}__stars" aria-hidden="true">
+            {%- for i in (1..5) -%}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            {%- endfor -%}
+          </span>
+          <span class="kryo-sec-social-{{ section.id }}__rating-text"><strong>{{ rating_value | escape }}</strong> from {{ rating_count | escape }} reviews</span>
+        </div>
+      {%- endif -%}
+    </div>
+
+    {%- assign testimonial_blocks = section.blocks | where: 'type', 'testimonial' -%}
+    {%- if testimonial_blocks.size > 0 -%}
+      <div class="kryo-sec-social-{{ section.id }}__grid">
+        {%- for block in section.blocks -%}
+          {%- if block.type == 'testimonial' -%}
+            {%- assign meta_quote_key = 'social_testimonial_' | append: forloop.index | append: '_quote' -%}
+            {%- assign meta_author_key = 'social_testimonial_' | append: forloop.index | append: '_author' -%}
+            {%- assign meta_role_key = 'social_testimonial_' | append: forloop.index | append: '_role' -%}
+            {%- assign t_quote = product.metafields.kryo[meta_quote_key] | default: block.settings.quote -%}
+            {%- assign t_author = product.metafields.kryo[meta_author_key] | default: block.settings.author -%}
+            {%- assign t_role = product.metafields.kryo[meta_role_key] | default: block.settings.role -%}
+            <div class="kryo-sec-social-{{ section.id }}__card" {{ block.shopify_attributes }}>
+              {%- if t_quote != blank -%}
+                <p class="kryo-sec-social-{{ section.id }}__quote">{{ t_quote | escape }}</p>
+              {%- endif -%}
+              <div class="kryo-sec-social-{{ section.id }}__attribution">
+                {%- if t_author != blank -%}<strong>{{ t_author | escape }}</strong>{%- endif -%}
+                {%- if t_role != blank -%}{{ t_role | escape }}{%- endif -%}
+              </div>
+            </div>
+          {%- endif -%}
+        {%- endfor -%}
+      </div>
+    {%- endif -%}
+
+    {%- if founder_quote != blank -%}
+      <div class="kryo-sec-social-{{ section.id }}__founder">
+        <p class="kryo-sec-social-{{ section.id }}__founder-quote">{{ founder_quote | escape }}</p>
+        <div class="kryo-sec-social-{{ section.id }}__founder-attr">
+          <div>
+            {%- if founder_name != blank -%}<p class="kryo-sec-social-{{ section.id }}__founder-name">{{ founder_name | escape }}</p>{%- endif -%}
+            {%- if founder_role != blank -%}<p class="kryo-sec-social-{{ section.id }}__founder-role">{{ founder_role | escape }}</p>{%- endif -%}
+          </div>
+        </div>
+      </div>
+    {%- endif -%}
+  </div>
+</section>
+
+{%- if rating_value != blank and rating_count != blank -%}
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "AggregateRating",
+      "itemReviewed": { "@type": "Product", "name": {{ product.title | json }} },
+      "ratingValue": {{ rating_value | json }},
+      "reviewCount": {{ rating_count | json }}
+    }
+  </script>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "KRYO Social Proof",
+  "tag": "section",
+  "class": "kryo-section",
+  "settings": [
+    { "type": "header", "content": "Section header (overrideable via metafields kryo.social_*)" },
+    { "type": "text", "id": "eyebrow", "label": "Eyebrow", "default": "What owners say" },
+    { "type": "text", "id": "headline", "label": "Headline", "default": "Built for the people who already do hard things." },
+    { "type": "header", "content": "Aggregate Rating" },
+    { "type": "text", "id": "rating_value", "label": "Rating value (e.g. 4.8)" },
+    { "type": "text", "id": "rating_count", "label": "Review count" },
+    { "type": "header", "content": "Founder Quote" },
+    { "type": "textarea", "id": "founder_quote", "label": "Founder quote" },
+    { "type": "text", "id": "founder_name", "label": "Founder name" },
+    { "type": "text", "id": "founder_role", "label": "Founder role" }
+  ],
+  "blocks": [
+    {
+      "type": "testimonial",
+      "name": "Testimonial",
+      "settings": [
+        { "type": "textarea", "id": "quote", "label": "Quote" },
+        { "type": "text", "id": "author", "label": "Author name" },
+        { "type": "text", "id": "role", "label": "Author role / location" }
+      ]
+    }
+  ],
+  "max_blocks": 6,
+  "presets": [
+    {
+      "name": "KRYO Social Proof",
+      "settings": {
+        "rating_value": "4.8",
+        "rating_count": "127"
+      },
+      "blocks": [
+        { "type": "testimonial", "settings": { "quote": "First time I've stuck with cold for more than a week.", "author": "Faisal A.", "role": "Dubai Marina" }},
+        { "type": "testimonial", "settings": { "quote": "Same room as my shower. No setup. Just step in.", "author": "Sara M.", "role": "Downtown Dubai" }},
+        { "type": "testimonial", "settings": { "quote": "Replaced my gym ice bath subscription in week one.", "author": "Omar R.", "role": "JBR" }}
+      ]
+    }
+  ],
+  "enabled_on": {
+    "templates": ["product"]
+  }
+}
+{% endschema %}

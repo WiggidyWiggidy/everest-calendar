@@ -1,0 +1,207 @@
+{% comment %}
+  KRYO Benefits — three-column benefit grid, eight-sleep tier.
+  Reads content from product.metafields.kryo.* with section.settings.* fallback.
+  Pure HTML + scoped CSS. Class prefix `kryo-sec-benefits-*`.
+
+  Used by /launch-kryo-v2 Benefits Writer:
+    product.metafields.kryo.benefits_eyebrow
+    product.metafields.kryo.benefits_headline
+    product.metafields.kryo.benefits_block_1_label / _icon / _detail (×3)
+{% endcomment %}
+
+{%- assign eyebrow = product.metafields.kryo.benefits_eyebrow | default: section.settings.eyebrow -%}
+{%- assign headline = product.metafields.kryo.benefits_headline | default: section.settings.headline -%}
+{%- assign sub = product.metafields.kryo.benefits_sub | default: section.settings.sub -%}
+
+{% style %}
+  .kryo-sec-benefits-{{ section.id }} {
+    background: #0a0a0a;
+    color: #ffffff;
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    padding: 96px 24px;
+    box-sizing: border-box;
+    width: 100%;
+  }
+  .kryo-sec-benefits-{{ section.id }} *,
+  .kryo-sec-benefits-{{ section.id }} *::before,
+  .kryo-sec-benefits-{{ section.id }} *::after { box-sizing: border-box; }
+  .kryo-sec-benefits-{{ section.id }}__inner {
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+  .kryo-sec-benefits-{{ section.id }}__intro {
+    max-width: 720px;
+    margin: 0 0 56px 0;
+  }
+  .kryo-sec-benefits-{{ section.id }}__eyebrow {
+    margin: 0 0 12px 0;
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: rgba(255,255,255,0.78);
+  }
+  .kryo-sec-benefits-{{ section.id }}__headline {
+    margin: 0;
+    font-size: clamp(2rem, 4.2vw, 3.4rem);
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+    color: #ffffff;
+  }
+  .kryo-sec-benefits-{{ section.id }}__sub {
+    margin: 16px 0 0 0;
+    font-size: clamp(1rem, 1.3vw, 1.15rem);
+    line-height: 1.55;
+    color: rgba(255,255,255,0.78);
+    max-width: 56ch;
+  }
+  .kryo-sec-benefits-{{ section.id }}__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 32px;
+  }
+  .kryo-sec-benefits-{{ section.id }}__card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 18px;
+    padding: 36px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .kryo-sec-benefits-{{ section.id }}__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.08);
+    color: #ffffff;
+    margin-bottom: 8px;
+  }
+  .kryo-sec-benefits-{{ section.id }}__label {
+    margin: 0;
+    font-size: 1.25rem;
+    line-height: 1.2;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: #ffffff;
+  }
+  .kryo-sec-benefits-{{ section.id }}__detail {
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.55;
+    color: rgba(255,255,255,0.74);
+  }
+  @media (max-width: 900px) {
+    .kryo-sec-benefits-{{ section.id }}__grid { grid-template-columns: 1fr; gap: 20px; }
+    .kryo-sec-benefits-{{ section.id }} { padding: 72px 20px; }
+    .kryo-sec-benefits-{{ section.id }}__card { padding: 28px 24px; }
+  }
+{% endstyle %}
+
+<section class="kryo-section kryo-sec-benefits-{{ section.id }}" data-section-id="{{ section.id }}" data-section-type="kryo-benefits">
+  <div class="kryo-sec-benefits-{{ section.id }}__inner">
+    <div class="kryo-sec-benefits-{{ section.id }}__intro">
+      {%- if eyebrow != blank -%}
+        <p class="kryo-sec-benefits-{{ section.id }}__eyebrow">{{ eyebrow | escape }}</p>
+      {%- endif -%}
+      {%- if headline != blank -%}
+        <h2 class="kryo-sec-benefits-{{ section.id }}__headline">{{ headline | escape }}</h2>
+      {%- endif -%}
+      {%- if sub != blank -%}
+        <p class="kryo-sec-benefits-{{ section.id }}__sub">{{ sub | escape }}</p>
+      {%- endif -%}
+    </div>
+
+    <div class="kryo-sec-benefits-{{ section.id }}__grid">
+      {%- for block in section.blocks -%}
+        {%- if block.type == 'benefit' -%}
+          {%- assign meta_label_key = 'benefits_block_' | append: forloop.index | append: '_label' -%}
+          {%- assign meta_detail_key = 'benefits_block_' | append: forloop.index | append: '_detail' -%}
+          {%- assign block_label = product.metafields.kryo[meta_label_key] | default: block.settings.label -%}
+          {%- assign block_detail = product.metafields.kryo[meta_detail_key] | default: block.settings.detail -%}
+          <div class="kryo-sec-benefits-{{ section.id }}__card" {{ block.shopify_attributes }}>
+            <span class="kryo-sec-benefits-{{ section.id }}__icon" aria-hidden="true">
+              {%- case block.settings.icon -%}
+                {%- when 'thermometer' -%}
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path></svg>
+                {%- when 'bolt' -%}
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                {%- when 'shield' -%}
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                {%- when 'clock' -%}
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                {%- when 'heart' -%}
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                {%- else -%}
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              {%- endcase -%}
+            </span>
+            {%- if block_label != blank -%}
+              <h3 class="kryo-sec-benefits-{{ section.id }}__label">{{ block_label | escape }}</h3>
+            {%- endif -%}
+            {%- if block_detail != blank -%}
+              <p class="kryo-sec-benefits-{{ section.id }}__detail">{{ block_detail | escape }}</p>
+            {%- endif -%}
+          </div>
+        {%- endif -%}
+      {%- endfor -%}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "KRYO Benefits",
+  "tag": "section",
+  "class": "kryo-section",
+  "settings": [
+    { "type": "header", "content": "Section header (overrideable via metafields kryo.benefits_*)" },
+    { "type": "text", "id": "eyebrow", "label": "Eyebrow", "default": "Why KRYO" },
+    { "type": "text", "id": "headline", "label": "Headline", "default": "Built for repeatable cold." },
+    { "type": "textarea", "id": "sub", "label": "Sub-headline" }
+  ],
+  "blocks": [
+    {
+      "type": "benefit",
+      "name": "Benefit",
+      "settings": [
+        {
+          "type": "select",
+          "id": "icon",
+          "label": "Icon",
+          "default": "thermometer",
+          "options": [
+            { "value": "thermometer", "label": "Thermometer" },
+            { "value": "bolt",        "label": "Bolt" },
+            { "value": "shield",      "label": "Shield" },
+            { "value": "clock",       "label": "Clock" },
+            { "value": "heart",       "label": "Heart" },
+            { "value": "check",       "label": "Check" }
+          ]
+        },
+        { "type": "text", "id": "label", "label": "Label" },
+        { "type": "textarea", "id": "detail", "label": "Detail" }
+      ]
+    }
+  ],
+  "max_blocks": 6,
+  "presets": [
+    {
+      "name": "KRYO Benefits",
+      "blocks": [
+        { "type": "benefit", "settings": { "icon": "thermometer", "label": "1°C in 60 seconds", "detail": "Pre-chilled storage tank means no warm-up wait. Step in and the cold is already there." }},
+        { "type": "benefit", "settings": { "icon": "bolt", "label": "230L pre-chilled", "detail": "Eight minutes of clean cold every day with the same energy footprint as your morning coffee." }},
+        { "type": "benefit", "settings": { "icon": "clock", "label": "Eight-minute protocol", "detail": "Built around the Soeberg threshold. Long enough to drive adaptation, short enough to do every day." }}
+      ]
+    }
+  ],
+  "enabled_on": {
+    "templates": ["product"]
+  }
+}
+{% endschema %}

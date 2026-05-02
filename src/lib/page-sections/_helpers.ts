@@ -43,6 +43,12 @@ export const ICONS = {
 };
 
 // Shared base CSS — typography reset and brand variables — emitted once at compose time.
+//
+// IMPORTANT: full-bleed CSS escape on the .kryo-page wrapper. Shopify's product template wraps
+// body_html in a `.product__description` column (~373px on standard themes). Without this escape,
+// every section renders column-narrow on the live storefront (the 30 Apr broken-page bug).
+// The `width: 100vw; margin-left: calc(50% - 50vw)` trick breaks out of any parent container
+// while preserving horizontal centering. Tested on Dawn + Symmetry + Sense themes.
 export const BASE_CSS = `
 .kryo-page {
   --kryo-bg: #0a0a0a;
@@ -58,6 +64,15 @@ export const BASE_CSS = `
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Full-bleed escape: break out of any product__description column wrapper */
+  position: relative;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
+  width: 100vw;
+  max-width: 100vw;
+  overflow-x: hidden;
 }
 .kryo-page *, .kryo-page *::before, .kryo-page *::after { box-sizing: border-box; }
 .kryo-page img, .kryo-page video { max-width: 100%; height: auto; display: block; }
