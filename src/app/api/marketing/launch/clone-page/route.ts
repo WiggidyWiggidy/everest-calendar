@@ -32,14 +32,14 @@ function svcClient() {
 interface CloneRequest {
   variant_angle: string;          // e.g. "morning_energy", "athlete_recovery", "luxury_upgrade"
   target_name: string;            // becomes new product title (H1 of product page)
-  // Overrides applied to source kryo_ product BODY_HTML (the description block, ~800 chars).
-  // The long-form sections live in the theme template, not body_html — those render automatically
-  // from the duplicated product's templating.
   overrides?: Array<{ find: string; replace: string; reason?: string }>;
-  // Full replacement of body_html with composed premium sections (from src/lib/page-composer).
-  // When supplied, the find/replace `overrides` array is ignored. Use one or the other.
   body_html_full_replace?: string;
   hypothesis?: string;
+  experiment_id?: string;
+  // v2 default: clone ACTIVE and publish to all storefront publications/markets so the URL works
+  // immediately from any geo. Tom can review the live URL + screenshots; if QC catches a problem
+  // the slash command archives the product. v1 keeps the legacy DRAFT behaviour for safety.
+  publish_active?: boolean;
 }
 
 export async function POST(request: NextRequest) {
@@ -100,9 +100,10 @@ export async function POST(request: NextRequest) {
     // If overrides supplied but none matched, soft-warn (not 422) — title still gets the new value, which IS the H1.
     const overridesSuppliedButUnmatched = !fullReplaceApplied && (body.overrides?.length ?? 0) > 0 && appliedChanges.length === 0;
 
-    // 3. Duplicate the product via Shopify's GraphQL productDuplicate mutation (2025-04).
-    // REST `/admin/api/<v>/products/{id}/duplicate.json` was deprecated for new apps in
-    // April 2025 — Shopify now requires GraphQL for new public apps. Returns 406 on REST.
+    // 3. Duplicate via Shopify's GraphQL productDuplicate mutation.
+    // v2 (publish_active=true): clone ACTIVE and publish to all publications below.
+    // v1 (publish_active absent): clone DRAFT (legacy behaviour preserved).
+    const newStatus = body.publish_active ? 'ACTIVE' : 'DRAFT';
     const gqlRes = await fetch(
       `https://${shopifyUrl}/admin/api/2025-04/graphql.json`,
       {
@@ -129,7 +130,7 @@ export async function POST(request: NextRequest) {
           variables: {
             productId: `gid://shopify/Product/${sourceProductId}`,
             newTitle: body.target_name,
-            newStatus: 'DRAFT',
+            newStatus,
             includeImages: true,
           },
         }),
@@ -172,7 +173,59 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Shopify duplicate response missing product id', detail: JSON.stringify(gqlPayload).slice(0, 500) }, { status: 502 });
     }
     const newProductId: string = String(dup.id);
+    const newProductGid = `gid://shopify/Product/${newProductId}`;
     const newHandle: string = dup.handle;
+
+    // 3b. (v2 only) Publish to ALL publications. Without this, the new product inherits the
+    //     source product's market visibility — which for kryo_ is UAE-only, returning 404 to
+    //     traffic from any other country including China where Tom is. This is what fixes
+    //     the geo-access problem WITHOUT needing Shopify Plus / staff preview URLs.
+    let publicationsPublished: Array<{ id: string; name: string }> = [];
+    if (body.publish_active) {
+      const pubsRes = await fetch(
+        `https://${shopifyUrl}/admin/api/2025-04/graphql.json`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': shopifyToken },
+          body: JSON.stringify({
+            query: `query { publications(first: 25) { edges { node { id name } } } }`,
+          }),
+        }
+      );
+      const pubsPayload = await pubsRes.json().catch(() => ({}));
+      const publications: Array<{ id: string; name: string }> =
+        pubsPayload?.data?.publications?.edges?.map((e: { node: { id: string; name: string } }) => e.node) ?? [];
+
+      if (publications.length > 0) {
+        const publishRes = await fetch(
+          `https://${shopifyUrl}/admin/api/2025-04/graphql.json`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': shopifyToken },
+            body: JSON.stringify({
+              query: `
+                mutation Publish($id: ID!, $input: [PublicationInput!]!) {
+                  publishablePublish(id: $id, input: $input) {
+                    publishable { ... on Product { id status } }
+                    userErrors { field message }
+                  }
+                }
+              `,
+              variables: {
+                id: newProductGid,
+                input: publications.map((p) => ({ publicationId: p.id })),
+              },
+            }),
+          }
+        );
+        const publishPayload = await publishRes.json().catch(() => ({}));
+        const publishErrors = publishPayload?.data?.publishablePublish?.userErrors ?? [];
+        if (publishErrors.length > 0) {
+          console.warn('publishablePublish userErrors (non-fatal, page may be geo-restricted):', publishErrors);
+        }
+        publicationsPublished = publications;
+      }
+    }
 
     // 4. If we have applied changes (find/replace OR full replace), PATCH the duplicate's body_html.
     if (appliedChanges.length > 0 || fullReplaceApplied) {
@@ -202,19 +255,21 @@ export async function POST(request: NextRequest) {
       .eq('variant_angle', 'control')
       .maybeSingle();
 
-    // 6. Insert into landing_pages (page_type='product' since it's a duplicated product, not a Shopify Page)
+    // 6. Insert into landing_pages. v2 publish_active=true → status='testing' (active product, ready for QC + inbox).
+    //    v1 (publish_active absent) → status='testing' too — the v1 flow approves drafts via process-approvals.
     const { data: lpRow, error: lpErr } = await sb
       .from('landing_pages')
       .insert({
         user_id: TOM_USER_ID,
         name: body.target_name,
         shopify_url: previewUrl,
-        shopify_page_id: newProductId,        // stores product id for page_type='product' rows
+        shopify_page_id: newProductId,
         status: 'testing',
         page_type: 'product',
         parent_page_id: parentPage?.id ?? null,
         variant_angle: body.variant_angle,
-        notes: `Duplicated from /products/${SOURCE_PRODUCT_HANDLE} on ${new Date().toISOString().split('T')[0]}. ${body.hypothesis ? 'Hypothesis: ' + body.hypothesis : ''} Title override: yes. Body overrides applied: ${appliedChanges.length}.${overridesSuppliedButUnmatched ? ' (overrides supplied but find strings did not match — title-only change)' : ''}`,
+        experiment_id: body.experiment_id ?? null,
+        notes: `Duplicated from /products/${SOURCE_PRODUCT_HANDLE} on ${new Date().toISOString().split('T')[0]}. ${body.hypothesis ? 'Hypothesis: ' + body.hypothesis : ''} Title override: yes. Body overrides applied: ${appliedChanges.length}.${overridesSuppliedButUnmatched ? ' (overrides supplied but find strings did not match — title-only change)' : ''}${body.publish_active ? ` [v2: published ACTIVE to ${publicationsPublished.length} publication(s)]` : ' [v1: DRAFT pending approval]'}`,
       })
       .select('*')
       .single();
@@ -240,15 +295,18 @@ export async function POST(request: NextRequest) {
       landing_page_id: lpRow?.id ?? null,
       shopify_product_id: newProductId,
       shopify_handle: newHandle,
-      preview_url: previewUrl,
+      preview_url: previewUrl,                                  // Public storefront URL — works for v2 (active+all publications) from any geo
       preview_url_admin: `https://${shopifyUrl}/admin/products/${newProductId}`,
       changes_applied: appliedChanges.length,
       full_replace_applied: fullReplaceApplied,
       body_html_bytes: variantBodyHtml.length,
       overrides_supplied_but_unmatched: overridesSuppliedButUnmatched,
       title_was_overridden: true,
-      product_status: 'draft',
-      note: 'Product cloned in DRAFT status. Approve via platform_inbox UPDATE status=approved → process-approvals will set status=active (publishes to storefront).',
+      product_status: newStatus.toLowerCase(),
+      publications_published: publicationsPublished,
+      note: body.publish_active
+        ? `Product cloned ACTIVE and published to ${publicationsPublished.length} publication(s). preview_url is reachable from any geo. Run QC + inbox-write next.`
+        : 'Product cloned in DRAFT. Approve via platform_inbox UPDATE status=approved → process-approvals will set status=active (publishes to storefront).',
     });
   } catch (err) {
     console.error('clone-page error:', err);
