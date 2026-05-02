@@ -51,42 +51,56 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // 2. Fetch all publications (sales channels)
+  // 2. Fetch all publications (sales channels) — needs read_publications scope.
+  // Soft-fail if scope missing: just flip status=ACTIVE which auto-publishes to default Online Store channel.
   const pubsRes = await fetch(`https://${shopifyUrl}/admin/api/2025-04/graphql.json`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': shopifyToken },
     body: JSON.stringify({ query: `query { publications(first: 25) { edges { node { id name } } } }` }),
   });
-  if (!pubsRes.ok) {
-    return NextResponse.json({ error: 'Failed to fetch publications', detail: await pubsRes.text() }, { status: 502 });
+  let publications: Array<{ id: string; name: string }> = [];
+  let scope_warning: string | null = null;
+  if (pubsRes.ok) {
+    const pubsPayload = await pubsRes.json();
+    publications = pubsPayload?.data?.publications?.edges?.map((e: { node: { id: string; name: string } }) => e.node) ?? [];
+  } else {
+    scope_warning = `publications query HTTP ${pubsRes.status} — likely missing read_publications scope. Falling back to status=ACTIVE only.`;
+    console.warn('[publish-product]', scope_warning);
   }
-  const pubsPayload = await pubsRes.json();
-  const publications: Array<{ id: string; name: string }> =
-    pubsPayload?.data?.publications?.edges?.map((e: { node: { id: string; name: string } }) => e.node) ?? [];
 
-  if (publications.length === 0) {
-    return NextResponse.json({ error: 'No publications found for shop' }, { status: 502 });
+  if (publications.length === 0 && !scope_warning) {
+    scope_warning = 'No publications found — falling back to status=ACTIVE only.';
   }
 
-  // 3. Publish to all publications (productPublish via publishablePublish)
-  const publishRes = await fetch(`https://${shopifyUrl}/admin/api/2025-04/graphql.json`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': shopifyToken },
-    body: JSON.stringify({
-      query: `
-        mutation Publish($id: ID!, $input: [PublicationInput!]!) {
-          publishablePublish(id: $id, input: $input) {
-            publishable { ... on Product { id status onlineStoreUrl } }
-            userErrors { field message }
+  // 3. Publish to all publications (productPublish via publishablePublish) — only if we got publications
+  let userErrors: Array<{ field: string; message: string }> = [];
+  if (publications.length > 0) {
+    const publishRes = await fetch(`https://${shopifyUrl}/admin/api/2025-04/graphql.json`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': shopifyToken },
+      body: JSON.stringify({
+        query: `
+          mutation Publish($id: ID!, $input: [PublicationInput!]!) {
+            publishablePublish(id: $id, input: $input) {
+              publishable { ... on Product { id status onlineStoreUrl } }
+              userErrors { field message }
+            }
           }
-        }
-      `,
-      variables: { id: productGid, input: publications.map((p) => ({ publicationId: p.id })) },
-    }),
-  });
+        `,
+        variables: { id: productGid, input: publications.map((p) => ({ publicationId: p.id })) },
+      }),
+    });
+    const publishPayload = await publishRes.json();
+    userErrors = publishPayload?.data?.publishablePublish?.userErrors ?? [];
+  }
 
-  const publishPayload = await publishRes.json();
-  const userErrors = publishPayload?.data?.publishablePublish?.userErrors ?? [];
+  // 3b. Always set status=ACTIVE as a baseline (works with write_products scope only)
+  const activateRes = await fetch(`https://${shopifyUrl}/admin/api/2024-01/products/${body.shopify_product_id}.json`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': shopifyToken },
+    body: JSON.stringify({ product: { id: parseInt(String(body.shopify_product_id), 10), status: 'active' } }),
+  });
+  const activated = activateRes.ok;
 
   // 4. Try to also publish to all market catalogs (Markets feature) so the storefront URL works from any geo.
   // Only Plus shops have full Markets API; for non-Plus, publishablePublish to all publications is enough.
@@ -127,11 +141,13 @@ export async function POST(request: NextRequest) {
   } catch { /* non-fatal */ }
 
   return NextResponse.json({
-    success: userErrors.length === 0,
+    success: userErrors.length === 0 && activated,
     shopify_product_id: body.shopify_product_id,
     publications_count: publications.length,
     publications: publications.map((p) => p.name),
     markets_published: marketsPublished,
+    activated,
+    scope_warning,
     user_errors: userErrors,
   });
 }
