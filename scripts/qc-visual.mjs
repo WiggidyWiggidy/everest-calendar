@@ -77,9 +77,17 @@ async function probe(viewport, screenshotPath, label) {
     // Body / .product__description column width — the 30 Apr bug detector
     const desc = document.querySelector('.product__description, .product__info-wrapper, [class*="product__description"]');
     const descBox = desc?.getBoundingClientRect();
-    // KRYO sections present (data-section-type)
+    // KRYO sections present (theme-installed Liquid sections)
     const kryoSections = Array.from(document.querySelectorAll('[data-section-type^="kryo-"]'))
       .map((el) => ({ type: el.getAttribute('data-section-type'), w: Math.round(el.getBoundingClientRect().width) }));
+    // KRYO body_html-injected page (the kryo-page wrapper from page-composer)
+    const kryoPage = document.querySelector('.kryo-page');
+    const kryoPageBox = kryoPage?.getBoundingClientRect();
+    // body_html sub-sections (rendered inside .kryo-page)
+    const kryoBodyHtmlSections = kryoPage
+      ? Array.from(kryoPage.querySelectorAll('[data-section]'))
+          .map((el) => ({ type: el.getAttribute('data-section'), w: Math.round(el.getBoundingClientRect().width) }))
+      : [];
     // JSON-LD
     const ldBlocks = Array.from(document.querySelectorAll('script[type="application/ld+json"]'))
       .map((s) => { try { return { ok: true, parsed: JSON.parse(s.textContent || '') }; } catch (e) { return { ok: false, error: String(e).slice(0, 100), text: (s.textContent || '').slice(0, 80) }; } });
@@ -99,6 +107,8 @@ async function probe(viewport, screenshotPath, label) {
       h1: h1 ? { found: true, text: (h1.textContent || '').trim().slice(0, 80) } : { found: false },
       product_desc_box: descBox ? { w: Math.round(descBox.width) } : null,
       kryo_sections: kryoSections,
+      kryo_page: kryoPageBox ? { found: true, w: Math.round(kryoPageBox.width) } : { found: false },
+      kryo_body_html_sections: kryoBodyHtmlSections,
       json_ld: {
         parsed_count: ldParsed.length,
         failed_count: ldFailed.length,
@@ -172,18 +182,38 @@ checks.push({
   weight: 0,
 });
 
-// Parent column not narrow — the 30 Apr bug detector
-// On a working KRYO page, the kryo sections are full-width (no parent column). If a kryo section's
-// width is < 600px on desktop, its parent (.product__description) is squeezing it.
+// Parent column not narrow — the 30 Apr bug detector.
+// Two render paths to check:
+//   (A) Theme-installed Liquid sections via [data-section-type^="kryo-"] (kryo-premium template path)
+//   (B) Body_html-injected page via .kryo-page wrapper (page-composer body_html_full_replace path)
+// In BOTH cases, expect width >= 1100px on a 1280px viewport. < 600px = column-wrapped (BAD).
 const desktopKryoSections = desktop.diag?.kryo_sections ?? [];
-const heroSec = desktopKryoSections.find((s) => s.type?.startsWith('kryo-hero'));
-const heroFullWidth = heroSec ? heroSec.w >= 1100 : false; // 1280px viewport → expect ~1280
+const desktopBodyHtmlSections = desktop.diag?.kryo_body_html_sections ?? [];
+const themeHero = desktopKryoSections.find((s) => s.type?.startsWith('kryo-hero'));
+const bodyHtmlPage = desktop.diag?.kryo_page;
+
+let columnPass = true;
+let columnDetail;
+if (themeHero) {
+  // Theme-section path
+  columnPass = themeHero.w >= 1100;
+  columnDetail = columnPass ? undefined : `Theme hero rendered at ${themeHero.w}px on 1280px viewport (column-wrapped). kryo-premium template not active.`;
+} else if (bodyHtmlPage?.found) {
+  // Body_html path: .kryo-page wrapper width
+  columnPass = bodyHtmlPage.w >= 1100;
+  columnDetail = columnPass ? undefined : `body_html .kryo-page rendered at ${bodyHtmlPage.w}px on 1280px viewport (squeezed by .product__description column). Use kryo-premium theme template OR full-bleed CSS escape (width:100vw; margin-left:calc(-50vw + 50%)) on body_html.`;
+  // Spot-check inner sections too — but exclude sticky_cta_bar (position:fixed pill, designed to be narrow)
+  const STICKY_OR_FLOATING = new Set(['sticky_cta_bar', 'press_logos']);
+  const narrowInner = desktopBodyHtmlSections.filter((s) => s.w < 800 && !STICKY_OR_FLOATING.has(s.type));
+  if (narrowInner.length > 0) {
+    columnPass = false;
+    columnDetail = (columnDetail ? columnDetail + ' ' : '') + `${narrowInner.length} body_html section(s) narrow: ${narrowInner.slice(0, 3).map((s) => `${s.type}=${s.w}px`).join(', ')}.`;
+  }
+}
 checks.push({
   check: 'parent_column_not_narrow',
-  pass: heroFullWidth || desktopKryoSections.length === 0, // skip if no kryo sections at all (control page may differ)
-  detail: !heroFullWidth && heroSec
-    ? `Hero rendered at ${heroSec.w}px on 1280px viewport (likely squeezed by .product__description column)`
-    : undefined,
+  pass: columnPass,
+  detail: columnDetail,
   weight: 4,
 });
 
