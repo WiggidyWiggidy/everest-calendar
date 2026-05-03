@@ -40,6 +40,16 @@ interface CloneRequest {
   // immediately from any geo. Tom can review the live URL + screenshots; if QC catches a problem
   // the slash command archives the product. v1 keeps the legacy DRAFT behaviour for safety.
   publish_active?: boolean;
+  // Optional: force the cloned product's handle to an exact value. Shopify auto-slugifies the
+  // title by default, which can collide or look ugly. When the variant URL is being used in ad
+  // creatives (e.g. /products/kryo-uae), the handle must be exact, not "kryo-uae-1".
+  // If the requested handle is already taken, Shopify returns 422 and we surface that.
+  target_handle?: string;
+  // Optional: per-product metafield writes (e.g. kryo.hero_eyebrow = "KRYO V4 · UAE allocation · 28 / 50 left").
+  // Applied via metafieldsSet GraphQL after the duplicate is created. Lets a caller override copy
+  // that lives in the kryo-* Liquid sections (which read from product.metafields.kryo.*) without
+  // editing the theme template.
+  metafields?: Array<{ namespace: string; key: string; type: string; value: string }>;
 }
 
 export async function POST(request: NextRequest) {
@@ -243,7 +253,76 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const previewUrl = `https://${shopifyUrl}/products/${newHandle}`;
+    // 4b. Optional: force the handle to an exact value. Required when the URL is hard-coded into ad
+    //     creatives (e.g. /products/kryo-uae) — Shopify auto-slugifies the title and may collide.
+    let finalHandle: string = newHandle;
+    let handleConflict: { requested: string; actual: string } | null = null;
+    if (body.target_handle && body.target_handle !== newHandle) {
+      const handleRes = await fetch(
+        `https://${shopifyUrl}/admin/api/2024-01/products/${newProductId}.json`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': shopifyToken },
+          body: JSON.stringify({ product: { id: parseInt(newProductId, 10), handle: body.target_handle } }),
+        }
+      );
+      if (handleRes.ok) {
+        const handlePayload = await handleRes.json().catch(() => ({}));
+        const updated = handlePayload?.product?.handle as string | undefined;
+        if (updated && updated === body.target_handle) {
+          finalHandle = updated;
+        } else if (updated) {
+          // Shopify silently appended a suffix (e.g. requested 'kryo-uae' but got 'kryo-uae-1')
+          finalHandle = updated;
+          handleConflict = { requested: body.target_handle, actual: updated };
+        }
+      } else {
+        const detail = await handleRes.text().catch(() => '');
+        console.warn('handle update failed (non-fatal, keeping auto-generated handle):', handleRes.status, detail);
+        handleConflict = { requested: body.target_handle, actual: newHandle };
+      }
+    }
+
+    // 4c. Optional: write per-product metafields (e.g. kryo.hero_eyebrow). One round-trip via metafieldsSet.
+    let metafieldsWritten: number = 0;
+    let metafieldErrors: Array<{ field: string[]; message: string }> = [];
+    if (body.metafields && body.metafields.length > 0) {
+      const mfInputs = body.metafields.map((m) => ({
+        ownerId: newProductGid,
+        namespace: m.namespace,
+        key: m.key,
+        type: m.type,
+        value: m.value,
+      }));
+      const mfRes = await fetch(
+        `https://${shopifyUrl}/admin/api/2025-04/graphql.json`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': shopifyToken },
+          body: JSON.stringify({
+            query: `
+              mutation Set($metafields: [MetafieldsSetInput!]!) {
+                metafieldsSet(metafields: $metafields) {
+                  metafields { id namespace key }
+                  userErrors { field message }
+                }
+              }
+            `,
+            variables: { metafields: mfInputs },
+          }),
+        }
+      );
+      const mfPayload = await mfRes.json().catch(() => ({}));
+      const errs = mfPayload?.data?.metafieldsSet?.userErrors ?? [];
+      const set = mfPayload?.data?.metafieldsSet?.metafields ?? [];
+      metafieldErrors = errs;
+      metafieldsWritten = set.length;
+      if (errs.length > 0) {
+        console.warn('metafieldsSet userErrors (non-fatal):', errs);
+      }
+    }
+
+    const previewUrl = `https://${shopifyUrl}/products/${finalHandle}`;
 
     // 5. Find canonical control row in landing_pages (the parent for this variant)
     const sb = svcClient();
@@ -285,16 +364,16 @@ export async function POST(request: NextRequest) {
       'shopify_product',
       newProductId,
       { source_handle: SOURCE_PRODUCT_HANDLE, source_id: sourceProductId, status: 'active' },
-      { handle: newHandle, status: 'draft', title: body.target_name },
+      { handle: finalHandle, status: 'draft', title: body.target_name },
       'scheduled_agent',
-      { variant_angle: body.variant_angle, changes_applied: appliedChanges, overrides_unmatched: overridesSuppliedButUnmatched, full_replace_applied: fullReplaceApplied, body_html_bytes: variantBodyHtml.length, landing_page_id: lpRow?.id },
+      { variant_angle: body.variant_angle, changes_applied: appliedChanges, overrides_unmatched: overridesSuppliedButUnmatched, full_replace_applied: fullReplaceApplied, body_html_bytes: variantBodyHtml.length, landing_page_id: lpRow?.id, handle_conflict: handleConflict, metafields_written: metafieldsWritten },
     );
 
     return NextResponse.json({
       success: true,
       landing_page_id: lpRow?.id ?? null,
       shopify_product_id: newProductId,
-      shopify_handle: newHandle,
+      shopify_handle: finalHandle,
       preview_url: previewUrl,                                  // Public storefront URL — works for v2 (active+all publications) from any geo
       preview_url_admin: `https://${shopifyUrl}/admin/products/${newProductId}`,
       changes_applied: appliedChanges.length,
@@ -304,6 +383,9 @@ export async function POST(request: NextRequest) {
       title_was_overridden: true,
       product_status: newStatus.toLowerCase(),
       publications_published: publicationsPublished,
+      handle_conflict: handleConflict,                          // null if requested handle was applied; { requested, actual } if Shopify suffixed
+      metafields_written: metafieldsWritten,                    // number of metafields successfully set
+      metafield_errors: metafieldErrors,                        // userErrors from metafieldsSet (non-fatal, surfaced for caller)
       note: body.publish_active
         ? `Product cloned ACTIVE and published to ${publicationsPublished.length} publication(s). preview_url is reachable from any geo. Run QC + inbox-write next.`
         : 'Product cloned in DRAFT. Approve via platform_inbox UPDATE status=approved → process-approvals will set status=active (publishes to storefront).',
