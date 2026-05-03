@@ -24,11 +24,152 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getShopifyToken, getShopifyStoreUrl } from '@/lib/shopify-auth';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 interface Patch {
+  // Raw shape — operator passes section + block + settings directly
+  section?: string;
+  block?: string;
+  settings?: Record<string, unknown>;
+  // Slot shape — operator passes slot_name + image_url, resolver fills the rest
+  slot?: string;
+  image_url?: string;
+}
+
+interface ResolvedPatch {
   section: string;
   block?: string;
   settings: Record<string, unknown>;
+  // For active-usage tracking
+  resolved_from_slot?: string;
+  resolved_image_url?: string;
+}
+
+function svcClient() {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } },
+  );
+}
+
+// Convert canonical CDN URL → shopify://shop_images/{filename}, the format AI blocks store.
+// e.g. https://cdn.shopify.com/s/files/1/0718/0550/1748/files/man_in_ice_bath_1.png?v=123
+//      → shopify://shop_images/man_in_ice_bath_1.png
+function cdnUrlToShopifyImageRef(url: string): string {
+  if (url.startsWith('shopify://')) return url;
+  // Strip query string
+  const noQuery = url.split('?')[0];
+  // Get filename only
+  const filename = noQuery.split('/').pop();
+  if (!filename) throw new Error(`Cannot extract filename from URL: ${url}`);
+  return `shopify://shop_images/${filename}`;
+}
+
+function deriveSourceTemplateSuffix(sourceKey: string): string {
+  // 'templates/product.nue-uae1.json' → 'nue-uae1'
+  return sourceKey.replace(/^templates\/product\./, '').replace(/\.json$/, '');
+}
+
+function deriveTargetTemplateSuffix(targetKey: string): string {
+  return targetKey.replace(/^templates\/product\./, '').replace(/\.json$/, '');
+}
+
+interface SlotRow {
+  slot_name: string;
+  template_suffix: string;
+  section_id: string;
+  block_id: string;
+  setting_key: string;
+}
+
+async function resolveSlotPatch(
+  patch: Patch,
+  sourceTemplateSuffix: string,
+): Promise<{ resolved: ResolvedPatch; warning?: string }> {
+  if (!patch.slot || !patch.image_url) {
+    throw new Error('Slot patch requires both "slot" and "image_url"');
+  }
+
+  const sb = svcClient();
+  const { data, error } = await sb
+    .from('kryo_image_slots')
+    .select('slot_name,template_suffix,section_id,block_id,setting_key')
+    .eq('slot_name', patch.slot)
+    .eq('template_suffix', sourceTemplateSuffix)
+    .maybeSingle();
+
+  if (error) throw new Error(`Supabase slot lookup failed: ${error.message}`);
+  if (!data) {
+    // Surface available slot names for that template so caller can fix typos
+    const { data: avail } = await sb
+      .from('kryo_image_slots')
+      .select('slot_name')
+      .eq('template_suffix', sourceTemplateSuffix);
+    const list = (avail ?? []).map((r) => r.slot_name).join(', ');
+    throw new Error(
+      `Slot "${patch.slot}" not found for template "${sourceTemplateSuffix}". Available: ${list || '(none)'}`,
+    );
+  }
+
+  const slot = data as SlotRow;
+  let warning: string | undefined;
+
+  // Translate URL format
+  const shopifyRef = cdnUrlToShopifyImageRef(patch.image_url);
+
+  // Soft-warn if the URL isn't in the master kryo_images registry
+  const { data: imgRow } = await sb
+    .from('kryo_images')
+    .select('url,primary_product,usable_for_products')
+    .eq('url', patch.image_url.split('?')[0])
+    .maybeSingle();
+  if (!imgRow) {
+    warning = `image_url not in kryo_images master registry — proceeding anyway. Add it after for traceability.`;
+  } else if (!(imgRow as { usable_for_products: string[] }).usable_for_products?.includes('kryo')) {
+    warning = `image_url is in kryo_images but NOT marked usable_for_products=['kryo'] — likely a non-KRYO product image. Verify before deploy.`;
+  }
+
+  return {
+    resolved: {
+      section: slot.section_id,
+      block: slot.block_id,
+      settings: { [slot.setting_key]: shopifyRef },
+      resolved_from_slot: patch.slot,
+      resolved_image_url: patch.image_url,
+    },
+    warning,
+  };
+}
+
+async function recordActiveUsage(
+  resolvedPatches: ResolvedPatch[],
+  targetTemplateSuffix: string,
+): Promise<{ inserted: number; errors: string[] }> {
+  const sb = svcClient();
+  const rows = resolvedPatches
+    .filter((p) => p.resolved_from_slot && p.resolved_image_url)
+    .map((p) => ({
+      image_url: p.resolved_image_url!.split('?')[0],
+      channel: 'product_page_slot',
+      reference: p.resolved_from_slot!,
+      template_suffix: targetTemplateSuffix,
+      product_handle: null,
+      active: true,
+      notes: `Auto-recorded by clone-template at ${new Date().toISOString()}`,
+    }));
+
+  if (rows.length === 0) return { inserted: 0, errors: [] };
+
+  // Upsert: if image is being re-applied to same slot/template, just refresh
+  const { error } = await sb
+    .from('kryo_image_active_usage')
+    .upsert(rows, { onConflict: 'image_url,channel,reference', ignoreDuplicates: false });
+
+  if (error) {
+    return { inserted: 0, errors: [`active_usage upsert failed: ${error.message}`] };
+  }
+  return { inserted: rows.length, errors: [] };
 }
 
 interface CloneRequest {
@@ -166,7 +307,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // 3. Parse + patch
+  // 3. Parse + resolve slot patches + apply
   let template: TemplateJson;
   try {
     template = JSON.parse(source.value);
@@ -174,25 +315,62 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Source template is not valid JSON: ${(e as Error).message}` }, { status: 500 });
   }
 
-  const applied: Array<{ patch: Patch; status: 'applied' | 'section_not_found' | 'block_not_found' }> = [];
+  const sourceTemplateSuffix = deriveSourceTemplateSuffix(source_key);
+  const targetTemplateSuffix = deriveTargetTemplateSuffix(target_key);
 
+  // Pre-resolve all slot-shaped patches into raw {section, block, settings} form
+  const resolvedPatches: ResolvedPatch[] = [];
+  const resolveWarnings: string[] = [];
   for (const patch of patches) {
-    const section = template.sections?.[patch.section];
+    if (patch.slot) {
+      try {
+        const { resolved, warning } = await resolveSlotPatch(patch, sourceTemplateSuffix);
+        resolvedPatches.push(resolved);
+        if (warning) resolveWarnings.push(`${patch.slot}: ${warning}`);
+      } catch (e) {
+        return NextResponse.json(
+          { error: `Slot resolution failed: ${(e as Error).message}`, patch },
+          { status: 422 },
+        );
+      }
+    } else {
+      if (!patch.section || !patch.settings) {
+        return NextResponse.json(
+          { error: 'Raw patch requires section + settings (or use slot+image_url)', patch },
+          { status: 400 },
+        );
+      }
+      resolvedPatches.push({
+        section: patch.section,
+        block: patch.block,
+        settings: patch.settings,
+      });
+    }
+  }
+
+  // Apply each resolved patch into the parsed template
+  const applied: Array<{
+    patch: ResolvedPatch;
+    status: 'applied' | 'section_not_found' | 'block_not_found';
+  }> = [];
+
+  for (const rp of resolvedPatches) {
+    const section = template.sections?.[rp.section];
     if (!section) {
-      applied.push({ patch, status: 'section_not_found' });
+      applied.push({ patch: rp, status: 'section_not_found' });
       continue;
     }
-    if (patch.block) {
-      const block = section.blocks?.[patch.block];
+    if (rp.block) {
+      const block = section.blocks?.[rp.block];
       if (!block) {
-        applied.push({ patch, status: 'block_not_found' });
+        applied.push({ patch: rp, status: 'block_not_found' });
         continue;
       }
-      block.settings = { ...(block.settings ?? {}), ...patch.settings };
+      block.settings = { ...(block.settings ?? {}), ...rp.settings };
     } else {
-      section.settings = { ...(section.settings ?? {}), ...patch.settings };
+      section.settings = { ...(section.settings ?? {}), ...rp.settings };
     }
-    applied.push({ patch, status: 'applied' });
+    applied.push({ patch: rp, status: 'applied' });
   }
 
   // 4. Write target
@@ -203,19 +381,31 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
   }
 
-  // Extract derived suffix (templates/product.X.json → X)
-  const suffix = target_key.replace(/^templates\/product\./, '').replace(/\.json$/, '');
+  // 5. Record active usage for any patch that came from a slot — non-fatal on failure
+  let usageReport: { inserted: number; errors: string[] } = { inserted: 0, errors: [] };
+  const successfulSlotPatches = applied
+    .filter((a) => a.status === 'applied' && a.patch.resolved_from_slot)
+    .map((a) => a.patch);
+  if (successfulSlotPatches.length > 0) {
+    try {
+      usageReport = await recordActiveUsage(successfulSlotPatches, targetTemplateSuffix);
+    } catch (e) {
+      usageReport = { inserted: 0, errors: [(e as Error).message] };
+    }
+  }
 
   return NextResponse.json({
     success: true,
     theme_id: themeId,
     source_key,
     target_key,
-    template_suffix: suffix,
+    template_suffix: targetTemplateSuffix,
     bytes_written: targetValue.length,
     section_count: Object.keys(template.sections ?? {}).length,
     applied_patches: applied,
+    resolve_warnings: resolveWarnings,
+    active_usage: usageReport,
     overwrote: overwrite,
-    next_step: `POST /api/marketing/theme/configure-product { product_id, template_suffix: "${suffix}" }`,
+    next_step: `POST /api/marketing/theme/configure-product { product_id, template_suffix: "${targetTemplateSuffix}" }`,
   });
 }
