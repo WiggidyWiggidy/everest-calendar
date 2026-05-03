@@ -3,6 +3,7 @@
 // Used to verify which Shopify app is wired to this system before granting new scopes.
 //
 // Auth: x-sync-secret.
+// Cache-bust: 2026-05-03T01:11Z (force fresh deploy → cold-start lambdas → fresh shopify token)
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getShopifyToken, getShopifyStoreUrl } from '@/lib/shopify-auth';
