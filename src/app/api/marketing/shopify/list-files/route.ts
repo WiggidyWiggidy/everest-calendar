@@ -59,9 +59,14 @@ export async function GET(req: NextRequest) {
     createdAt: string;
   }> = [];
 
+  interface GraphQLResponse {
+    data?: { files?: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; edges: Array<{ node: FileEdgeNode }> } };
+    errors?: unknown;
+  }
+
   let cursor: string | null = null;
   do {
-    const res = await fetch(`https://${storeUrl}/admin/api/2024-10/graphql.json`, {
+    const res: Response = await fetch(`https://${storeUrl}/admin/api/2024-10/graphql.json`, {
       method: 'POST',
       headers: { 'X-Shopify-Access-Token': token, 'Content-Type': 'application/json' },
       body: JSON.stringify({ query: QUERY, variables: { cursor } }),
@@ -72,7 +77,7 @@ export async function GET(req: NextRequest) {
         { status: 500 },
       );
     }
-    const data = await res.json();
+    const data: GraphQLResponse = await res.json();
     if (data.errors) {
       return NextResponse.json({ error: 'GraphQL', detail: data.errors }, { status: 500 });
     }
