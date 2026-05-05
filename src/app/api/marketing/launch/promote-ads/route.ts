@@ -36,6 +36,8 @@ async function metaCreateCampaign(adAccountId: string, token: string, name: stri
       objective: 'OUTCOME_SALES',
       status: 'PAUSED',
       special_ad_categories: [],
+      // Meta added this required field 2026; explicit false = use adset-level budgets (which we set)
+      is_adset_budget_sharing_enabled: false,
       access_token: token,
     }),
   });
