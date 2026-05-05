@@ -135,19 +135,35 @@ export async function POST(request: NextRequest) {
     }
 
     const sb = svcClient();
-    const { data: ready, error } = await sb
+    // Accept an optional experiment_id filter — when running a specific split test,
+    // pass {experiment_id: "..."} to push only that experiment's drafts.
+    const reqBody = (await request.json().catch(() => ({}))) as { experiment_id?: string };
+
+    let query = sb
       .from('ad_creatives')
       .select('*')
       .eq('user_id', TOM_USER_ID)
-      .eq('status', 'ready_to_promote')
+      .in('status', ['ready_to_promote', 'draft'])
       .is('meta_ad_id', null)
       .order('created_at', { ascending: true })
       .limit(20);
 
+    if (reqBody.experiment_id) {
+      query = query.eq('experiment_id', reqBody.experiment_id);
+    }
+
+    const { data: ready, error } = await query;
+
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     if (!ready || ready.length === 0) {
-      return NextResponse.json({ success: true, promoted: 0, note: 'No ad_creatives at status=ready_to_promote.' });
+      return NextResponse.json({
+        success: true,
+        promoted: 0,
+        note: reqBody.experiment_id
+          ? `No draft/ready ad_creatives found for experiment_id=${reqBody.experiment_id}.`
+          : 'No ad_creatives at status=ready_to_promote or draft.',
+      });
     }
 
     const results: Array<Record<string, unknown>> = [];
@@ -169,7 +185,18 @@ export async function POST(request: NextRequest) {
         const img = await metaUploadImage(adAccountId, metaToken, c.composite_image_url);
         if (!img.ok || !img.hash) { results.push({ ad_creative_id: c.id, status: 'failed', step: 'image', error: img.error }); continue; }
 
-        const link = `https://${process.env.SHOPIFY_STORE_URL || 'everestlabs.co'}/products/kryo_`;
+        // Build the click-through URL.
+        // Per-cell link_url (set in target_audience.link_url at draft time) takes precedence;
+        // falls back to /products/kryo_ if missing. UTM params append for cell-level attribution
+        // join via {{ad.id}} (Meta substitutes at click-time, even when URL-encoded).
+        const audience = (c.target_audience as { link_url?: string; landing_page_id?: string } | null) ?? {};
+        const baseLink = audience.link_url || `https://${process.env.SHOPIFY_STORE_URL || 'everestlabs.co'}/products/kryo_`;
+        const linkObj = new URL(baseLink);
+        if (!linkObj.searchParams.has('utm_source')) linkObj.searchParams.set('utm_source', 'meta');
+        if (!linkObj.searchParams.has('utm_medium')) linkObj.searchParams.set('utm_medium', 'paid_social');
+        if (!linkObj.searchParams.has('utm_campaign')) linkObj.searchParams.set('utm_campaign', '{{campaign.id}}');
+        if (!linkObj.searchParams.has('utm_content')) linkObj.searchParams.set('utm_content', '{{ad.id}}');
+        const link = linkObj.toString();
         const creative = await metaCreateCreative(adAccountId, metaToken, {
           headline: c.headline || 'KRYO',
           body_copy: c.body_copy || '',

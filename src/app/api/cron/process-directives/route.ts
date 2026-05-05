@@ -808,6 +808,7 @@ export async function GET(request: NextRequest) {
     'resolve-meta-asset-urls',    // resolve image hash → URL + video_id → URL on extracted assets
     'meta-ad-insights',           // per-ad daily metrics
     'meta-dce',                   // per-DCE-asset breakdowns → meta_dce_metrics + meta_asset_performance_daily
+    'meta-breakdowns',            // age/gender/region/placement breakdowns → meta_ad_breakdowns_daily (2026-05-04)
     'clarity',                    // Clarity engagement + per-URL rage/dead clicks
     'shopify',                    // site-aggregate Shopify revenue/orders
     'shopify-funnel',             // checkout abandonment funnel

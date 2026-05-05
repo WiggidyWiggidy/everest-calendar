@@ -33,9 +33,10 @@ export async function POST(request: NextRequest) {
     const dateStr = yesterday.toISOString().split('T')[0];
 
     // Clarity Export API — correct endpoint (token is project-scoped, no project ID in URL)
-    // numOfDays: 1=24h, 2=48h, 3=72h. We use 2 to catch yesterday reliably.
+    // numOfDays: 1=24h, 2=48h, 3=72h. Try 3 (max) for the broadest window.
+    // Diagnostics are now always returned — operator can spot project/domain mismatches.
     const clarityRes = await fetch(
-      `https://www.clarity.ms/export-data/api/v1/project-live-insights?numOfDays=2&dimension1=URL`,
+      `https://www.clarity.ms/export-data/api/v1/project-live-insights?numOfDays=3&dimension1=URL`,
       {
         headers: {
           Authorization: `Bearer ${clarityToken}`,
@@ -46,7 +47,12 @@ export async function POST(request: NextRequest) {
 
     if (!clarityRes.ok) {
       const err = await clarityRes.text();
-      return NextResponse.json({ error: 'Clarity API error', detail: err }, { status: 500 });
+      return NextResponse.json({
+        error: 'Clarity API error',
+        detail: err,
+        // Surface project ID so we can spot wrong-project mismatches
+        clarity_project_id_env: clarityProjectId,
+      }, { status: 500 });
     }
 
     // Clarity returns array of metric objects: [{metricName, information:[{dimensionValue, metricValue}]}]
@@ -71,6 +77,26 @@ export async function POST(request: NextRequest) {
     const deadClicks = sumMetric('DeadClickCount');
     const avgScrollDepth = avgMetric('ScrollDepth');
     const avgEngagementTime = avgMetric('EngagementTime');
+
+    // Diagnostics: which URLs returned data, distinct domains seen, total events.
+    // Helps spot: wrong project, wrong domain (myshopify.com vs everestlabs.co).
+    const trafficEntry = clarityData.find(m => m.metricName === 'Traffic');
+    const urlBreakdown = (trafficEntry?.information ?? [])
+      .map(r => ({ url: r.dimensionValue, traffic: r.metricValue }))
+      .sort((a, b) => (b.traffic || 0) - (a.traffic || 0));
+    const distinctDomains = new Set(
+      urlBreakdown
+        .map(u => { try { return new URL(u.url || '').hostname; } catch { return null; } })
+        .filter(Boolean),
+    );
+    const diagnostics = {
+      clarity_project_id_env: clarityProjectId,
+      api_window_days: 3,
+      metric_names_returned: clarityData.map(m => m.metricName),
+      total_traffic_events: totalTraffic,
+      distinct_domains: Array.from(distinctDomains),
+      top_5_urls: urlBreakdown.slice(0, 5),
+    };
 
     // Derive an engagement score (0-100) from scroll depth + engagement time
     // scroll depth (0-100) weighted 60%, engagement time normalised to 0-100 weighted 40%
@@ -177,6 +203,9 @@ export async function POST(request: NextRequest) {
       date: dateStr,
       metrics: { engagementScore, rageClicks, deadClicks, avgScrollDepth },
       friction_urls: allUrls.size,
+      // Always include diagnostics so the operator can spot project/domain mismatches
+      // without needing a second debug call. Cheap — just metadata about what we read.
+      diagnostics,
     });
   } catch (err) {
     console.error('sync/clarity error:', err);
