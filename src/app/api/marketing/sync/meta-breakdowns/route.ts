@@ -133,8 +133,9 @@ export async function POST(request: NextRequest) {
 
       // Build the breakdown_value composite from whichever fields the row carries
       const breakdownValue: Record<string, string | undefined> = {};
+      const rRec = r as unknown as Record<string, unknown>;
       for (const p of group.params) {
-        const v = (r as Record<string, unknown>)[p];
+        const v = rRec[p];
         if (typeof v === 'string') breakdownValue[p] = v;
       }
 
