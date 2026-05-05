@@ -85,7 +85,7 @@ async function metaUploadImage(adAccountId: string, token: string, imageUrl: str
   return { ok: true, hash: hash?.hash };
 }
 
-async function metaCreateCreative(adAccountId: string, token: string, c: { headline: string; body_copy: string; image_hash: string; link: string; cta_type?: string; }): Promise<{ ok: boolean; id?: string; error?: string }> {
+async function metaCreateCreative(adAccountId: string, token: string, c: { headline: string; body_copy: string; image_url: string; link: string; cta_type?: string; }): Promise<{ ok: boolean; id?: string; error?: string }> {
   const res = await fetch(`https://graph.facebook.com/v25.0/${adAccountId}/adcreatives`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -94,7 +94,8 @@ async function metaCreateCreative(adAccountId: string, token: string, c: { headl
       object_story_spec: {
         page_id: process.env.META_PAGE_ID,
         link_data: {
-          image_hash: c.image_hash,
+          // picture URL bypasses /adimages capability requirement
+          picture: c.image_url,
           link: c.link,
           message: c.body_copy,
           name: c.headline,
@@ -195,8 +196,9 @@ export async function POST(request: NextRequest) {
         const adset = await metaCreateAdset(adAccountId, metaToken, campaign.id!, `${c.headline?.slice(0, 40) || 'KRYO'} - adset`, Number(c.daily_budget) || 15, audienceForMeta);
         if (!adset.ok) { results.push({ ad_creative_id: c.id, status: 'failed', step: 'adset', error: adset.error }); continue; }
 
-        const img = await metaUploadImage(adAccountId, metaToken, c.composite_image_url);
-        if (!img.ok || !img.hash) { results.push({ ad_creative_id: c.id, status: 'failed', step: 'image', error: img.error }); continue; }
+        // Bypass /adimages upload — uses Meta capability our app doesn't have.
+        // Meta's link_data.picture accepts a URL directly, no upload required.
+        // composite_image_url is the canonical CDN URL we already have.
 
         // Build the click-through URL.
         // Per-cell link_url (set in target_audience.link_url at draft time) takes precedence;
@@ -213,7 +215,7 @@ export async function POST(request: NextRequest) {
         const creative = await metaCreateCreative(adAccountId, metaToken, {
           headline: c.headline || 'KRYO',
           body_copy: c.body_copy || '',
-          image_hash: img.hash,
+          image_url: c.composite_image_url,
           link,
           cta_type: c.cta_text === 'Learn More' ? 'LEARN_MORE' : 'SHOP_NOW',
         });
