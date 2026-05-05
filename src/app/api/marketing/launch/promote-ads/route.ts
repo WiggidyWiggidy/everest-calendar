@@ -56,7 +56,10 @@ async function metaCreateAdset(adAccountId: string, token: string, campaignId: s
       campaign_id: campaignId,
       daily_budget: Math.round(dailyBudget * 100), // cents
       billing_event: 'IMPRESSIONS',
-      optimization_goal: 'OFFSITE_CONVERSIONS',
+      // LINK_CLICKS used here because OFFSITE_CONVERSIONS requires promoted_object
+      // (pixel_id + custom_event_type). Tom can upgrade to PURCHASE optimization
+      // in Meta Ads Manager UI after review — this gets the ads created PAUSED first.
+      optimization_goal: 'LINK_CLICKS',
       bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
       targeting: audience,
       status: 'PAUSED',
