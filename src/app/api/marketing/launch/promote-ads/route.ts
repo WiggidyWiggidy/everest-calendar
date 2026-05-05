@@ -181,7 +181,15 @@ export async function POST(request: NextRequest) {
         const campaign = await metaCreateCampaign(adAccountId, metaToken, `KRYO ${c.headline?.slice(0, 40) || 'Ad'} - ${datePart}`);
         if (!campaign.ok) { results.push({ ad_creative_id: c.id, status: 'failed', step: 'campaign', error: campaign.error }); continue; }
 
-        const adset = await metaCreateAdset(adAccountId, metaToken, campaign.id!, `${c.headline?.slice(0, 40) || 'KRYO'} - adset`, Number(c.daily_budget) || 15, c.target_audience as Record<string, unknown>);
+        // Strip our custom fields (link_url, landing_page_id, cell_label) before passing
+        // to Meta — they are not valid targeting-spec fields and Meta rejects the whole
+        // adset with "The field link_url is not a valid target spec field" otherwise.
+        const audienceForMeta: Record<string, unknown> = { ...(c.target_audience as Record<string, unknown> ?? {}) };
+        delete audienceForMeta.link_url;
+        delete audienceForMeta.landing_page_id;
+        delete audienceForMeta.cell_label;
+
+        const adset = await metaCreateAdset(adAccountId, metaToken, campaign.id!, `${c.headline?.slice(0, 40) || 'KRYO'} - adset`, Number(c.daily_budget) || 15, audienceForMeta);
         if (!adset.ok) { results.push({ ad_creative_id: c.id, status: 'failed', step: 'adset', error: adset.error }); continue; }
 
         const img = await metaUploadImage(adAccountId, metaToken, c.composite_image_url);
