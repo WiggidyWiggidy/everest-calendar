@@ -190,10 +190,108 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 3b. Apply creative override via mint-and-swap.
+    //
+    // Meta's /copies endpoint accepts top-level title/body/link_url override fields (added 28 May
+    // 2025) BUT in practice they do NOT propagate into object_story_spec.link_data for link_data
+    // ads. The /copies call mints a new creative but populates it with source content. To make
+    // the override actually serve, we have to:
+    //   (a) GET the source ad's object_story_spec
+    //   (b) build a new spec with overrides applied to link_data.{name,message,link} + cta.value.link
+    //   (c) POST /act_<id>/adcreatives with the new spec
+    //   (d) POST /<new_ad_id> { creative: { creative_id: <new> } } to swap it onto the duplicate
+    //
+    // Skipped for asset_feed_spec (DCT) ads — those need a separate path (the spec is multi-variant
+    // and the top-level overrides don't map cleanly). The clone-ad-qc agent surfaces DCT cases.
+    let overrideCreativeId: string | null = null;
+    let overrideApplied = false;
+    if (
+      level === 'ad' &&
+      newAdId &&
+      body.override &&
+      (body.override.title !== undefined || body.override.body !== undefined || body.override.link_url !== undefined)
+    ) {
+      const adAccountId = process.env.META_AD_ACCOUNT_ID;
+      if (!adAccountId) {
+        console.warn('META_AD_ACCOUNT_ID not set — creative override skipped, ad will serve source creative');
+      } else {
+        try {
+          // (a) source creative spec
+          const srcCreativeRes = await fetch(
+            `https://graph.facebook.com/${META_API_VERSION}/${body.source_id}?` +
+              `fields=${encodeURIComponent('creative{id,object_story_spec,asset_feed_spec,url_tags}')}` +
+              `&access_token=${metaToken}`,
+            { method: 'GET' }
+          );
+          const srcCreativeJson = await srcCreativeRes.json();
+          const srcCreative = srcCreativeJson?.creative ?? {};
+          const srcOss = srcCreative.object_story_spec;
+
+          if (srcCreative.asset_feed_spec) {
+            // DCT — skip; top-level overrides apply to scalar fallbacks only
+            console.warn('Source ad uses asset_feed_spec (DCT) — creative override skipped. Ad will serve source DCT permutations.');
+          } else if (srcOss?.link_data) {
+            // (b) build new link_data with overrides
+            const newLinkData = { ...srcOss.link_data };
+            if (body.override.title !== undefined) newLinkData.name = body.override.title;
+            if (body.override.body !== undefined) newLinkData.message = body.override.body;
+            if (body.override.link_url !== undefined) {
+              newLinkData.link = body.override.link_url;
+              const cta = newLinkData.call_to_action as { value?: { link?: string } } | undefined;
+              if (cta?.value?.link) {
+                newLinkData.call_to_action = {
+                  ...(cta as object),
+                  value: { ...(cta.value as object), link: body.override.link_url },
+                };
+              }
+            }
+            const newOss = { ...srcOss, link_data: newLinkData };
+
+            // (c) POST /act_<id>/adcreatives
+            const newCreativeRes = await fetch(
+              `https://graph.facebook.com/${META_API_VERSION}/${adAccountId}/adcreatives`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${metaToken}` },
+                body: JSON.stringify({
+                  name: `${body.angle ?? 'override'} clone of ${newAdId}`,
+                  object_story_spec: newOss,
+                  url_tags: body.override.url_tags ?? srcCreative.url_tags ?? undefined,
+                }),
+              }
+            );
+            const newCreativeJson = await newCreativeRes.json();
+            if (newCreativeJson.error) {
+              console.warn('adcreative mint failed (override will not serve):', newCreativeJson.error);
+            } else if (newCreativeJson.id) {
+              overrideCreativeId = newCreativeJson.id;
+              // (d) Reattach to the duplicate ad
+              const reattachRes = await fetch(
+                `https://graph.facebook.com/${META_API_VERSION}/${newAdId}`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${metaToken}` },
+                  body: JSON.stringify({ creative: { creative_id: newCreativeJson.id } }),
+                }
+              );
+              if (reattachRes.ok) {
+                overrideApplied = true;
+              } else {
+                console.warn('reattach failed (ad still has source creative):', await reattachRes.text());
+              }
+            }
+          }
+        } catch (overrideErr) {
+          console.warn('creative override pipeline threw (non-fatal):', overrideErr);
+        }
+      }
+    }
+
     // Insert into ad_creatives so the duplicate is queueable in platform_inbox
     // and downstream regression (creative_performance_by_angle) can pick it up.
     const sb = svcClient();
     let adCreativeRowId: string | null = null;
+    let adCreativeInsertError: { code?: string; message?: string; details?: string } | null = null;
     if (newAdId) {
       const { data: lpRow } = body.landing_page_id
         ? await sb.from('landing_pages').select('shopify_url').eq('id', body.landing_page_id).maybeSingle()
@@ -222,23 +320,20 @@ export async function POST(request: NextRequest) {
         .select('id')
         .single();
       if (insErr) {
-        console.warn('ad_creatives insert failed (non-fatal):', insErr);
+        // Surface the error in the response so the caller knows the row didn't insert.
+        // Most common causes: CHECK constraint on angle (resolved 2026-05-14 — should not recur)
+        // or unique constraint on (meta_ad_id) if the row was already inserted by a retry.
+        console.warn('ad_creatives insert failed:', insErr);
+        adCreativeInsertError = { code: insErr.code, message: insErr.message, details: insErr.details };
       } else {
         adCreativeRowId = row?.id ?? null;
       }
     }
 
     // Also tag the meta_ads row once Meta sync re-runs (next /sync/meta-campaigns cron pull will pick up the new ad).
-    // For now, write a forward-write into meta_ads if a row already happens to exist (rare; usually sync hasn't run yet).
-    if (newAdId && (body.angle || body.hook_type || body.audience_segment_label || body.experiment_id)) {
-      await sb.from('meta_ads').upsert({
-        meta_ad_id: newAdId,
-        angle: body.angle ?? null,
-        hook_type: body.hook_type ?? null,
-        audience_segment_label: body.audience_segment_label ?? null,
-        experiment_id: body.experiment_id ?? null,
-      }, { onConflict: 'meta_ad_id', ignoreDuplicates: false });
-    }
+    // meta_ads has NOT NULL on meta_adset_id, so forward-tagging from this route would fail until
+    // the sync route fills the structural columns. Skip the upsert here — let the next /sync/meta-campaigns
+    // cron pick up the new ad with full data, then re-tag via /tag-ad-creative if needed.
 
     // Audit log
     await auditLog(
@@ -253,6 +348,14 @@ export async function POST(request: NextRequest) {
       { angle: body.angle, hook_type: body.hook_type, experiment_id: body.experiment_id, ad_creative_id: adCreativeRowId, verified_status: verifiedStatus },
     );
 
+    const overrideFieldsRequested = Object.keys(body.override ?? {});
+    const overrideExpected = overrideFieldsRequested.length > 0 && level === 'ad';
+    let overrideNote = '';
+    if (overrideExpected) {
+      overrideNote = overrideApplied
+        ? ` Creative override applied to new ad (creative_id=${overrideCreativeId}).`
+        : ` WARN: creative override requested but NOT applied (ad serves source creative). Likely cause: DCT/asset_feed_spec source, missing META_AD_ACCOUNT_ID, or adcreatives mint failed. Check route logs.`;
+    }
     return NextResponse.json({
       success: true,
       level,
@@ -264,11 +367,15 @@ export async function POST(request: NextRequest) {
       is_paused: isPaused,
       preview_url,
       ad_creative_row_id: adCreativeRowId,
-      override_applied: Object.keys(body.override ?? {}),
+      ad_creative_insert_error: adCreativeInsertError,             // Non-null when the Supabase insert failed; check details in route logs.
+      override_fields_requested: overrideFieldsRequested,
+      override_applied: overrideApplied,                            // true if mint-and-swap actually replaced the creative
+      override_creative_id: overrideCreativeId,                     // the new creative_id minted with overrides (null if DCT or skipped)
       meta_response: metaJson,
-      note: isPaused
-        ? `Meta ad duplicated PAUSED. Sync will pick up the new ad on next /sync/meta-campaigns run. Approve via platform_inbox.`
-        : `WARN: Meta duplicate did not return PAUSED status (got '${verifiedStatus}'). Force-pause attempted. Verify in Meta Ads Manager before flipping live.`,
+      note: (isPaused
+        ? `Meta ad duplicated PAUSED.`
+        : `WARN: Meta duplicate did not return PAUSED status (got '${verifiedStatus}'). Force-pause attempted. Verify in Meta Ads Manager before flipping live.`
+      ) + overrideNote + ' Sync will pick up the new ad on next /sync/meta-campaigns run.',
     });
   } catch (err) {
     console.error('duplicate-ad error:', err);
