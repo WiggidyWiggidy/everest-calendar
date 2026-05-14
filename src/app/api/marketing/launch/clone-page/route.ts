@@ -14,7 +14,7 @@ import { getShopifyToken, getShopifyStoreUrl } from '@/lib/shopify-auth';
 import { auditLog } from '@/lib/marketing-safety';
 
 const TOM_USER_ID = '174f2dff-7a96-464c-a919-b473c328d531';
-const SOURCE_PRODUCT_HANDLE = 'kryo_';
+const DEFAULT_SOURCE_PRODUCT_HANDLE = 'kryo_';
 
 function authSkill(request: NextRequest): boolean {
   const secret = request.headers.get('x-sync-secret');
@@ -50,6 +50,14 @@ interface CloneRequest {
   // that lives in the kryo-* Liquid sections (which read from product.metafields.kryo.*) without
   // editing the theme template.
   metafields?: Array<{ namespace: string; key: string; type: string; value: string }>;
+  // Optional: clone from a non-default source product (defaults to 'kryo_'). Enables A/B-clones of
+  // any winning variant — e.g. source_handle='kryo-2-0' to fork from the kryo-2-0 variant rather
+  // than the original canonical control.
+  source_handle?: string;
+  // Optional: copy ALL metafields from the source product to the clone. Required when the source
+  // product's theme template reads dynamic copy from product.metafields.* (the kryo-* sections do).
+  // Without this, the cloned page will render with empty/default copy from the template fallbacks.
+  copy_metafields_from_source?: boolean;
 }
 
 export async function POST(request: NextRequest) {
@@ -63,6 +71,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'variant_angle and target_name required' }, { status: 400 });
     }
 
+    // Source product handle: defaults to the canonical kryo_ control, but caller can specify any
+    // existing product handle (e.g. 'kryo-2-0') to clone from a proven variant instead.
+    const sourceHandle: string = body.source_handle ?? DEFAULT_SOURCE_PRODUCT_HANDLE;
+
     let shopifyUrl: string;
     let shopifyToken: string;
     try {
@@ -74,7 +86,7 @@ export async function POST(request: NextRequest) {
 
     // 1. Look up source product id by handle
     const lookupRes = await fetch(
-      `https://${shopifyUrl}/admin/api/2024-01/products.json?handle=${SOURCE_PRODUCT_HANDLE}&fields=id,handle,title,body_html,template_suffix`,
+      `https://${shopifyUrl}/admin/api/2024-01/products.json?handle=${sourceHandle}&fields=id,handle,title,body_html,template_suffix`,
       { headers: { 'X-Shopify-Access-Token': shopifyToken } }
     );
     if (!lookupRes.ok) {
@@ -86,7 +98,7 @@ export async function POST(request: NextRequest) {
     const lookupPayload = await lookupRes.json();
     const sourceProduct = lookupPayload.products?.[0];
     if (!sourceProduct?.id) {
-      return NextResponse.json({ error: `Source product '${SOURCE_PRODUCT_HANDLE}' not found in Shopify` }, { status: 404 });
+      return NextResponse.json({ error: `Source product '${sourceHandle}' not found in Shopify` }, { status: 404 });
     }
     const sourceProductId: number = sourceProduct.id;
     const sourceBodyHtml: string = sourceProduct.body_html ?? '';
@@ -283,6 +295,62 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 4b-2. Optional: copy ALL metafields from the source product to the clone. Required when the
+    //       source product's theme template reads dynamic copy from product.metafields.* (the kryo-*
+    //       sections do). Shopify's productDuplicate does NOT copy metafields by default. Without
+    //       this step the cloned page renders empty hero / scientist / FAQ blocks where the source
+    //       page renders the kryo.* metafield values.
+    let metafieldsCopiedFromSource: number = 0;
+    if (body.copy_metafields_from_source) {
+      // Page through all source metafields (Shopify caps at 250 per request)
+      const sourceMfsRes = await fetch(
+        `https://${shopifyUrl}/admin/api/2025-04/graphql.json`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': shopifyToken },
+          body: JSON.stringify({
+            query: `query($id: ID!) { product(id: $id) { metafields(first: 250) { edges { node { namespace key type value } } } } }`,
+            variables: { id: `gid://shopify/Product/${sourceProductId}` },
+          }),
+        }
+      );
+      const sourceMfsPayload = await sourceMfsRes.json().catch(() => ({}));
+      const sourceMfs: Array<{ namespace: string; key: string; type: string; value: string }> =
+        (sourceMfsPayload?.data?.product?.metafields?.edges ?? []).map(
+          (e: { node: { namespace: string; key: string; type: string; value: string } }) => e.node
+        );
+      if (sourceMfs.length > 0) {
+        // Chunk to 25 per mutation (Shopify metafieldsSet limit)
+        for (let i = 0; i < sourceMfs.length; i += 25) {
+          const chunk = sourceMfs.slice(i, i + 25).map((m) => ({
+            ownerId: newProductGid,
+            namespace: m.namespace,
+            key: m.key,
+            type: m.type,
+            value: m.value,
+          }));
+          const copyRes = await fetch(
+            `https://${shopifyUrl}/admin/api/2025-04/graphql.json`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': shopifyToken },
+              body: JSON.stringify({
+                query: `mutation Set($metafields: [MetafieldsSetInput!]!) { metafieldsSet(metafields: $metafields) { metafields { id } userErrors { field message } } }`,
+                variables: { metafields: chunk },
+              }),
+            }
+          );
+          const copyPayload = await copyRes.json().catch(() => ({}));
+          const copyErrs = copyPayload?.data?.metafieldsSet?.userErrors ?? [];
+          const copySet = copyPayload?.data?.metafieldsSet?.metafields ?? [];
+          metafieldsCopiedFromSource += copySet.length;
+          if (copyErrs.length > 0) {
+            console.warn('metafieldsSet (source-copy) userErrors (non-fatal):', copyErrs);
+          }
+        }
+      }
+    }
+
     // 4c. Optional: write per-product metafields (e.g. kryo.hero_eyebrow). One round-trip via metafieldsSet.
     let metafieldsWritten: number = 0;
     let metafieldErrors: Array<{ field: string[]; message: string }> = [];
@@ -330,7 +398,7 @@ export async function POST(request: NextRequest) {
       .from('landing_pages')
       .select('id')
       .eq('user_id', TOM_USER_ID)
-      .eq('shopify_url', `https://${shopifyUrl}/products/${SOURCE_PRODUCT_HANDLE}`)
+      .eq('shopify_url', `https://${shopifyUrl}/products/${sourceHandle}`)
       .eq('variant_angle', 'control')
       .maybeSingle();
 
@@ -348,7 +416,7 @@ export async function POST(request: NextRequest) {
         parent_page_id: parentPage?.id ?? null,
         variant_angle: body.variant_angle,
         experiment_id: body.experiment_id ?? null,
-        notes: `Duplicated from /products/${SOURCE_PRODUCT_HANDLE} on ${new Date().toISOString().split('T')[0]}. ${body.hypothesis ? 'Hypothesis: ' + body.hypothesis : ''} Title override: yes. Body overrides applied: ${appliedChanges.length}.${overridesSuppliedButUnmatched ? ' (overrides supplied but find strings did not match — title-only change)' : ''}${body.publish_active ? ` [v2: published ACTIVE to ${publicationsPublished.length} publication(s)]` : ' [v1: DRAFT pending approval]'}`,
+        notes: `Duplicated from /products/${sourceHandle} on ${new Date().toISOString().split('T')[0]}. ${body.hypothesis ? 'Hypothesis: ' + body.hypothesis : ''} Title override: yes. Body overrides applied: ${appliedChanges.length}.${overridesSuppliedButUnmatched ? ' (overrides supplied but find strings did not match — title-only change)' : ''}${body.publish_active ? ` [v2: published ACTIVE to ${publicationsPublished.length} publication(s)]` : ' [v1: DRAFT pending approval]'}`,
       })
       .select('*')
       .single();
@@ -363,10 +431,10 @@ export async function POST(request: NextRequest) {
       'product_cloned_draft',
       'shopify_product',
       newProductId,
-      { source_handle: SOURCE_PRODUCT_HANDLE, source_id: sourceProductId, status: 'active' },
+      { source_handle: sourceHandle, source_id: sourceProductId, status: 'active' },
       { handle: finalHandle, status: 'draft', title: body.target_name },
       'scheduled_agent',
-      { variant_angle: body.variant_angle, changes_applied: appliedChanges, overrides_unmatched: overridesSuppliedButUnmatched, full_replace_applied: fullReplaceApplied, body_html_bytes: variantBodyHtml.length, landing_page_id: lpRow?.id, handle_conflict: handleConflict, metafields_written: metafieldsWritten },
+      { variant_angle: body.variant_angle, changes_applied: appliedChanges, overrides_unmatched: overridesSuppliedButUnmatched, full_replace_applied: fullReplaceApplied, body_html_bytes: variantBodyHtml.length, landing_page_id: lpRow?.id, handle_conflict: handleConflict, metafields_written: metafieldsWritten, metafields_copied_from_source: metafieldsCopiedFromSource },
     );
 
     return NextResponse.json({
@@ -384,8 +452,10 @@ export async function POST(request: NextRequest) {
       product_status: newStatus.toLowerCase(),
       publications_published: publicationsPublished,
       handle_conflict: handleConflict,                          // null if requested handle was applied; { requested, actual } if Shopify suffixed
-      metafields_written: metafieldsWritten,                    // number of metafields successfully set
+      metafields_written: metafieldsWritten,                    // number of explicit metafields successfully set from body.metafields
+      metafields_copied_from_source: metafieldsCopiedFromSource, // number copied verbatim from source product when copy_metafields_from_source=true
       metafield_errors: metafieldErrors,                        // userErrors from metafieldsSet (non-fatal, surfaced for caller)
+      source_handle: sourceHandle,                              // echoed back so caller can verify which source was cloned
       note: body.publish_active
         ? `Product cloned ACTIVE and published to ${publicationsPublished.length} publication(s). preview_url is reachable from any geo. Run QC + inbox-write next.`
         : 'Product cloned in DRAFT. Approve via platform_inbox UPDATE status=approved → process-approvals will set status=active (publishes to storefront).',
