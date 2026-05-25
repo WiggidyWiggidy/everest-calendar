@@ -9,8 +9,8 @@
       "schedule": "0 6 * * *"
     },
     {
-      "path": "/api/cron/google-data-sync",
-      "schedule": "30 2 * * *"
+      "path": "/api/cron/google-diagnostics-sync",
+      "schedule": "30 2,14 * * *"
     }
   ]
 }
