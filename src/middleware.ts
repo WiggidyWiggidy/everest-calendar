@@ -24,7 +24,15 @@ export async function middleware(request: NextRequest) {
   }
 
   // Cron routes with secret = bypass auth
-  if (path.startsWith('/api/cron/') && (request.headers.get('x-cron-secret') !== null || request.nextUrl.searchParams.has('secret'))) {
+  if (
+    path.startsWith('/api/cron/') &&
+    (
+      request.headers.get('x-cron-secret') !== null ||
+      request.headers.get('x-sync-secret') !== null ||
+      request.nextUrl.searchParams.has('secret') ||
+      request.nextUrl.searchParams.has('sync_secret')
+    )
+  ) {
     return NextResponse.next();
   }
 
