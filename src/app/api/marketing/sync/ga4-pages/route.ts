@@ -56,7 +56,8 @@ export async function POST(request: NextRequest) {
     const since = new Date(Date.now() - days * 86400000).toISOString().split('T')[0];
     const until = new Date(Date.now() - 86400000).toISOString().split('T')[0];
 
-    // Single GA4 runReport — date × pagePath × pageTitle with the rich engagement metric set
+    // Single GA4 runReport — GA4 caps nested runReport requests at 10 metrics.
+    // Keep this sync stable first; ecommerce page metrics can be added as a second joined report later.
     const reportBody = {
       dateRanges: [{ startDate: since, endDate: until }],
       dimensions: [
@@ -75,11 +76,6 @@ export async function POST(request: NextRequest) {
         { name: 'engagementRate' },
         { name: 'bounceRate' },
         { name: 'eventCount' },
-        { name: 'addToCarts' },
-        { name: 'checkouts' },
-        { name: 'ecommercePurchases' },
-        { name: 'purchaseRevenue' },
-        { name: 'itemsViewed' },
       ],
       // Filter to KRYO-related pages by default. /products/kryo* + /pages/kryo*.
       ...(kryoOnly && {
@@ -146,11 +142,11 @@ export async function POST(request: NextRequest) {
       const engagementRate = num(7);
       const bounceRate = num(8);
       const eventsPerSession = sessions > 0 ? num(9) / sessions : 0;
-      const addToCarts = Math.round(num(10));
-      const beginCheckouts = Math.round(num(11));
-      const purchases = Math.round(num(12));
-      const purchaseRevenue = num(13);
-      const viewItems = Math.round(num(14));
+      const addToCarts = 0;
+      const beginCheckouts = 0;
+      const purchases = 0;
+      const purchaseRevenue = 0;
+      const viewItems = 0;
 
       const record = {
         date,
