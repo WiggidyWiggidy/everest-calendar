@@ -72,19 +72,6 @@ async function metaCreateAdset(adAccountId: string, token: string, campaignId: s
   return { ok: true, id: d.id };
 }
 
-async function metaUploadImage(adAccountId: string, token: string, imageUrl: string): Promise<{ ok: boolean; hash?: string; error?: string }> {
-  const params = new URLSearchParams({ url: imageUrl, access_token: token });
-  const res = await fetch(`https://graph.facebook.com/v25.0/${adAccountId}/adimages`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: params.toString(),
-  });
-  if (!res.ok) return { ok: false, error: `Adimage: ${res.status} ${await res.text().catch(() => '')}` };
-  const d = await res.json();
-  const hash = d.images ? Object.values(d.images)[0] as { hash?: string } : null;
-  return { ok: true, hash: hash?.hash };
-}
-
 async function metaCreateCreative(adAccountId: string, token: string, c: { headline: string; body_copy: string; image_url: string; link: string; cta_type?: string; }): Promise<{ ok: boolean; id?: string; error?: string }> {
   const res = await fetch(`https://graph.facebook.com/v25.0/${adAccountId}/adcreatives`, {
     method: 'POST',

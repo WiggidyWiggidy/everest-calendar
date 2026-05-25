@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
+import { getGoogleAccessTokenFromRefreshToken } from '@/lib/google-oauth';
 
 async function authenticateSync(request: NextRequest) {
   const syncSecret = request.headers.get('x-sync-secret');
@@ -12,107 +14,51 @@ async function authenticateSync(request: NextRequest) {
   return { authenticated: false, userId: null };
 }
 
-async function getGoogleAccessToken(): Promise<string | null> {
-  const saJson = process.env.GA_SERVICE_ACCOUNT_JSON;
-  if (!saJson) return null;
-
-  // Decode base64 service account JSON
-  const sa = JSON.parse(Buffer.from(saJson, 'base64').toString('utf-8'));
-
-  // Create JWT for Google OAuth2
-  const now = Math.floor(Date.now() / 1000);
-  const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
-  const payload = Buffer.from(JSON.stringify({
-    iss: sa.client_email,
-    scope: 'https://www.googleapis.com/auth/analytics.readonly',
-    aud: 'https://oauth2.googleapis.com/token',
-    iat: now,
-    exp: now + 3600,
-  })).toString('base64url');
-
-  // Sign with private key
-  const crypto = await import('crypto');
-  const sign = crypto.createSign('RSA-SHA256');
-  sign.update(`${header}.${payload}`);
-  const signature = sign.sign(sa.private_key, 'base64url');
-
-  const jwt = `${header}.${payload}.${signature}`;
-
-  // Exchange JWT for access token
-  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+async function runGa4DailyReport(propertyId: string, accessToken: string, dateStr: string, includeKeyEvents: boolean) {
+  const metrics = [
+    { name: 'sessions' },
+    { name: 'totalUsers' },
+    { name: 'newUsers' },
+    { name: 'bounceRate' },
+    { name: 'averageSessionDuration' },
+    ...(includeKeyEvents ? [{ name: 'keyEvents' }] : []),
+  ];
+  return fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dateRanges: [{ startDate: dateStr, endDate: dateStr }], metrics }),
   });
-
-  if (!tokenRes.ok) return null;
-  const tokenData = await tokenRes.json();
-  return tokenData.access_token;
 }
 
 export async function POST(request: NextRequest) {
   try {
     const auth = await authenticateSync(request);
-    if (!auth.authenticated) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    if (!auth.authenticated) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const propertyId = process.env.GA_PROPERTY_ID;
-    if (!propertyId || !process.env.GA_SERVICE_ACCOUNT_JSON) {
+    if (!propertyId || !process.env.GOOGLE_OAUTH_REFRESH_TOKEN) {
       return NextResponse.json({
-        error: 'GA4 credentials not configured',
-        missing: [!propertyId && 'GA_PROPERTY_ID', !process.env.GA_SERVICE_ACCOUNT_JSON && 'GA_SERVICE_ACCOUNT_JSON'].filter(Boolean),
+        error: 'GA4 OAuth credentials not configured',
+        missing: [!propertyId && 'GA_PROPERTY_ID', !process.env.GOOGLE_OAUTH_REFRESH_TOKEN && 'GOOGLE_OAUTH_REFRESH_TOKEN'].filter(Boolean),
       }, { status: 400 });
     }
 
-    const accessToken = await getGoogleAccessToken();
-    if (!accessToken) {
-      return NextResponse.json({ error: 'Failed to get Google access token' }, { status: 500 });
+    let days = 1;
+    let startDate: string | null = null;
+    try {
+      const body = await request.json().catch(() => ({}));
+      if (body.date) startDate = body.date;
+      if (body.days) days = Math.min(Math.max(parseInt(body.days, 10), 1), 365);
+    } catch { /* defaults */ }
+
+    if (!startDate) {
+      const yesterday = new Date();
+      yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+      startDate = yesterday.toISOString().split('T')[0];
     }
 
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const dateStr = yesterday.toISOString().split('T')[0];
-
-    const reportRes = await fetch(
-      `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          dateRanges: [{ startDate: dateStr, endDate: dateStr }],
-          metrics: [
-            { name: 'sessions' },
-            { name: 'totalUsers' },
-            { name: 'newUsers' },
-            { name: 'bounceRate' },
-            { name: 'averageSessionDuration' },
-            { name: 'conversions' },
-          ],
-        }),
-      }
-    );
-
-    if (!reportRes.ok) {
-      const err = await reportRes.text();
-      return NextResponse.json({ error: 'GA4 API error', detail: err }, { status: 500 });
-    }
-
-    const reportData = await reportRes.json();
-    const row = reportData.rows?.[0]?.metricValues ?? [];
-
-    const sessions = parseInt(row[0]?.value ?? '0');
-    const users = parseInt(row[1]?.value ?? '0');
-    const newUsers = parseInt(row[2]?.value ?? '0');
-    const bounceRate = parseFloat(row[3]?.value ?? '0');
-    const avgDuration = Math.round(parseFloat(row[4]?.value ?? '0'));
-    const conversions = parseInt(row[5]?.value ?? '0');
-    const conversionRate = sessions > 0 ? conversions / sessions : 0;
-
-    const supabase = await createClient();
+    const accessToken = await getGoogleAccessTokenFromRefreshToken();
+    const supabase = auth.userId ? await createClient() : createServiceClient();
     let userId = auth.userId;
     if (!userId) {
       const { data: existing } = await supabase.from('marketing_metrics_daily').select('user_id').limit(1);
@@ -120,9 +66,44 @@ export async function POST(request: NextRequest) {
     }
     if (!userId) return NextResponse.json({ error: 'No user found' }, { status: 400 });
 
-    const { error: upsertError } = await supabase
-      .from('marketing_metrics_daily')
-      .upsert({
+    const synced: Array<{ date: string; sessions: number; users: number; newUsers: number; bounceRate: number; avgDuration: number; conversionRate: number }> = [];
+    const errors: string[] = [];
+
+    for (let d = 0; d < days; d++) {
+      const day = new Date(`${startDate}T00:00:00Z`);
+      day.setUTCDate(day.getUTCDate() - d);
+      const dateStr = day.toISOString().split('T')[0];
+
+      let reportRes = await runGa4DailyReport(propertyId, accessToken, dateStr, true);
+      let usedKeyEvents = true;
+      if (!reportRes.ok) {
+        const firstErr = await reportRes.text();
+        // Some properties/API versions may not expose keyEvents. Retry without it so sessions still sync.
+        if (/keyEvents|Metric keyEvents|Invalid metric/i.test(firstErr)) {
+          reportRes = await runGa4DailyReport(propertyId, accessToken, dateStr, false);
+          usedKeyEvents = false;
+        } else {
+          errors.push(`${dateStr}: ${firstErr.slice(0, 500)}`);
+          continue;
+        }
+      }
+      if (!reportRes.ok) {
+        const err = await reportRes.text();
+        errors.push(`${dateStr}: ${err.slice(0, 500)}`);
+        continue;
+      }
+
+      const reportData = await reportRes.json();
+      const row = reportData.rows?.[0]?.metricValues ?? [];
+      const sessions = parseInt(row[0]?.value ?? '0', 10);
+      const users = parseInt(row[1]?.value ?? '0', 10);
+      const newUsers = parseInt(row[2]?.value ?? '0', 10);
+      const bounceRate = parseFloat(row[3]?.value ?? '0');
+      const avgDuration = Math.round(parseFloat(row[4]?.value ?? '0'));
+      const conversions = usedKeyEvents ? parseFloat(row[5]?.value ?? '0') : 0;
+      const conversionRate = sessions > 0 ? conversions / sessions : 0;
+
+      const { error: upsertError } = await supabase.from('marketing_metrics_daily').upsert({
         user_id: userId,
         date: dateStr,
         ga_sessions: sessions,
@@ -135,17 +116,17 @@ export async function POST(request: NextRequest) {
         updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id,date' });
 
-    if (upsertError) {
-      return NextResponse.json({ error: upsertError.message }, { status: 500 });
+      if (upsertError) errors.push(`${dateStr}: ${upsertError.message}`);
+      else synced.push({ date: dateStr, sessions, users, newUsers, bounceRate, avgDuration, conversionRate });
     }
 
-    return NextResponse.json({
-      synced: true,
-      date: dateStr,
-      metrics: { sessions, users, newUsers, bounceRate, avgDuration, conversionRate },
-    });
+    return NextResponse.json({ synced: synced.length, days_processed: days, rows: synced, errors: errors.length ? errors : undefined });
   } catch (err) {
     console.error('sync/ga4 error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error', detail: (err as Error).message }, { status: 500 });
   }
+}
+
+export async function GET(request: NextRequest) {
+  return POST(request);
 }

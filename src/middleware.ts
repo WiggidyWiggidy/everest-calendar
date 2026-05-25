@@ -11,6 +11,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Google OAuth routes need query-secret auth for browser redirects and an unauthenticated callback.
+  // Route handlers validate MARKETING_SYNC_SECRET/state before doing anything sensitive.
+  if (path.startsWith('/api/marketing/google/')) {
+    return NextResponse.next();
+  }
+
   // PUBLIC pixel endpoint — called from storefront browsers (no x-sync-secret possible).
   // The route does its own validation (event_type whitelist + session_id requirement).
   if (path === '/api/marketing/sync/storefront-event') {

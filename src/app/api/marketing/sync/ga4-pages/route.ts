@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
+import { getGoogleAccessTokenFromRefreshToken } from '@/lib/google-oauth';
 
 const DEFAULT_USER_ID = '174f2dff-7a96-464c-a919-b473c328d531';
 
@@ -23,32 +24,6 @@ async function authenticateSync(request: NextRequest) {
   return { authenticated: false, userId: null };
 }
 
-async function getGoogleAccessToken(): Promise<string | null> {
-  const saJson = process.env.GA_SERVICE_ACCOUNT_JSON;
-  if (!saJson) return null;
-  const sa = JSON.parse(Buffer.from(saJson, 'base64').toString('utf-8'));
-  const now = Math.floor(Date.now() / 1000);
-  const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
-  const payload = Buffer.from(JSON.stringify({
-    iss: sa.client_email,
-    scope: 'https://www.googleapis.com/auth/analytics.readonly',
-    aud: 'https://oauth2.googleapis.com/token',
-    iat: now, exp: now + 3600,
-  })).toString('base64url');
-  const crypto = await import('crypto');
-  const sign = crypto.createSign('RSA-SHA256');
-  sign.update(`${header}.${payload}`);
-  const signature = sign.sign(sa.private_key, 'base64url');
-  const jwt = `${header}.${payload}.${signature}`;
-  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
-  });
-  if (!tokenRes.ok) return null;
-  const tokenData = await tokenRes.json();
-  return tokenData.access_token;
-}
 
 interface GA4Row {
   dimensionValues?: Array<{ value?: string }>;
@@ -61,10 +36,10 @@ export async function POST(request: NextRequest) {
     if (!auth.authenticated) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const propertyId = process.env.GA_PROPERTY_ID;
-    if (!propertyId || !process.env.GA_SERVICE_ACCOUNT_JSON) {
+    if (!propertyId || !process.env.GOOGLE_OAUTH_REFRESH_TOKEN) {
       return NextResponse.json({
-        error: 'GA4 credentials not configured',
-        missing: [!propertyId && 'GA_PROPERTY_ID', !process.env.GA_SERVICE_ACCOUNT_JSON && 'GA_SERVICE_ACCOUNT_JSON'].filter(Boolean),
+        error: 'GA4 OAuth credentials not configured',
+        missing: [!propertyId && 'GA_PROPERTY_ID', !process.env.GOOGLE_OAUTH_REFRESH_TOKEN && 'GOOGLE_OAUTH_REFRESH_TOKEN'].filter(Boolean),
       }, { status: 400 });
     }
 
@@ -76,8 +51,7 @@ export async function POST(request: NextRequest) {
       if (body.kryo_only === false) kryoOnly = false;
     } catch { /* defaults */ }
 
-    const accessToken = await getGoogleAccessToken();
-    if (!accessToken) return NextResponse.json({ error: 'Failed to get Google access token' }, { status: 500 });
+    const accessToken = await getGoogleAccessTokenFromRefreshToken();
 
     const since = new Date(Date.now() - days * 86400000).toISOString().split('T')[0];
     const until = new Date(Date.now() - 86400000).toISOString().split('T')[0];
