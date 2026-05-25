@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
+import { unstable_noStore as noStore } from 'next/cache';
 import { createServiceClient } from '@/lib/supabase/service';
 
 function authorized(request: NextRequest) {
@@ -9,13 +10,15 @@ function authorized(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  noStore();
   if (!authorized(request)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from('system_config')
     .select('key,value_text,updated_at')
-    .in('key', ['google_diagnostics.kryo_latest', 'google_diagnostics.sync_status']);
+    .in('key', ['google_diagnostics.kryo_latest', 'google_diagnostics.sync_status'])
+    .order('updated_at', { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
@@ -26,12 +29,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       error: 'No diagnostic summary yet. Run /api/cron/google-diagnostics-sync first.',
       sync_status: status?.value_text ? JSON.parse(status.value_text) : null,
-    }, { status: 404 });
+    }, { status: 404, headers: { 'Cache-Control': 'no-store' } });
   }
 
   return NextResponse.json({
     updated_at: latest.updated_at,
     sync_status: status?.value_text ? JSON.parse(status.value_text) : null,
     diagnostic: JSON.parse(latest.value_text),
-  });
+  }, { headers: { 'Cache-Control': 'no-store' } });
 }
