@@ -10,7 +10,7 @@
     },
     {
       "path": "/api/cron/google-diagnostics-sync",
-      "schedule": "30 2,14 * * *"
+      "schedule": "30 2 * * *"
     }
   ]
 }
