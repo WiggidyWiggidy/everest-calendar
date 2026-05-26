@@ -1,62 +1,76 @@
 {%- comment -%}
-  Everest Labs attribution pixel.
-  Drop into theme.liquid (just before </body>) to start populating attribution_touches.
-  Closes the performance feedback loop: storefront events → Supabase → asset performance scoring.
-
-  Captures these events:
-    - session_start  (first page view per session)
-    - page_view       (every page load)
-    - product_view    (on /products/* pages)
-    - add_to_cart     (Shopify Web Pixel hook)
-    - checkout_start  (on /checkouts/* navigation)
-    - order_placed    (handled by Shopify webhook server-side, not this pixel)
-
-  POSTs to /api/marketing/sync/storefront-event on the everest-calendar.vercel.app deploy.
-
-  No PII collected. Only:
-    - utm_* params (from URL)
-    - landing_page_id (from page metafield if KRYO variant)
-    - shopify_product_id (from product page)
-    - device_type (sniff)
-    - referrer (document.referrer)
-
-  Idempotent — survives re-renders, dedupes session_start by sessionStorage flag.
+  Everest Labs customer journey pixel v2.
+  Captures first-touch attribution, current session attribution, anonymous visitor ID,
+  repeat sessions, and KRYO warm-intent actions.
 {%- endcomment -%}
 
-<script id="everest-attribution-pixel" data-pixel-version="1.0">
+<script id="everest-attribution-pixel" data-pixel-version="2.0">
 (function() {
   var EL_API = 'https://everest-calendar.vercel.app/api/marketing/sync/storefront-event';
+  var VISITOR_KEY = '__el_visitor_id';
+  var FIRST_TOUCH_KEY = '__el_first_touch';
   var SESSION_KEY = '__el_sess';
-  var SESSION_TTL = 30 * 60 * 1000; // 30 min sliding window
+  var SESSION_ATTR_KEY = '__el_session_touch';
+  var SESSION_TTL = 30 * 60 * 1000;
 
-  function getOrCreateSession() {
-    var raw = sessionStorage.getItem(SESSION_KEY);
-    var now = Date.now();
-    if (raw) {
-      try {
-        var parsed = JSON.parse(raw);
-        if (now - parsed.last < SESSION_TTL) {
-          parsed.last = now;
-          sessionStorage.setItem(SESSION_KEY, JSON.stringify(parsed));
-          return { id: parsed.id, isNew: false };
-        }
-      } catch (e) {}
+  function safeJson(raw) { try { return raw ? JSON.parse(raw) : null; } catch(e) { return null; } }
+  function setCookie(k, v, days) { try { document.cookie = k + '=' + encodeURIComponent(v) + '; path=/; max-age=' + (days*86400) + '; SameSite=Lax'; } catch(e) {} }
+  function getCookie(k) { try { var m = document.cookie.match(new RegExp('(?:^|; )' + k + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : null; } catch(e) { return null; } }
+  function uuid() { return 'elv_' + Date.now() + '_' + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2); }
+
+  function getVisitorId() {
+    var id = localStorage.getItem(VISITOR_KEY) || getCookie(VISITOR_KEY);
+    if (!id) id = uuid();
+    localStorage.setItem(VISITOR_KEY, id);
+    setCookie(VISITOR_KEY, id, 395);
+    return id;
+  }
+
+  function getQuery() { return new URLSearchParams(window.location.search || ''); }
+  function qAny(p, keys) { for (var i=0;i<keys.length;i++) { var v=p.get(keys[i]); if (v) return v; } return null; }
+  function readAttribution() {
+    var p = getQuery();
+    return {
+      source: qAny(p, ['utm_source']),
+      medium: qAny(p, ['utm_medium']),
+      campaign: qAny(p, ['utm_campaign']),
+      content: qAny(p, ['utm_content']),
+      term: qAny(p, ['utm_term']),
+      angle: qAny(p, ['utm_angle', 'angle']),
+      campaign_id: qAny(p, ['utm_campaign_id', 'campaign_id', 'meta_campaign_id']),
+      adset_id: qAny(p, ['utm_adset_id', 'adset_id', 'meta_adset_id']),
+      ad_id: qAny(p, ['utm_ad_id', 'ad_id', 'meta_ad_id']),
+      fbp: getCookie('_fbp'),
+      fbc: getCookie('_fbc'),
+      referrer: document.referrer || null,
+      landing_page: window.location.href
+    };
+  }
+  function hasAttribution(a) { return !!(a.source || a.medium || a.campaign || a.content || a.term || a.angle || a.campaign_id || a.adset_id || a.ad_id || a.referrer); }
+  function getFirstTouch(current) {
+    var first = safeJson(localStorage.getItem(FIRST_TOUCH_KEY));
+    if (!first) {
+      first = current;
+      first.created_at = new Date().toISOString();
+      localStorage.setItem(FIRST_TOUCH_KEY, JSON.stringify(first));
+      setCookie(FIRST_TOUCH_KEY, JSON.stringify(first), 395);
     }
-    var id = 'el_' + now + '_' + Math.random().toString(36).slice(2, 10);
+    return first;
+  }
+  function getSession(current) {
+    var raw = safeJson(sessionStorage.getItem(SESSION_KEY));
+    var now = Date.now();
+    if (raw && now - raw.last < SESSION_TTL) {
+      raw.last = now;
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(raw));
+      return { id: raw.id, isNew: false };
+    }
+    var id = 'els_' + now + '_' + Math.random().toString(36).slice(2, 10);
     sessionStorage.setItem(SESSION_KEY, JSON.stringify({ id: id, last: now, started: now }));
+    var touch = hasAttribution(current) ? current : { source: null, medium: null, campaign: null, content: null, term: null, angle: null, campaign_id: null, adset_id: null, ad_id: null, referrer: document.referrer || null, landing_page: window.location.href };
+    sessionStorage.setItem(SESSION_ATTR_KEY, JSON.stringify(touch));
     return { id: id, isNew: true };
   }
-
-  function getUtm() {
-    var p = new URLSearchParams(window.location.search);
-    var out = {};
-    ['utm_source','utm_medium','utm_campaign','utm_content','utm_term'].forEach(function(k) {
-      var v = p.get(k);
-      if (v) out[k] = v;
-    });
-    return out;
-  }
-
   function deviceType() {
     var ua = navigator.userAgent;
     if (/iPad|tablet/i.test(ua)) return 'tablet';
@@ -64,89 +78,111 @@
     return 'desktop';
   }
 
-  function send(eventType, extra) {
-    extra = extra || {};
-    var session = getOrCreateSession();
-    var payload = Object.assign({
-      event_type: eventType,
-      session_id: session.id,
-      page_path: window.location.pathname,
-      referrer: document.referrer || null,
-      device_type: deviceType(),
-      ts: new Date().toISOString(),
-    }, getUtm(), extra);
-
-    // Use fetch with keepalive so events flush even on navigation away
-    try {
-      fetch(EL_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-        keepalive: true,
-        mode: 'no-cors',
-      }).catch(function() {});
-    } catch (e) {
-      // sendBeacon fallback
-      try {
-        var blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
-        navigator.sendBeacon(EL_API, blob);
-      } catch (e2) {}
-    }
-    return session;
-  }
-
-  // Page-context helpers populated from Liquid below
+  var currentTouch = readAttribution();
+  var firstTouch = getFirstTouch(currentTouch);
+  var session = getSession(currentTouch);
+  var sessionTouch = safeJson(sessionStorage.getItem(SESSION_ATTR_KEY)) || currentTouch;
   var ctx = {
+    anonymous_id: getVisitorId(),
+    session_id: session.id,
+    first_touch: firstTouch,
+    current_touch: sessionTouch,
+    page_url: window.location.href,
+    page_path: window.location.pathname,
+    referrer: document.referrer || null,
+    device_type: deviceType(),
+    ts: new Date().toISOString(),
+    utm_source: sessionTouch.source,
+    utm_medium: sessionTouch.medium,
+    utm_campaign: sessionTouch.campaign,
+    utm_content: sessionTouch.content,
+    utm_term: sessionTouch.term,
+    utm_angle: sessionTouch.angle,
+    utm_campaign_id: sessionTouch.campaign_id,
+    utm_adset_id: sessionTouch.adset_id,
+    utm_ad_id: sessionTouch.ad_id,
+    fbp: sessionTouch.fbp || firstTouch.fbp || getCookie('_fbp'),
+    fbc: sessionTouch.fbc || firstTouch.fbc || getCookie('_fbc'),
     {% if product %}
       shopify_product_id: '{{ product.id }}',
       shopify_product_handle: '{{ product.handle }}',
       shopify_variant_id: '{{ product.selected_or_first_available_variant.id }}',
     {% endif %}
+    {% if customer %}
+      shopify_customer_id: '{{ customer.id }}',
+    {% endif %}
     {% if request.page_type %}
       page_type: '{{ request.page_type }}',
     {% endif %}
     locale: '{{ request.locale.iso_code | default: "en" }}',
-    market_handle: '{{ localization.market.handle | default: "primary" }}',
+    market_handle: '{{ localization.market.handle | default: "primary" }}'
   };
 
-  // Fire on initial load
-  var sess = send('page_view', ctx);
-  if (sess.isNew) {
-    send('session_start', ctx);
+  function send(eventName, extra) {
+    var payload = Object.assign({}, ctx, extra || {}, { event_name: eventName, event_type: eventName, ts: new Date().toISOString(), page_url: window.location.href, page_path: window.location.pathname });
+    try {
+      fetch(EL_API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), keepalive: true, mode: 'no-cors' }).catch(function() {});
+    } catch(e) {
+      try { navigator.sendBeacon(EL_API, new Blob([JSON.stringify(payload)], { type: 'application/json' })); } catch(e2) {}
+    }
   }
-  if (ctx.shopify_product_id) {
-    send('product_view', ctx);
-  }
+  function once(key, fn) { var k='__el_once_'+key; if (sessionStorage.getItem(k)) return; sessionStorage.setItem(k,'1'); fn(); }
 
-  // Fire ATC via Shopify Web Pixel hook if available, else listen for cart/add fetch
+  send('page_view');
+  if (ctx.shopify_product_id || /^\/products\//.test(window.location.pathname)) send('product_viewed');
+
   if (window.Shopify && window.Shopify.analytics && window.Shopify.analytics.subscribe) {
     try {
       window.Shopify.analytics.subscribe('product_added_to_cart', function(event) {
         var line = (event && event.data && event.data.cartLine) || {};
-        send('add_to_cart', Object.assign({}, ctx, {
-          shopify_variant_id: line.merchandise && line.merchandise.id,
-          quantity: line.quantity,
-          event_value: line.cost && line.cost.totalAmount && line.cost.totalAmount.amount,
-        }));
+        send('product_added_to_cart', { shopify_variant_id: line.merchandise && line.merchandise.id, quantity: line.quantity, event_value: line.cost && line.cost.totalAmount && line.cost.totalAmount.amount });
       });
       window.Shopify.analytics.subscribe('checkout_started', function(event) {
-        send('checkout_start', Object.assign({}, ctx, {
-          event_value: event && event.data && event.data.checkout && event.data.checkout.totalPrice && event.data.checkout.totalPrice.amount,
-        }));
+        send('checkout_started', { event_value: event && event.data && event.data.checkout && event.data.checkout.totalPrice && event.data.checkout.totalPrice.amount });
       });
-    } catch (e) {}
-  } else {
-    // Fallback: monkey-patch fetch for /cart/add
-    var originalFetch = window.fetch;
+    } catch(e) {}
+  }
+
+  var originalFetch = window.fetch;
+  if (originalFetch && !window.__el_fetch_patched) {
+    window.__el_fetch_patched = true;
     window.fetch = function(url, opts) {
-      try {
-        var u = typeof url === 'string' ? url : (url && url.url) || '';
-        if (/\/cart\/add/.test(u)) {
-          send('add_to_cart', ctx);
-        }
-      } catch (e) {}
-      return originalFetch.apply(this, arguments);
+      var u = typeof url === 'string' ? url : (url && url.url) || '';
+      var isCartAdd = /\/cart\/add/.test(u);
+      if (isCartAdd) send('cart_add_request');
+      var p = originalFetch.apply(this, arguments);
+      if (isCartAdd) {
+        p.then(function(res) { if (res && res.ok) send('product_added_to_cart'); else send('cart_add_failed', { event_properties: { status: res && res.status } }); }).catch(function() { send('cart_add_failed'); });
+      }
+      return p;
     };
+  }
+
+  document.addEventListener('click', function(e) {
+    var el = e.target && e.target.closest ? e.target.closest('a,button,summary,[role="button"],[data-analytics-event]') : null;
+    if (!el) return;
+    var href = (el.getAttribute('href') || '').toLowerCase();
+    var text = ((el.getAttribute('data-analytics-event') || '') + ' ' + (el.textContent || '') + ' ' + (el.id || '') + ' ' + (el.className || '')).toLowerCase();
+    if (/wa\.me|whatsapp/.test(href) || /whatsapp/.test(text)) send('whatsapp_click');
+    else if (/shopify.*inbox|chat|message/.test(text)) send('shopify_inbox_click');
+    else if (/compatib|will it fit|fit check|bathroom fit|shower fit/.test(text + ' ' + href)) send('compatibility_cta_click');
+    else if (/install|setup/.test(text)) send('installation_faq_open');
+    else if (/hose|connection|connect/.test(text)) send('hose_connection_faq_open');
+    else if (/deliver|shipping/.test(text)) send('delivery_faq_open');
+    else if (/return|refund/.test(text)) send('returns_faq_open');
+  }, true);
+
+  if ('IntersectionObserver' in window) {
+    var observer = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (!entry.isIntersecting || entry.intersectionRatio < 0.35) return;
+        var el = entry.target;
+        var label = ((el.id || '') + ' ' + (el.className || '') + ' ' + (el.getAttribute('data-section-type') || '')).toLowerCase();
+        if (/comparison|compare/.test(label)) once('comparison_section_view', function(){ send('comparison_section_view'); });
+        if (/review|testimonial/.test(label)) once('reviews_section_view', function(){ send('reviews_section_view'); });
+      });
+    }, { threshold: [0.35] });
+    Array.prototype.slice.call(document.querySelectorAll('section, [id], [class*="review"], [class*="comparison"], [class*="testimonial"]')).forEach(function(el) { observer.observe(el); });
   }
 })();
 </script>
