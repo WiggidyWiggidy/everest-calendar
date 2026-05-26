@@ -206,12 +206,19 @@ export async function POST(request: NextRequest) {
     };
 
     let siteReport: { rows?: GA4Row[]; rowCount?: number };
+    let siteCountryReport: { rows?: GA4Row[]; rowCount?: number };
     let pageReport: { rows?: GA4Row[]; rowCount?: number };
     try {
       siteReport = await runMergedGa4Report(propertyId, accessToken, {
         dateRanges,
         dimensions: [{ name: 'dateHour' }],
         limit: 1000,
+      }, METRICS.slice(0, 10), METRICS.slice(10, 14));
+
+      siteCountryReport = await runMergedGa4Report(propertyId, accessToken, {
+        dateRanges,
+        dimensions: [{ name: 'dateHour' }, { name: 'country' }],
+        limit: 10000,
       }, METRICS.slice(0, 10), METRICS.slice(10, 14));
 
       pageReport = await runMergedGa4Report(propertyId, accessToken, {
@@ -238,6 +245,11 @@ export async function POST(request: NextRequest) {
           dateRanges,
           dimensions: [{ name: 'dateHour' }],
           limit: 1000,
+        }, METRICS.slice(0, 10), METRICS.slice(10, 14));
+        siteCountryReport = await runMergedGa4Report(propertyId, accessToken, {
+          dateRanges,
+          dimensions: [{ name: 'dateHour' }, { name: 'country' }],
+          limit: 10000,
         }, METRICS.slice(0, 10), METRICS.slice(10, 14));
         pageReport = await runMergedGa4Report(propertyId, accessToken, {
           dateRanges,
@@ -272,6 +284,40 @@ export async function POST(request: NextRequest) {
         row_key: rowKey(['site', dateHour]),
         report_hour: reportHour,
         date_hour: dateHour,
+        sessions,
+        screen_page_views: Math.round(metricNumber(row, 1)),
+        total_users: Math.round(metricNumber(row, 2)),
+        new_users: Math.round(metricNumber(row, 3)),
+        active_users: Math.round(metricNumber(row, 4)),
+        average_session_duration_sec: metricNumber(row, 5),
+        user_engagement_duration_sec: metricNumber(row, 6),
+        engagement_rate: metricNumber(row, 7),
+        bounce_rate: metricNumber(row, 8),
+        event_count: Math.round(metricNumber(row, 9)),
+        add_to_carts: addToCarts,
+        begin_checkouts: beginCheckouts,
+        purchases,
+        purchase_revenue: metricNumber(row, 13),
+        raw_payload: row,
+        synced_at: nowIso,
+      };
+    }).filter(Boolean);
+
+    const siteCountryRecords = (siteCountryReport.rows ?? []).map(row => {
+      const dims = row.dimensionValues ?? [];
+      const dateHour = dims[0]?.value ?? '';
+      const reportHour = dateHourToIso(dateHour);
+      const country = dims[1]?.value ?? '';
+      if (!reportHour || !country) return null;
+      const sessions = Math.round(metricNumber(row, 0));
+      const addToCarts = Math.round(metricNumber(row, 10));
+      const beginCheckouts = Math.round(metricNumber(row, 11));
+      const purchases = Math.round(metricNumber(row, 12));
+      return {
+        row_key: rowKey(['site_country', dateHour, country]),
+        report_hour: reportHour,
+        date_hour: dateHour,
+        country,
         sessions,
         screen_page_views: Math.round(metricNumber(row, 1)),
         total_users: Math.round(metricNumber(row, 2)),
@@ -351,10 +397,12 @@ export async function POST(request: NextRequest) {
     };
 
     const siteUpserted = await upsertBatch('ga4_site_hourly', siteRecords);
+    const siteCountryUpserted = await upsertBatch('ga4_site_country_hourly', siteCountryRecords);
     const pageUpserted = await upsertBatch('ga4_page_hourly', pageRecords);
 
     const cutoff = new Date(Date.now() - 14 * 86400000).toISOString();
     await supabase.from('ga4_site_hourly').delete().lt('report_hour', cutoff);
+    await supabase.from('ga4_site_country_hourly').delete().lt('report_hour', cutoff);
     await supabase.from('ga4_page_hourly').delete().lt('report_hour', cutoff);
 
     return NextResponse.json({
@@ -364,8 +412,10 @@ export async function POST(request: NextRequest) {
       include_all_pages: includeAllPages,
       auth_method: authMethod,
       site_rows_returned: siteReport.rows?.length ?? 0,
+      site_country_rows_returned: siteCountryReport.rows?.length ?? 0,
       page_rows_returned: pageReport.rows?.length ?? 0,
       site_rows_upserted: siteUpserted,
+      site_country_rows_upserted: siteCountryUpserted,
       page_rows_upserted: pageUpserted,
       errors: errors.length ? errors.slice(0, 20) : undefined,
     }, { status: errors.length ? 207 : 200 });

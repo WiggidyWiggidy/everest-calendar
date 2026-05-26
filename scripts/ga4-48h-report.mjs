@@ -8,6 +8,7 @@ if (!url || !key) {
   process.exit(1);
 }
 
+const includeInternal = process.argv.includes('--raw') || process.argv.includes('--include-internal');
 const started = Date.now();
 const res = await fetch(`${url}/rest/v1/rpc/get_ga4_48h_snapshot`, {
   method: 'POST',
@@ -16,7 +17,7 @@ const res = await fetch(`${url}/rest/v1/rpc/get_ga4_48h_snapshot`, {
     Authorization: `Bearer ${key}`,
     'Content-Type': 'application/json',
   },
-  body: '{}',
+  body: JSON.stringify({ include_internal: includeInternal }),
 });
 const text = await res.text();
 if (!res.ok) {
@@ -28,10 +29,15 @@ const elapsed = Date.now() - started;
 
 const totals = snapshot.totals || {};
 const freshness = snapshot.freshness || {};
+const internal = snapshot.internal_exclusion || {};
 console.log(`# GA4 48h snapshot (${elapsed}ms)`);
 console.log(`Generated: ${snapshot.generated_at}`);
 console.log(`Latest synced: ${freshness.latest_synced_at || 'none'}`);
 console.log(`Latest report hour: ${freshness.latest_report_hour || 'none'}`);
+console.log(`Filters: ${(snapshot.filters_applied || []).join(', ') || 'none'}`);
+if (!includeInternal) {
+  console.log(`Internal traffic removed: ${internal.sessions_removed ?? 0} China sessions, ${internal.pageviews_removed ?? 0} pageviews, ${internal.add_to_carts_removed ?? 0} ATCs`);
+}
 console.log(`Warnings: ${(freshness.warnings || []).join(', ') || 'none'}`);
 console.log('');
 console.log(`Sessions: ${totals.sessions ?? 0}`);
