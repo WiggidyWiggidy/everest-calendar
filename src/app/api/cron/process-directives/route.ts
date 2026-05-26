@@ -813,7 +813,8 @@ export async function GET(request: NextRequest) {
     'shopify',                    // site-aggregate Shopify revenue/orders
     'shopify-funnel',             // checkout abandonment funnel
     'ga4',                        // site-aggregate GA4 sessions/bounce
-    'ga4-pages',                  // per-page GA4 (ice_shower pages by default)
+    'ga4-pages',                  // per-page GA4 daily cache
+    'ga4-hourly',                 // recent 72h hourly GA4 cache for fast 48h diagnosis
   ];
   const syncResults: Record<string, string> = {};
 

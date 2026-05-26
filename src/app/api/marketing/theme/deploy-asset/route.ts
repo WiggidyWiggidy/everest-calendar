@@ -27,9 +27,10 @@ interface DeployRequest {
   theme_id: number;
   key: string;
   value: string;
+  republish_main?: boolean;
 }
 
-const ALLOWED_PREFIXES = ['sections/kryo-', 'sections/_kryo-', 'templates/product.kryo-'];
+const ALLOWED_PREFIXES = ['sections/kryo-', 'sections/_kryo-', 'templates/product.kryo-', 'snippets/everest-attribution-pixel.liquid', 'layout/theme.liquid', 'assets/smooth-scroll.js'];
 
 function isAllowedKey(key: string): boolean {
   return ALLOWED_PREFIXES.some((p) => key.startsWith(p));
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
   }
   if (!isAllowedKey(body.key)) {
     return NextResponse.json({
-      error: 'Refused: key must start with sections/kryo-, sections/_kryo-, or templates/product.kryo-',
+      error: 'Refused: key must be a KRYO section/template, snippets/everest-attribution-pixel.liquid, layout/theme.liquid, or assets/smooth-scroll.js',
       detail: `Got: "${body.key}". This route is strictly additive to protect existing theme files.`,
     }, { status: 422 });
   }
@@ -112,6 +113,44 @@ export async function POST(request: NextRequest) {
     }, { status: putRes.status });
   }
 
+
+  let republishPayload: unknown = null;
+  if (body.republish_main === true) {
+    const themesRes = await fetch(`https://${shopifyUrl}/admin/api/2025-04/themes.json`, {
+      headers: { 'X-Shopify-Access-Token': shopifyToken },
+    });
+    if (!themesRes.ok) {
+      return NextResponse.json({
+        error: `Shopify themes.json HTTP ${themesRes.status} while checking republish safety`,
+        detail: await themesRes.text().catch(() => ''),
+      }, { status: themesRes.status });
+    }
+    const themesPayload = await themesRes.json();
+    const liveTheme = (themesPayload.themes ?? []).find((theme: { id: number; role: string }) => theme.id === body.theme_id && theme.role === 'main');
+    if (!liveTheme) {
+      return NextResponse.json({
+        error: 'Refused republish_main: theme_id is not the current main theme',
+        theme_id: body.theme_id,
+      }, { status: 409 });
+    }
+    const republishRes = await fetch(`https://${shopifyUrl}/admin/api/2025-04/themes/${body.theme_id}.json`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': shopifyToken,
+      },
+      body: JSON.stringify({ theme: { id: body.theme_id, role: 'main' } }),
+    });
+    const republishText = await republishRes.text();
+    try { republishPayload = JSON.parse(republishText); } catch { republishPayload = republishText.slice(0, 800); }
+    if (!republishRes.ok) {
+      return NextResponse.json({
+        error: `Shopify theme republish HTTP ${republishRes.status}`,
+        detail: republishPayload,
+      }, { status: republishRes.status });
+    }
+  }
+
   // Audit log
   try {
     const sb = svcClient();
@@ -124,7 +163,7 @@ export async function POST(request: NextRequest) {
       { value_bytes: priorValue?.length ?? 0, was_present: priorValue !== null },
       { value_bytes: body.value.length },
       'scheduled_agent',
-      { theme_id: body.theme_id, key: body.key, prior_existed: priorValue !== null },
+      { theme_id: body.theme_id, key: body.key, prior_existed: priorValue !== null, republish_main: body.republish_main === true },
     );
   } catch (e) {
     console.warn('audit log failed (non-fatal):', e);
@@ -138,5 +177,7 @@ export async function POST(request: NextRequest) {
     prior_existed: priorValue !== null,
     prior_bytes: priorValue?.length ?? null,
     shopify_response: putPayload,
+    republish_main: body.republish_main === true,
+    republish_response: republishPayload,
   });
 }
