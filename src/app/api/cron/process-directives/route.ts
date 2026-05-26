@@ -863,6 +863,23 @@ export async function GET(request: NextRequest) {
     syncResults['refresh-findings'] = (e as Error).message;
   }
 
+
+
+  // GSC writes its own gsc_fast findings. Run after refresh-findings so the generic
+  // marketing_findings rebuild does not wipe the GSC fast cache.
+  try {
+    const gscRes = await fetch(`${baseUrl}/api/marketing/sync/gsc`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-sync-secret': mktgSyncSecret },
+      body: JSON.stringify({ days: 14, freshDays: 2, includeHourly: true }),
+    });
+    const gscData = await gscRes.json();
+    syncResults['gsc'] = gscRes.ok
+      ? `ok daily=${gscData.daily_rows_fetched ?? 0} hourly=${gscData.hourly_rows_fetched ?? 0} newest=${gscData.newest_daily_date ?? 'none'}`
+      : (gscData.error || `${gscRes.status}`);
+  } catch (e) {
+    syncResults['gsc'] = (e as Error).message;
+  }
   await logAgentActivity({
     agentName:    'orchestrator',
     agentSource:  'vercel',
