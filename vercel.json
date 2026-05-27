@@ -10,7 +10,7 @@
     },
     {
       "path": "/api/cron/marketing-analytics-sync",
-      "schedule": "0 * * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }
