@@ -21,10 +21,14 @@ interface MetaPagedResponse<T> {
 
 async function fetchAllPages<T>(url: string, token: string): Promise<T[]> {
   const all: T[] = [];
-  let nextUrl: string | null = `${url}&access_token=${token}&limit=200`;
+  let nextUrl: string | null = `${url}&access_token=${token}&limit=25`;
 
   while (nextUrl) {
-    const res = await fetch(nextUrl);
+    let res = await fetch(nextUrl);
+    if (!res.ok && res.status >= 500) {
+      await new Promise(resolve => setTimeout(resolve, 750));
+      res = await fetch(nextUrl);
+    }
     if (!res.ok) {
       const err = await res.text();
       throw new Error(`Meta API error: ${res.status} ${err}`);
@@ -115,9 +119,8 @@ export async function POST(request: NextRequest) {
 
     const stats = { campaigns: 0, adsets: 0, ads: 0, errors: [] as string[] };
 
-    // Upsert campaigns
-    for (const c of campaigns) {
-      const { error } = await supabase.from('meta_campaigns').upsert({
+    const updatedAt = new Date().toISOString();
+    const campaignRows = campaigns.map(c => ({
         user_id: userId,
         meta_campaign_id: c.id,
         name: c.name,
@@ -127,17 +130,15 @@ export async function POST(request: NextRequest) {
         lifetime_budget: c.lifetime_budget ? parseFloat(c.lifetime_budget) / 100 : null,
         start_time: c.start_time ?? null,
         stop_time: c.stop_time ?? null,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'meta_campaign_id' });
-      if (error) stats.errors.push(`campaign ${c.id}: ${error.message}`);
-      else stats.campaigns++;
-    }
+        updated_at: updatedAt,
+      }));
+    const { error: campaignError } = await supabase.from('meta_campaigns').upsert(campaignRows, { onConflict: 'meta_campaign_id' });
+    if (campaignError) stats.errors.push(`campaign batch: ${campaignError.message}`);
+    else stats.campaigns = campaignRows.length;
 
     // Upsert adsets (only those whose campaign exists)
     const campaignIds = new Set(campaigns.map(c => c.id));
-    for (const a of adsets) {
-      if (!campaignIds.has(a.campaign_id)) continue;
-      const { error } = await supabase.from('meta_adsets').upsert({
+    const adsetRows = adsets.filter(a => campaignIds.has(a.campaign_id)).map(a => ({
         user_id: userId,
         meta_adset_id: a.id,
         meta_campaign_id: a.campaign_id,
@@ -146,18 +147,17 @@ export async function POST(request: NextRequest) {
         optimization_goal: a.optimization_goal ?? null,
         daily_budget: a.daily_budget ? parseFloat(a.daily_budget) / 100 : null,
         targeting: a.targeting ?? null,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'meta_adset_id' });
-      if (error) stats.errors.push(`adset ${a.id}: ${error.message}`);
-      else stats.adsets++;
-    }
+        updated_at: updatedAt,
+      }));
+    const { error: adsetError } = await supabase.from('meta_adsets').upsert(adsetRows, { onConflict: 'meta_adset_id' });
+    if (adsetError) stats.errors.push(`adset batch: ${adsetError.message}`);
+    else stats.adsets = adsetRows.length;
 
     // Upsert ads (only those whose adset exists)
     const adsetIds = new Set(adsets.map(a => a.id));
-    for (const ad of ads) {
-      if (!adsetIds.has(ad.adset_id)) continue;
+    const adRows = ads.filter(ad => adsetIds.has(ad.adset_id)).map(ad => {
       const cr = ad.creative;
-      const { error } = await supabase.from('meta_ads').upsert({
+      return {
         user_id: userId,
         meta_ad_id: ad.id,
         meta_adset_id: ad.adset_id,
@@ -172,11 +172,12 @@ export async function POST(request: NextRequest) {
         is_dynamic_creative: !!cr?.asset_feed_spec,
         asset_feed_spec: cr?.asset_feed_spec ?? null,
         creative_id: cr?.id ?? null,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'meta_ad_id' });
-      if (error) stats.errors.push(`ad ${ad.id}: ${error.message}`);
-      else stats.ads++;
-    }
+        updated_at: updatedAt,
+      };
+    });
+    const { error: adError } = await supabase.from('meta_ads').upsert(adRows, { onConflict: 'meta_ad_id' });
+    if (adError) stats.errors.push(`ad batch: ${adError.message}`);
+    else stats.ads = adRows.length;
 
     return NextResponse.json({
       synced: true,

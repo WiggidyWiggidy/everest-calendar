@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { createHash, createSign } from 'crypto';
+import { localDateHourToIso } from '@/lib/timezones';
 
 async function authenticateSync(request: NextRequest) {
   const syncSecret = request.headers.get('x-sync-secret');
@@ -85,17 +86,6 @@ function rowKey(parts: Array<string | null | undefined>): string {
   return createHash('sha256')
     .update(parts.map(p => p ?? '').join('\u001f'))
     .digest('hex');
-}
-
-function dateHourToIso(dateHour: string, timezoneOffset = '+04:00'): string | null {
-  if (!/^\d{10}$/.test(dateHour)) return null;
-  const y = dateHour.slice(0, 4);
-  const m = dateHour.slice(4, 6);
-  const d = dateHour.slice(6, 8);
-  const h = dateHour.slice(8, 10);
-  const parsed = new Date(`${y}-${m}-${d}T${h}:00:00${timezoneOffset}`);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return parsed.toISOString();
 }
 
 function metricNumber(row: GA4Row, index: number, fallback = 0): number {
@@ -191,8 +181,7 @@ export async function POST(request: NextRequest) {
     let { accessToken, authMethod } = await getGoogleAccessToken();
     if (!accessToken) return NextResponse.json({ error: 'Failed to get Google access token' }, { status: 500 });
 
-    const reportTimeZone = process.env.GA4_REPORT_TIMEZONE || 'Asia/Dubai';
-    const reportTimezoneOffset = process.env.GA4_REPORT_TZ_OFFSET || '+04:00';
+    const reportTimeZone = process.env.GA4_REPORT_TIMEZONE || 'Australia/Sydney';
     const startDaysAgo = Math.max(days - 1, 0);
     const since = startDaysAgo === 0 ? 'today' : `${startDaysAgo}daysAgo`;
     const until = 'today';
@@ -274,7 +263,7 @@ export async function POST(request: NextRequest) {
 
     const siteRecords = (siteReport.rows ?? []).map(row => {
       const dateHour = row.dimensionValues?.[0]?.value ?? '';
-      const reportHour = dateHourToIso(dateHour, reportTimezoneOffset);
+      const reportHour = localDateHourToIso(dateHour, reportTimeZone);
       if (!reportHour) return null;
       const sessions = Math.round(metricNumber(row, 0));
       const addToCarts = Math.round(metricNumber(row, 10));
@@ -306,7 +295,7 @@ export async function POST(request: NextRequest) {
     const pageRecords = (pageReport.rows ?? []).map(row => {
       const dims = row.dimensionValues ?? [];
       const dateHour = dims[0]?.value ?? '';
-      const reportHour = dateHourToIso(dateHour, reportTimezoneOffset);
+      const reportHour = localDateHourToIso(dateHour, reportTimeZone);
       const pagePath = dims[1]?.value ?? '';
       if (!reportHour || !pagePath) return null;
       const sessions = Math.round(metricNumber(row, 0));
@@ -389,7 +378,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: errors.length === 0,
       days_requested: days,
-      range: { since, until, report_timezone: reportTimeZone, report_timezone_offset: reportTimezoneOffset },
+      range: { since, until, report_timezone: reportTimeZone, offset_mode: 'dynamic_iana' },
       include_all_pages: includeAllPages,
       auth_method: authMethod,
       latest_report_hour: latestReportHour,

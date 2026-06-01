@@ -13,9 +13,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+const EVENT_ALIASES: Record<string, string> = {
+  product_viewed: 'product_view',
+  product_added_to_cart: 'add_to_cart',
+  checkout_started: 'checkout_start',
+};
+
 const ALLOWED_EVENTS = new Set([
   'session_start', 'page_view', 'product_view',
   'add_to_cart', 'checkout_start', 'order_placed',
+  'product_viewed', 'product_added_to_cart', 'checkout_started',
+  'cart_add_request', 'cart_add_failed',
+  'whatsapp_click', 'shopify_inbox_click', 'compatibility_cta_click',
+  'installation_faq_open', 'hose_connection_faq_open', 'delivery_faq_open',
+  'returns_faq_open', 'comparison_section_view', 'reviews_section_view',
 ]);
 
 function svc() {
@@ -46,6 +57,17 @@ interface PixelEvent {
   market_handle?: string;
   event_value?: number | string;
   quantity?: number;
+  anonymous_id?: string;
+  page_url?: string;
+  first_touch?: Record<string, unknown>;
+  current_touch?: Record<string, unknown>;
+  utm_angle?: string;
+  utm_campaign_id?: string;
+  utm_adset_id?: string;
+  utm_ad_id?: string;
+  fbp?: string;
+  fbc?: string;
+  event_properties?: Record<string, unknown>;
 }
 
 export async function POST(request: NextRequest) {
@@ -63,6 +85,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'session_id required' }, { status: 400 });
   }
 
+  const eventType = EVENT_ALIASES[body.event_type] ?? body.event_type;
+
   // Resolve landing_page_id if the page_path matches a known KRYO variant
   const sb = svc();
   let landingPageId: string | null = null;
@@ -72,7 +96,8 @@ export async function POST(request: NextRequest) {
       const { data: lp } = await sb
         .from('landing_pages')
         .select('id')
-        .ilike('shopify_url', `%${handle}%`)
+        .ilike('shopify_url', `%/products/${handle.replace(/[_%\\]/g, char => `\\${char}`)}`)
+        .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
       landingPageId = lp?.id ?? null;
@@ -94,7 +119,7 @@ export async function POST(request: NextRequest) {
   const { error } = await sb.from('attribution_touches').insert({
     ts: body.ts || new Date().toISOString(),
     session_id: body.session_id,
-    event_type: body.event_type,
+    event_type: eventType,
     event_value: typeof body.event_value === 'string' ? parseFloat(body.event_value) || null : (body.event_value || null),
     channel,
     utm_source: body.utm_source || null,
@@ -117,6 +142,18 @@ export async function POST(request: NextRequest) {
       locale: body.locale,
       market_handle: body.market_handle,
       quantity: body.quantity,
+      raw_event_type: body.event_type,
+      anonymous_id: body.anonymous_id,
+      page_url: body.page_url,
+      first_touch: body.first_touch,
+      current_touch: body.current_touch,
+      utm_angle: body.utm_angle,
+      utm_campaign_id: body.utm_campaign_id,
+      utm_adset_id: body.utm_adset_id,
+      utm_ad_id: body.utm_ad_id,
+      fbp: body.fbp,
+      fbc: body.fbc,
+      event_properties: body.event_properties,
     },
   });
 
