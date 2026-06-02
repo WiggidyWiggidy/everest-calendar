@@ -9,6 +9,7 @@ const secret = process.env.MARKETING_SYNC_SECRET;
 const themeId = Number(process.env.SHOPIFY_LIVE_THEME_ID || 167131775284);
 const attributionKey = 'snippets/everest-attribution-pixel.liquid';
 const qualityKey = 'snippets/everest-kryo2-quality-pixel.liquid';
+const layoutKey = 'layout/theme.liquid';
 const includeLine = "{% render 'everest-kryo2-quality-pixel' %}";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -52,6 +53,17 @@ const qualityResult = await deploy(qualityKey, qualityValue);
 const attributionResult = nextAttribution === priorAttribution
   ? { success: true, skipped: true, reason: 'include_already_present' }
   : await deploy(attributionKey, nextAttribution);
+const layout = await request(`/api/marketing/theme/asset?theme_id=${themeId}&key=${encodeURIComponent(layoutKey)}`);
+const priorLayout = layout.value;
+if (typeof priorLayout !== 'string' || !priorLayout.includes('everest-attribution-pixel') || !priorLayout.includes('</body>')) {
+  throw new Error('Refused: live layout or existing attribution pixel could not be verified');
+}
+const nextLayout = priorLayout.includes(includeLine)
+  ? priorLayout
+  : priorLayout.replace('</body>', `  ${includeLine}\n</body>`);
+const layoutResult = nextLayout === priorLayout
+  ? { success: true, skipped: true, reason: 'include_already_present' }
+  : await deploy(layoutKey, nextLayout);
 
 console.log(JSON.stringify({
   success: true,
@@ -66,5 +78,14 @@ console.log(JSON.stringify({
     next_sha256_16: hash(nextAttribution),
     appended_line: nextAttribution === priorAttribution ? null : includeLine,
     result: attributionResult,
+  },
+  layout_asset: {
+    key: layoutKey,
+    prior_bytes: priorLayout.length,
+    next_bytes: nextLayout.length,
+    prior_sha256_16: hash(priorLayout),
+    next_sha256_16: hash(nextLayout),
+    inserted_line: nextLayout === priorLayout ? null : includeLine,
+    result: layoutResult,
   },
 }, null, 2));
