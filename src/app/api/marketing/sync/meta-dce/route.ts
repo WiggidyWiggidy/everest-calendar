@@ -35,17 +35,42 @@ function resolveAssetLabel(
   const specKey = specKeyMap[elementType];
   if (!specKey || !spec[specKey]) return null;
 
-  const items = spec[specKey] as Array<{ text?: string; url?: string; hash?: string; type?: string }>;
+  const items = spec[specKey] as Array<{ text?: string; url?: string; hash?: string; type?: string; id?: string }>;
   if (!Array.isArray(items)) return null;
 
   // Try matching by hash or value
   for (const item of items) {
-    if (item.hash === value) return item.text ?? item.url ?? null;
+    if (item.hash === value || item.id === value) return item.text ?? item.type ?? item.url ?? null;
     if (item.text === value) return item.text;
     if (item.type === value) return item.type;
   }
 
   return null;
+}
+
+type MetaBreakdownAsset = {
+  id?: string;
+  hash?: string;
+  name?: string;
+  text?: string;
+  type?: string;
+  url?: string;
+};
+
+function parseBreakdownAsset(raw: unknown) {
+  const asset = raw && typeof raw === 'object' ? raw as MetaBreakdownAsset : null;
+  const primitive = typeof raw === 'string' ? raw : null;
+  const stableAssetId = asset?.id ?? asset?.hash ?? asset?.type ?? asset?.text ?? primitive ?? 'unknown';
+  return {
+    stableAssetId,
+    label: asset?.text ?? asset?.name ?? asset?.type ?? primitive,
+    imageHash: asset?.hash ?? null,
+    previewUrl: asset?.url ?? null,
+  };
+}
+
+function actionValue(actions: { action_type: string; value: string }[], names: string[]) {
+  return Number(actions.find(action => names.includes(action.action_type))?.value ?? 0);
 }
 
 // Map Meta breakdown types to our element_type values
@@ -83,7 +108,7 @@ export async function POST(request: NextRequest) {
     // Get dynamic creative ads
     const { data: dceAds, error: dceErr } = await supabase
       .from('meta_ads')
-      .select('meta_ad_id, asset_feed_spec')
+      .select('meta_ad_id, asset_feed_spec, status')
       .eq('is_dynamic_creative', true);
 
     if (dceErr) {
@@ -102,7 +127,9 @@ export async function POST(request: NextRequest) {
     const errors: string[] = [];
 
     // Process max 25 ads per run to avoid rate limits
-    const adsToProcess = dceAds.slice(0, 25);
+    const adsToProcess = [...dceAds]
+      .sort((a, b) => Number(b.status === 'ACTIVE') - Number(a.status === 'ACTIVE'))
+      .slice(0, 25);
 
     for (const ad of adsToProcess) {
       for (const breakdown of breakdowns) {
@@ -111,7 +138,7 @@ export async function POST(request: NextRequest) {
           await new Promise(resolve => setTimeout(resolve, 200));
 
           const url = `https://graph.facebook.com/v25.0/${ad.meta_ad_id}/insights?` +
-            `fields=impressions,clicks,spend,ctr,actions,action_values` +
+            `fields=impressions,clicks,inline_link_clicks,spend,ctr,actions,action_values` +
             `&breakdowns=${breakdown}` +
             `&time_increment=1` +
             `&action_attribution_windows=${encodeURIComponent(JSON.stringify(META_ATTRIBUTION_WINDOW))}` +
@@ -132,8 +159,9 @@ export async function POST(request: NextRequest) {
           const rows = json.data ?? [];
 
           for (const row of rows) {
-            const elementValue = row[breakdown] ?? 'unknown';
-            const elementLabel = resolveAssetLabel(
+            const parsedAsset = parseBreakdownAsset(row[breakdown]);
+            const elementValue = parsedAsset.stableAssetId;
+            const elementLabel = parsedAsset.label ?? resolveAssetLabel(
               ad.asset_feed_spec as Record<string, unknown> | null,
               breakdown,
               elementValue
@@ -141,8 +169,8 @@ export async function POST(request: NextRequest) {
 
             const actions = (row.actions ?? []) as { action_type: string; value: string }[];
             const actionValues = (row.action_values ?? []) as { action_type: string; value: string }[];
-            const purchases = actions.find(a => a.action_type === 'purchase')?.value;
-            const revenue = actionValues.find(a => a.action_type === 'purchase')?.value;
+            const purchases = actionValue(actions, ['purchase', 'offsite_conversion.fb_pixel_purchase']);
+            const revenue = actionValue(actionValues, ['purchase', 'offsite_conversion.fb_pixel_purchase']);
 
             const record = {
               meta_ad_id: ad.meta_ad_id,
@@ -150,12 +178,21 @@ export async function POST(request: NextRequest) {
               element_type: normalizeElementType(breakdown),
               element_value: elementValue,
               element_label: elementLabel,
+              stable_asset_id: elementValue,
+              asset_name: parsedAsset.label,
+              asset_image_hash: parsedAsset.imageHash,
+              asset_preview_url: parsedAsset.previewUrl,
               impressions: parseInt(row.impressions ?? '0', 10),
               clicks: parseInt(row.clicks ?? '0', 10),
+              link_clicks: parseInt(row.inline_link_clicks ?? '0', 10),
+              landing_page_views: actionValue(actions, ['landing_page_view']),
+              view_contents: actionValue(actions, ['offsite_conversion.fb_pixel_view_content']),
+              add_to_carts: actionValue(actions, ['offsite_conversion.fb_pixel_add_to_cart']),
+              checkouts_started: actionValue(actions, ['offsite_conversion.fb_pixel_initiate_checkout']),
               spend: parseFloat(row.spend ?? '0'),
               ctr: row.ctr ? parseFloat(row.ctr) / 100 : null,
-              purchases: purchases ? parseInt(purchases, 10) : 0,
-              revenue: revenue ? parseFloat(revenue) : 0,
+              purchases,
+              revenue,
             };
 
             const { error: upsertErr } = await supabase
