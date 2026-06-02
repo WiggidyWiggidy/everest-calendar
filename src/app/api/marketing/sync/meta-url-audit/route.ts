@@ -55,11 +55,11 @@ export async function POST(request: NextRequest) {
       await upsertAlert(`meta_url_tags_missing:${ad.id}`, 'meta_url_tags_missing', 'high', ad.id,
         { ad_name: ad.name, destination: destination(ad.creative), current_url_tags: ad.creative?.url_tags ?? null, required_url_tags: META_URL_TAGS });
     }
-    const healthyIds = ads.filter(ad => isCanonicalMetaTags(ad.creative?.url_tags)).map(ad => ad.id);
-    if (healthyIds.length) {
-      await sb.from('marketing_guardrail_alerts').update({ status: 'resolved', resolved_at: now, last_seen_at: now })
-        .eq('alert_type', 'meta_url_tags_missing').in('entity_id', healthyIds).eq('status', 'open');
-    }
+    const brokenIds = broken.map(ad => ad.id);
+    let staleUrlTagAlerts = sb.from('marketing_guardrail_alerts').update({ status: 'resolved', resolved_at: now, last_seen_at: now })
+      .eq('alert_type', 'meta_url_tags_missing').eq('status', 'open');
+    if (brokenIds.length) staleUrlTagAlerts = staleUrlTagAlerts.not('entity_id', 'in', `(${brokenIds.join(',')})`);
+    await staleUrlTagAlerts;
     const { data: metricRows = [] } = await sb.from('meta_ad_metrics_hourly').select('meta_ad_id,spend,link_clicks,landing_page_views').gte('report_hour', since);
     const metrics = new Map<string, { spend: number; clicks: number; lpv: number }>();
     for (const row of metricRows ?? []) {
