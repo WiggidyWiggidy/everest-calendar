@@ -63,7 +63,7 @@ INSERT INTO public.kryo_pdp_session_quality (
   first_touch_meta_ad_id,current_touch_meta_ad_id,device_type,is_internal,
   elapsed_time_sec,active_time_sec,max_scroll_depth_pct,total_clicks,interactive_clicks,
   dead_clicks,rage_clicks,scroll_25,scroll_50,scroll_75,scroll_90,offer_viewed,
-  guarantee_viewed,cta_clicks,sections_viewed,sections_clicked,last_seen_at
+  guarantee_viewed,cta_clicks,sections_viewed,sections_clicked,first_seen_at,last_seen_at
 ) VALUES (
   p_row->>'session_id',p_row->>'page_path',p_row->>'anonymous_id',p_row->>'meta_campaign_id',
   p_row->>'meta_adset_id',p_row->>'meta_ad_id',p_row->>'first_touch_meta_ad_id',
@@ -76,6 +76,7 @@ INSERT INTO public.kryo_pdp_session_quality (
   COALESCE((p_row->>'scroll_90')::boolean,FALSE),COALESCE((p_row->>'offer_viewed')::boolean,FALSE),
   COALESCE((p_row->>'guarantee_viewed')::boolean,FALSE),COALESCE((p_row->>'cta_clicks')::int,0),
   COALESCE(p_row->'sections_viewed','[]'::jsonb),COALESCE(p_row->'sections_clicked','[]'::jsonb),
+  COALESCE((p_row->>'last_seen_at')::timestamptz,NOW()),
   COALESCE((p_row->>'last_seen_at')::timestamptz,NOW())
 )
 ON CONFLICT (session_id,page_path) DO UPDATE SET
@@ -147,7 +148,7 @@ WITH rows AS (
     COUNT(*) FILTER (WHERE scroll_90)::int scroll_90_sessions,
     COALESCE(AVG(total_clicks),0)::numeric avg_clicks,
     COALESCE(AVG(interactive_clicks),0)::numeric avg_interactive_clicks,
-    SUM(cta_clicks)::int cta_clicks,
+    COALESCE(SUM(cta_clicks),0)::int cta_clicks,
     COUNT(*) FILTER (WHERE offer_viewed)::int offer_sessions,
     COUNT(*) FILTER (WHERE guarantee_viewed)::int guarantee_sessions,
     COUNT(*) FILTER (WHERE active_time_sec >= 20 OR max_scroll_depth_pct >= 50 OR interactive_clicks >= 1)::int engaged_sessions,
@@ -163,7 +164,7 @@ WITH rows AS (
     COUNT(*) FILTER (WHERE active_time_sec >= 45 AND max_scroll_depth_pct >= 50)::int deep_engaged_sessions,
     COUNT(*) FILTER (WHERE offer_viewed)::int offer_sessions,
     COUNT(*) FILTER (WHERE guarantee_viewed)::int guarantee_sessions,
-    SUM(cta_clicks)::int cta_clicks
+    COALESCE(SUM(cta_clicks),0)::int cta_clicks
   FROM rows GROUP BY COALESCE(meta_ad_id,'unattributed')
 )
 SELECT jsonb_build_object(
