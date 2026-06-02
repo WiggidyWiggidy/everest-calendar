@@ -27,15 +27,16 @@ export async function POST(request: NextRequest) {
   const sb = createServiceClient();
   try {
     const fields = 'id,name,status,effective_status,creative{id,url_tags,object_story_spec,asset_feed_spec}';
-    let next: string | undefined = `https://graph.facebook.com/v25.0/${account}/ads?fields=${encodeURIComponent(fields)}&effective_status=${encodeURIComponent(JSON.stringify(['ACTIVE']))}&limit=200&access_token=${encodeURIComponent(token)}`;
-    const ads: MetaAd[] = [];
+    let next: string | undefined = `https://graph.facebook.com/v25.0/${account}/ads?fields=${encodeURIComponent(fields)}&limit=500&access_token=${encodeURIComponent(token)}`;
+    const allAds: MetaAd[] = [];
     while (next) {
       const response = await fetch(next, { cache: 'no-store' });
       if (!response.ok) throw new Error(`Meta ads audit failed ${response.status}: ${(await response.text()).slice(0, 600)}`);
       const page = await response.json() as { data?: MetaAd[]; paging?: { next?: string } };
-      ads.push(...(page.data ?? []));
+      allAds.push(...(page.data ?? []));
       next = page.paging?.next;
     }
+    const ads = allAds.filter(ad => ad.status === 'ACTIVE');
     const broken = ads.filter(ad => !isCanonicalMetaTags(ad.creative?.url_tags));
     const now = new Date().toISOString();
     const since = new Date(Date.now() - 86400000).toISOString();
