@@ -102,8 +102,8 @@ ON CONFLICT (session_id,page_path) DO UPDATE SET
   offer_viewed=kryo_pdp_session_quality.offer_viewed OR EXCLUDED.offer_viewed,
   guarantee_viewed=kryo_pdp_session_quality.guarantee_viewed OR EXCLUDED.guarantee_viewed,
   cta_clicks=GREATEST(kryo_pdp_session_quality.cta_clicks,EXCLUDED.cta_clicks),
-  sections_viewed=(SELECT jsonb_agg(DISTINCT x) FROM jsonb_array_elements(kryo_pdp_session_quality.sections_viewed || EXCLUDED.sections_viewed) x),
-  sections_clicked=(SELECT jsonb_agg(DISTINCT x) FROM jsonb_array_elements(kryo_pdp_session_quality.sections_clicked || EXCLUDED.sections_clicked) x),
+  sections_viewed=COALESCE((SELECT jsonb_agg(DISTINCT x) FROM jsonb_array_elements(kryo_pdp_session_quality.sections_viewed || EXCLUDED.sections_viewed) x),'[]'::jsonb),
+  sections_clicked=COALESCE((SELECT jsonb_agg(DISTINCT x) FROM jsonb_array_elements(kryo_pdp_session_quality.sections_clicked || EXCLUDED.sections_clicked) x),'[]'::jsonb),
   last_seen_at=GREATEST(kryo_pdp_session_quality.last_seen_at,EXCLUDED.last_seen_at);
 $$;
 
