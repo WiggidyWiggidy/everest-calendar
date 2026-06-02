@@ -11,14 +11,32 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Signed Google OAuth repair flow. Start is protected by MARKETING_SYNC_SECRET;
+  // callback is protected by a short-lived signed state value.
+  if (
+    path === '/api/marketing/google/oauth/callback' ||
+    (path === '/api/marketing/google/oauth/start' && request.nextUrl.searchParams.has('secret'))
+  ) {
+    return NextResponse.next();
+  }
+
   // PUBLIC pixel endpoint — called from storefront browsers (no x-sync-secret possible).
   // The route does its own validation (event_type whitelist + session_id requirement).
   if (path === '/api/marketing/sync/storefront-event') {
     return NextResponse.next();
   }
 
-  // Cron routes with secret = bypass auth
-  if (path.startsWith('/api/cron/') && (request.headers.get('x-cron-secret') !== null || request.nextUrl.searchParams.has('secret'))) {
+  // Cron routes with secret = bypass auth. Vercel cron uses Authorization: Bearer.
+  // x-sync-secret is retained for secure manual verification runs.
+  if (
+    path.startsWith('/api/cron/') &&
+    (
+      request.headers.get('authorization') !== null ||
+      request.headers.get('x-cron-secret') !== null ||
+      request.headers.get('x-sync-secret') !== null ||
+      request.nextUrl.searchParams.has('secret')
+    )
+  ) {
     return NextResponse.next();
   }
 

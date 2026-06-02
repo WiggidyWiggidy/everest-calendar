@@ -43,6 +43,16 @@ async function authenticateSync(request: NextRequest) {
   return { authenticated: false, userId: null };
 }
 
+function normalizeClarityUrl(raw: string | null | undefined): string {
+  if (!raw) return '';
+  try {
+    const url = new URL(raw);
+    return `${url.origin}${url.pathname.replace(/\/+/g, '/')}`;
+  } catch {
+    return raw.split('?')[0].replace(/\/+/g, '/');
+  }
+}
+
 /**
  * Per-URL aggregation for FRUSTRATION metrics (RageClickCount, DeadClickCount, QuickbackClick,
  * ExcessiveScroll, ScriptErrorCount, ErrorClickCount). These all share the same row shape:
@@ -55,7 +65,7 @@ function aggregateFrustrationByUrl(metric: ClarityMetric | undefined): Map<strin
   const out = new Map<string, { totalSessions: number; sessionsWithMetric: number; eventCount: number }>();
   if (!metric?.information) return out;
   for (const row of metric.information) {
-    const url = row.Url ?? '';
+    const url = normalizeClarityUrl(row.Url);
     if (!url) continue;
     const s = Number(row.sessionsCount ?? 0);
     const pct = Number(row.sessionsWithMetricPercentage ?? 0);
@@ -77,7 +87,7 @@ function aggregateTrafficByUrl(metric: ClarityMetric | undefined): Map<string, {
   const out = new Map<string, { sessions: number; users: number }>();
   if (!metric?.information) return out;
   for (const row of metric.information) {
-    const url = row.Url ?? '';
+    const url = normalizeClarityUrl(row.Url);
     if (!url) continue;
     const s = Number(row.totalSessionCount ?? 0);
     const u = Number(row.distinctUserCount ?? 0);
@@ -94,7 +104,7 @@ function aggregateScrollByUrl(metric: ClarityMetric | undefined): Map<string, nu
   const out = new Map<string, number>();
   if (!metric?.information) return out;
   for (const row of metric.information) {
-    const url = row.Url ?? '';
+    const url = normalizeClarityUrl(row.Url);
     if (!url) continue;
     out.set(url, Number(row.averageScrollDepth ?? 0));
   }
@@ -106,7 +116,7 @@ function aggregateEngagementByUrl(metric: ClarityMetric | undefined): Map<string
   const out = new Map<string, { active: number; total: number }>();
   if (!metric?.information) return out;
   for (const row of metric.information) {
-    const url = row.Url ?? '';
+    const url = normalizeClarityUrl(row.Url);
     if (!url) continue;
     const a = Number(row.activeTime ?? 0);
     const t = Number(row.totalTime ?? 0);
@@ -308,7 +318,7 @@ async function runSync(userIdOverride: string | null) {
         avg_engagement_time_sec: avgEngage,
         rage_click_zscore: sd > 0 ? Number(((rage - mean) / sd).toFixed(3)) : null,
         is_top_offender: topUrls.has(url),
-        raw_clarity_payload: { source: 'live-insights', day_offset: 1, captured_at: new Date().toISOString() },
+        raw_clarity_payload: { source: 'live-insights', normalized_url: true, day_offset: 1, captured_at: new Date().toISOString() },
       };
     });
 
