@@ -225,6 +225,8 @@ export async function POST(request: NextRequest) {
           { name: 'deviceCategory' },
           { name: 'sessionSourceMedium' },
           { name: 'sessionCampaignName' },
+          { name: 'sessionManualCampaignId' },
+          { name: 'sessionManualAdContent' },
         ],
         ...(pageDimensionFilter && { dimensionFilter: pageDimensionFilter }),
         limit: 50000,
@@ -250,6 +252,8 @@ export async function POST(request: NextRequest) {
             { name: 'deviceCategory' },
             { name: 'sessionSourceMedium' },
             { name: 'sessionCampaignName' },
+            { name: 'sessionManualCampaignId' },
+            { name: 'sessionManualAdContent' },
           ],
           ...(pageDimensionFilter && { dimensionFilter: pageDimensionFilter }),
           limit: 50000,
@@ -304,7 +308,7 @@ export async function POST(request: NextRequest) {
       const beginCheckouts = Math.round(metricNumber(row, 11));
       const purchases = Math.round(metricNumber(row, 12));
       return {
-        row_key: rowKey(['page', dateHour, pagePath, dims[2]?.value, dims[3]?.value, dims[4]?.value, dims[5]?.value, dims[6]?.value]),
+        row_key: rowKey(['page', dateHour, pagePath, dims[2]?.value, dims[3]?.value, dims[4]?.value, dims[5]?.value, dims[6]?.value, dims[7]?.value, dims[8]?.value]),
         report_hour: reportHour,
         date_hour: dateHour,
         page_path: pagePath,
@@ -313,6 +317,8 @@ export async function POST(request: NextRequest) {
         device_category: dims[4]?.value ?? null,
         session_source_medium: dims[5]?.value ?? null,
         session_campaign_name: dims[6]?.value ?? null,
+        session_manual_campaign_id: dims[7]?.value ?? null,
+        session_manual_ad_content: dims[8]?.value ?? null,
         sessions,
         screen_page_views: Math.round(metricNumber(row, 1)),
         total_users: Math.round(metricNumber(row, 2)),

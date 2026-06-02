@@ -27,6 +27,7 @@ const ALLOWED_EVENTS = new Set([
   'whatsapp_click', 'shopify_inbox_click', 'compatibility_cta_click',
   'installation_faq_open', 'hose_connection_faq_open', 'delivery_faq_open',
   'returns_faq_open', 'comparison_section_view', 'reviews_section_view',
+  'offer_section_view', 'guarantee_section_view',
 ]);
 
 function svc() {
@@ -67,6 +68,8 @@ interface PixelEvent {
   utm_ad_id?: string;
   fbp?: string;
   fbc?: string;
+  fbclid?: string;
+  is_internal?: boolean;
   event_properties?: Record<string, unknown>;
 }
 
@@ -115,6 +118,17 @@ export async function POST(request: NextRequest) {
   const ipCountry = request.headers.get('x-vercel-ip-country') || null;
   const ipRegion = request.headers.get('x-vercel-ip-region') || null;
   const userAgent = request.headers.get('user-agent') || '';
+  const firstTouch = body.first_touch ?? {};
+  const currentTouch = body.current_touch ?? {};
+  const metaCampaignId = body.utm_campaign_id || String(currentTouch.campaign_id ?? '') || null;
+  const metaAdsetId = body.utm_adset_id || String(currentTouch.adset_id ?? '') || null;
+  const metaAdId = body.utm_ad_id || String(currentTouch.ad_id ?? '') || body.utm_content || null;
+  const firstTouchMetaAdId = String(firstTouch.ad_id ?? '') || null;
+  const isBot = /bot|crawler|spider|headless|preview/i.test(userAgent);
+  const isInternal = Boolean(body.is_internal) || /admin\.shopify\.com|adsmanager\.facebook\.com/i.test(body.referrer ?? '');
+  const trafficClass = isBot ? 'bot' : isInternal ? 'internal_qa' :
+    channel === 'meta' && (metaAdId || body.utm_source) ? 'paid_meta' :
+    channel === 'direct' ? 'unknown_direct' : channel;
 
   const { error } = await sb.from('attribution_touches').insert({
     ts: body.ts || new Date().toISOString(),
@@ -135,6 +149,15 @@ export async function POST(request: NextRequest) {
     user_agent: userAgent.slice(0, 500),
     ip_country: ipCountry,
     ip_region: ipRegion,
+    anonymous_id: body.anonymous_id || null,
+    meta_campaign_id: metaCampaignId,
+    meta_adset_id: metaAdsetId,
+    meta_ad_id: metaAdId,
+    first_touch_meta_ad_id: firstTouchMetaAdId,
+    current_touch_meta_ad_id: metaAdId,
+    fbclid: body.fbclid || null,
+    is_internal: isInternal,
+    traffic_class: trafficClass,
     event_metadata: {
       shopify_product_handle: body.shopify_product_handle,
       shopify_variant_id: body.shopify_variant_id,
@@ -153,6 +176,7 @@ export async function POST(request: NextRequest) {
       utm_ad_id: body.utm_ad_id,
       fbp: body.fbp,
       fbc: body.fbc,
+      fbclid: body.fbclid,
       event_properties: body.event_properties,
     },
   });

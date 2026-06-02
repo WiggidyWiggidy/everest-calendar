@@ -25,11 +25,8 @@ function svcClient() {
 }
 
 function verifyShopifyHmac(rawBody: string, hmacHeader: string | null): boolean {
-  const secret = process.env.SHOPIFY_WEBHOOK_SECRET;
-  if (!secret) {
-    console.warn('SHOPIFY_WEBHOOK_SECRET not set — skipping HMAC verification (dev only).');
-    return true;
-  }
+  const secret = process.env.SHOPIFY_WEBHOOK_SECRET || process.env.SHOPIFY_CLIENT_SECRET;
+  if (!secret) return false;
   if (!hmacHeader) return false;
   const computed = crypto.createHmac('sha256', secret).update(rawBody, 'utf8').digest('base64');
   try {
@@ -83,6 +80,12 @@ function utmsFromNoteAttributes(attrs?: Array<{ name: string; value: string }>):
   return out;
 }
 
+function attributes(attrs?: Array<{ name: string; value: string }>): Record<string, string | undefined> {
+  const out: Record<string, string | undefined> = {};
+  for (const attr of attrs ?? []) out[attr.name.replace(/__$/, '')] = attr.value;
+  return out;
+}
+
 function inferChannelFromUtm(source?: string, referring?: string): string | null {
   if (source) {
     const s = source.toLowerCase();
@@ -118,6 +121,7 @@ export async function POST(request: NextRequest) {
     // Extract UTMs — landing_site (URL with query) wins, then note_attributes (set by storefront pixel)
     const utmsFromUrl = parseUTMsFromUrl(order.landing_site);
     const utmsFromNotes = utmsFromNoteAttributes(order.note_attributes);
+    const tracking = attributes(order.note_attributes);
     const utm_source = utmsFromUrl.utm_source ?? utmsFromNotes.utm_source;
     const utm_medium = utmsFromUrl.utm_medium ?? utmsFromNotes.utm_medium;
     const utm_campaign = utmsFromUrl.utm_campaign ?? utmsFromNotes.utm_campaign;
@@ -145,9 +149,9 @@ export async function POST(request: NextRequest) {
 
     // session_id: Shopify orders don't carry our pixel session_id directly. Use a deterministic
     // synthetic id based on order_id so we don't double-count if the webhook fires twice.
-    const session_id_synthetic = `shopify_order:${order.id}`;
+    const session_id_synthetic = tracking.el_session_id || `shopify_order:${order.id}`;
 
-    const { error } = await sb.from('attribution_touches').insert({
+    const { error } = await sb.from('attribution_touches').upsert({
       ts: order.created_at ?? new Date().toISOString(),
       session_id: session_id_synthetic,
       customer_id,
@@ -175,7 +179,7 @@ export async function POST(request: NextRequest) {
         line_items_count: order.line_items?.length ?? 0,
         source_name: order.source_name,
       },
-    });
+    }, { onConflict: 'shopify_order_id,event_type' });
 
     if (error) {
       console.error('attribution_touches insert (webhook) failed:', error);
@@ -183,7 +187,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, warning: 'logged-and-skipped: ' + error.message });
     }
 
-    return NextResponse.json({ ok: true, attributed_to: { channel, utm_campaign, utm_content, landing_page_id } });
+    await sb.from('shopify_order_attribution').upsert({
+      shopify_order_id: String(order.id),
+      shopify_customer_id: customer_id,
+      anonymous_id: tracking.el_visitor_id || null,
+      session_id: session_id_synthetic,
+      first_touch_meta_ad_id: tracking.el_first_meta_ad_id || null,
+      last_touch_meta_ad_id: tracking.el_last_meta_ad_id || utm_content || null,
+      meta_campaign_id: tracking.el_meta_campaign_id || utm_campaign || null,
+      meta_adset_id: tracking.el_meta_adset_id || null,
+      ordered_at: order.created_at ?? new Date().toISOString(),
+      currency: order.currency || null,
+      gross_revenue: total || 0,
+      match_status: tracking.el_session_id ? 'matched' : 'unmatched',
+      raw_payload: order,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'shopify_order_id' });
+
+    return NextResponse.json({ ok: true, attributed_to: { channel, utm_campaign, utm_content, landing_page_id, browser_session_matched: Boolean(tracking.el_session_id) } });
   } catch (err) {
     console.error('shopify order-created webhook error:', err);
     // Acknowledge to prevent retry storm; we'll see the error in logs.

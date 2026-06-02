@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { addMetaAttributionParams, META_URL_TAGS } from '@/lib/marketing-attribution';
 import { createClient } from '@/lib/supabase/server';
 
 export async function POST(request: NextRequest) {
@@ -128,15 +129,7 @@ export async function POST(request: NextRequest) {
         : (process.env.SHOPIFY_STORE_URL
             ? `https://${process.env.SHOPIFY_STORE_URL}/products/kryo_`
             : 'https://everestlabs.co/products/kryo_');
-    const utmTaggedLink = (() => {
-      const url = new URL(baseLandingUrl);
-      url.searchParams.set('utm_source', 'meta');
-      url.searchParams.set('utm_medium', 'paid');
-      url.searchParams.set('utm_campaign', '{{campaign.id}}');
-      url.searchParams.set('utm_content', '{{ad.id}}');
-      // Meta auto-decodes {{}} tokens at click-time even when URL-encoded.
-      return url.toString();
-    })();
+    const utmTaggedLink = addMetaAttributionParams(baseLandingUrl);
 
     const adCreativeRes = await fetch(
       `https://graph.facebook.com/v25.0/${adAccountId}/adcreatives`,
@@ -155,6 +148,7 @@ export async function POST(request: NextRequest) {
               call_to_action: { type: 'SHOP_NOW' },
             },
           },
+          url_tags: META_URL_TAGS,
           access_token: metaToken,
         }),
       }

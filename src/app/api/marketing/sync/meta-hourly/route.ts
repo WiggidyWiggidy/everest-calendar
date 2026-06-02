@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { localDateHourToIso, META_ACCOUNT_TIMEZONE } from '@/lib/timezones';
+import { META_ATTRIBUTION_WINDOW } from '@/lib/marketing-attribution';
 
 type Action = { action_type: string; value: string };
 type Insight = {
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest) {
     const fields = 'ad_id,date_start,impressions,reach,clicks,spend,actions,action_values';
     let next: string | undefined = `https://graph.facebook.com/v25.0/${account}/insights?` +
       `level=ad&fields=${encodeURIComponent(fields)}&breakdowns=hourly_stats_aggregated_by_advertiser_time_zone` +
+      `&action_attribution_windows=${encodeURIComponent(JSON.stringify(META_ATTRIBUTION_WINDOW))}` +
       `&time_increment=1&time_range=${encodeURIComponent(JSON.stringify({ since, until }))}&limit=500&access_token=${encodeURIComponent(token)}`;
     const rows: Insight[] = [];
     while (next) {

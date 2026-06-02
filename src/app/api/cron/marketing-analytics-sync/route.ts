@@ -47,6 +47,8 @@ export async function GET(request: NextRequest) {
     ['meta_campaigns', '/api/marketing/sync/meta-campaigns'],
     ['meta_ad_insights', '/api/marketing/sync/meta-ad-insights', { days: 8 }],
     ['meta_hourly', '/api/marketing/sync/meta-hourly', { days: 8 }],
+    ['meta_dce', '/api/marketing/sync/meta-dce', { days: 8 }],
+    ['meta_url_audit', '/api/marketing/sync/meta-url-audit'],
     ['clarity', '/api/marketing/sync/clarity'],
     ['shopify', '/api/marketing/sync/shopify'],
     ['shopify_funnel', '/api/marketing/sync/shopify-funnel'],

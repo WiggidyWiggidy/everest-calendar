@@ -11,6 +11,7 @@
 // Auth: x-sync-secret (existing MARKETING_SYNC_SECRET pattern).
 
 import { NextRequest, NextResponse } from 'next/server';
+import { META_URL_TAGS } from '@/lib/marketing-attribution';
 import { createClient } from '@supabase/supabase-js';
 import { auditLog } from '@/lib/marketing-safety';
 
@@ -104,6 +105,7 @@ export async function POST(request: NextRequest) {
       if (body.override.link_url !== undefined) payload.link_url = body.override.link_url;
       if (body.override.url_tags !== undefined) payload.url_tags = body.override.url_tags;
     }
+    if (level === 'ad' && payload.url_tags === undefined) payload.url_tags = META_URL_TAGS;
 
     // Adset-level: targeting/campaign reparent
     if (level === 'adset') {
@@ -256,7 +258,7 @@ export async function POST(request: NextRequest) {
                 body: JSON.stringify({
                   name: `${body.angle ?? 'override'} clone of ${newAdId}`,
                   object_story_spec: newOss,
-                  url_tags: body.override.url_tags ?? srcCreative.url_tags ?? undefined,
+                  url_tags: body.override.url_tags ?? META_URL_TAGS,
                 }),
               }
             );
