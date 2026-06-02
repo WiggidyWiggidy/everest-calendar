@@ -39,63 +39,33 @@ function canonicalUrl(raw: string) {
   }
 }
 
-function isPaidUrl(url: URL | null) {
-  if (!url) return false;
-  const source = (url.searchParams.get('utm_source') ?? '').toLowerCase();
-  const medium = (url.searchParams.get('utm_medium') ?? '').toLowerCase();
-  return PAID_SOURCES.has(source) && PAID_MEDIUMS.has(medium);
-}
-
-function actionAdId(url: URL | null) {
-  if (!url) return null;
-  return url.searchParams.get('ad_id') || url.searchParams.get('utm_ad_id') ||
-    url.searchParams.get('meta_ad_id') || url.searchParams.get('utm_content');
-}
-
-async function clarityPaidMetrics() {
-  const token = process.env.CLARITY_API_TOKEN;
-  if (!token) return { metrics: {}, ad_ids: [] as string[], warning: 'clarity_credentials_missing' };
-  const res = await fetch('https://www.clarity.ms/export-data/api/v1/project-live-insights?numOfDays=1&dimension1=URL', {
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    cache: 'no-store',
-  });
-  if (!res.ok) return { metrics: {}, ad_ids: [] as string[], warning: `clarity_api_${res.status}` };
-  const data = await res.json() as Array<{ metricName: string; information: Json[] }>;
-  const metric = (name: string) => data.find(item => item.metricName === name)?.information ?? [];
-  const relevant = (rows: Json[]) => rows.filter(row => {
-    const parsed = canonicalUrl(String(row.Url ?? ''));
-    return parsed.path === PAGE_PATH && isPaidUrl(parsed.url);
-  });
-  const traffic = relevant(metric('Traffic'));
-  const sessions = sum(traffic, 'totalSessionCount');
-  const users = sum(traffic, 'distinctUserCount');
-  const engagement = relevant(metric('EngagementTime'));
-  const scroll = relevant(metric('ScrollDepth'));
-  const weightedScroll = scroll.reduce((total, row) => {
-    const trafficRow = traffic.find(item => String(item.Url ?? '') === String(row.Url ?? ''));
-    return total + Number(row.averageScrollDepth ?? 0) * Number(trafficRow?.totalSessionCount ?? 0);
-  }, 0);
-  const frustration = (name: string) => sum(relevant(metric(name)), 'subTotal');
-  const adIds = Array.from(new Set(traffic.map(row => actionAdId(canonicalUrl(String(row.Url ?? '')).url)).filter(Boolean))) as string[];
+async function storedClarityMetrics(sb: ReturnType<typeof createServiceClient>) {
+  const { data = [], error } = await sb.from('clarity_friction_elements')
+    .select('date,page_url,total_sessions,avg_scroll_depth_pct,avg_engagement_time_sec,rage_click_count,dead_click_count,quick_back_count,excessive_scroll_count,script_error_count,error_click_count')
+    .order('date', { ascending: false }).limit(1000);
+  if (error) return { metrics: {}, warning: `clarity_stored_rows_error:${error.message}` };
+  const relevant = (data ?? []).filter(row => canonicalUrl(String(row.page_url ?? '')).path === PAGE_PATH);
+  const latestDate = relevant[0]?.date ?? null;
+  const rows = relevant.filter(row => row.date === latestDate);
+  const sessions = sum(rows, 'total_sessions');
+  const weighted = (key: 'avg_scroll_depth_pct' | 'avg_engagement_time_sec') => rate(rows.reduce((total, row) =>
+    total + Number(row[key] ?? 0) * Number(row.total_sessions ?? 0), 0), sessions);
   return {
     metrics: {
       sessions,
-      users,
-      bots: sum(traffic, 'totalBotSessionCount'),
-      active_time_sec: sum(engagement, 'activeTime'),
-      elapsed_time_sec: sum(engagement, 'totalTime'),
-      active_time_per_session_sec: rate(sum(engagement, 'activeTime'), sessions),
-      elapsed_time_per_session_sec: rate(sum(engagement, 'totalTime'), sessions),
-      avg_scroll_depth_pct: sessions > 0 ? weightedScroll / sessions : null,
-      rage_clicks: frustration('RageClickCount'),
-      dead_clicks: frustration('DeadClickCount'),
-      quickbacks: frustration('QuickbackClick'),
-      excessive_scrolls: frustration('ExcessiveScroll'),
-      script_errors: frustration('ScriptErrorCount'),
-      error_clicks: frustration('ErrorClickCount'),
-      strict_paid_url_rows: traffic.length,
+      avg_scroll_depth_pct: weighted('avg_scroll_depth_pct'),
+      avg_engagement_time_sec: weighted('avg_engagement_time_sec'),
+      rage_clicks: sum(rows, 'rage_click_count'),
+      dead_clicks: sum(rows, 'dead_click_count'),
+      quickbacks: sum(rows, 'quick_back_count'),
+      excessive_scrolls: sum(rows, 'excessive_scroll_count'),
+      script_errors: sum(rows, 'script_error_count'),
+      error_clicks: sum(rows, 'error_click_count'),
+      normalized_url_rows: rows.length,
+      latest_available_date: latestDate,
+      scope: 'stored_page_wide_daily',
     },
-    ad_ids: adIds,
+    warning: latestDate ? 'clarity_stored_page_wide_daily_not_paid_only' : 'clarity_kryo2_rows_missing',
   };
 }
 
@@ -154,7 +124,7 @@ export async function POST(request: NextRequest) {
   const warnings: string[] = ['historical_storefront_events_incomplete_before_tracking_alias_fix'];
 
   try {
-    const clarity = await clarityPaidMetrics();
+    const clarity = await storedClarityMetrics(sb);
     if ('warning' in clarity && clarity.warning) warnings.push(clarity.warning);
     const { data: gaRows = [], error: gaError } = await sb.from('ga4_page_hourly').select('*')
       .eq('page_path', PAGE_PATH).gte('report_hour', trailingStart.toISOString()).lt('report_hour', current.end.toISOString());
@@ -169,7 +139,7 @@ export async function POST(request: NextRequest) {
     const { data: ads = [] } = adsetIds.length
       ? await sb.from('meta_ads').select('meta_ad_id').in('meta_adset_id', adsetIds)
       : { data: [] as Json[] };
-    const metaAdIds = Array.from(new Set([...(clarity.ad_ids ?? []), ...(ads ?? []).map(row => row.meta_ad_id)].filter(Boolean)));
+    const metaAdIds = Array.from(new Set((ads ?? []).map(row => row.meta_ad_id).filter(Boolean)));
     const { data: metaRows = [] } = metaAdIds.length
       ? await sb.from('meta_ad_metrics_hourly').select('*').in('meta_ad_id', metaAdIds)
           .gte('report_hour', trailingStart.toISOString()).lt('report_hour', current.end.toISOString())
@@ -201,10 +171,20 @@ export async function POST(request: NextRequest) {
       Number(metaNow.landing_page_views) > 0 ? `Meta click-to-LPV rate is ${(Number(metaNow.landing_page_views) / Math.max(Number(metaNow.link_clicks), 1) * 100).toFixed(1)}%.` : null,
       Number(gaNow.add_to_carts) > 0 ? `GA4 paid session-to-ATC rate is ${(Number(gaNow.add_to_carts) / Math.max(Number(gaNow.sessions), 1) * 100).toFixed(1)}%.` : null,
     ].filter(Boolean);
-    const [{ data: adLevelReport = [] }, { data: journeySummary = {} }, { data: guardrailRows = [] }] = await Promise.all([
+    const [
+      { data: adLevelReport = [] },
+      { data: journeySummary = {} },
+      { data: guardrailRows = [] },
+      { data: prepurchaseQuality = {} },
+      { data: sectionHeatmap = [] },
+      { data: dctAssetReport = [] },
+    ] = await Promise.all([
       sb.rpc('get_kryo_ad_downstream_report', { p_page_path: PAGE_PATH, p_window_hours: 24 }),
       sb.rpc('get_kryo_purchase_journeys', { p_days: 30 }),
       sb.from('marketing_guardrail_alerts').select('*').eq('status', 'open').order('last_seen_at', { ascending: false }).limit(50),
+      sb.rpc('get_kryo_prepurchase_quality_report', { p_page_path: PAGE_PATH, p_window_hours: 24 }),
+      sb.rpc('get_kryo_pdp_section_heatmap', { p_page_path: PAGE_PATH, p_window_hours: 24 }),
+      sb.rpc('get_kryo_dct_asset_report', { p_days: 7 }),
     ]);
     const status = warnings.some(item => item.includes('missing')) ? 'partial' : 'success';
     const payload = {
@@ -218,7 +198,7 @@ export async function POST(request: NextRequest) {
         ga4_latest_hour: paidGa.map(row => row.report_hour).sort().at(-1) ?? null,
         meta_latest_hour: (metaRows ?? []).map(row => row.report_hour).sort().at(-1) ?? null,
         gsc_latest_hour: newestGsc,
-        clarity_window: 'rolling_24h',
+        clarity_window: 'latest_stored_daily',
       },
       meta_metrics: { ...metaNow, ad_ids: metaAdIds, campaigns },
       ga4_metrics: gaNow,
@@ -232,6 +212,9 @@ export async function POST(request: NextRequest) {
         avg_position: rate((gscRows ?? []).reduce((total, row) => total + Number(row.avg_position ?? 0) * Number(row.impressions ?? 0), 0), sum(gscRows ?? [], 'impressions')),
       },
       storefront_metrics: storefrontMetrics(paidTouches),
+      prepurchase_quality: prepurchaseQuality ?? {},
+      section_heatmap: sectionHeatmap ?? [],
+      dct_asset_report: dctAssetReport ?? [],
       ad_level_report: adLevelReport ?? [],
       journey_summary: journeySummary ?? {},
       guardrail_alerts: guardrailRows ?? [],

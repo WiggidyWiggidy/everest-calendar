@@ -30,7 +30,10 @@ interface DeployRequest {
 }
 
 const ALLOWED_PREFIXES = ['sections/kryo-', 'sections/_kryo-', 'templates/product.kryo-'];
-const ALLOWED_EXACT_KEYS = ['snippets/everest-attribution-pixel.liquid'];
+const ALLOWED_EXACT_KEYS = [
+  'snippets/everest-attribution-pixel.liquid',
+  'snippets/everest-kryo2-quality-pixel.liquid',
+];
 
 function isAllowedKey(key: string): boolean {
   return ALLOWED_EXACT_KEYS.includes(key) || ALLOWED_PREFIXES.some((p) => key.startsWith(p));
