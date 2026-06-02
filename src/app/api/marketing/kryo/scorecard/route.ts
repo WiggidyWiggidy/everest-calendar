@@ -179,7 +179,9 @@ export async function POST(request: NextRequest) {
 
     const { data: touchRows = [] } = await sb.from('attribution_touches').select('*')
       .eq('page_path', PAGE_PATH).gte('ts', current.start.toISOString()).lt('ts', current.end.toISOString());
-    const paidTouches = (touchRows ?? []).filter(row => PAID_SOURCES.has(String(row.utm_source ?? '').toLowerCase()) && PAID_MEDIUMS.has(String(row.utm_medium ?? '').toLowerCase()));
+    const paidTouches = (touchRows ?? []).filter(row => row.is_internal !== true &&
+      PAID_SOURCES.has(String(row.utm_source ?? '').toLowerCase()) &&
+      PAID_MEDIUMS.has(String(row.utm_medium ?? '').toLowerCase()));
 
     const split = (rows: Json[], start: Date, end: Date, key: string) =>
       rows.filter(row => new Date(String(row[key])).getTime() >= start.getTime() && new Date(String(row[key])).getTime() < end.getTime());

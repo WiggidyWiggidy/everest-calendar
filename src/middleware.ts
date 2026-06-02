@@ -26,6 +26,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Shopify verifies webhook authenticity inside each route with HMAC.
+  if (path === '/api/webhooks/shopify/order-created' || path === '/api/webhooks/shopify/refund-created') {
+    return NextResponse.next();
+  }
+
   // Cron routes with secret = bypass auth. Vercel cron uses Authorization: Bearer.
   // x-sync-secret is retained for secure manual verification runs.
   if (
