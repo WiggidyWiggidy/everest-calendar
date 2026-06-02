@@ -26,8 +26,9 @@ export async function POST(request: NextRequest) {
   if (!account || !token) return NextResponse.json({ error: 'Meta credentials not configured' }, { status: 400 });
   const sb = createServiceClient();
   try {
-    const fields = 'id,name,status,effective_status,creative{id,url_tags,object_story_spec,asset_feed_spec}';
-    let next: string | undefined = `https://graph.facebook.com/v25.0/${account}/ads?fields=${encodeURIComponent(fields)}&limit=500&access_token=${encodeURIComponent(token)}`;
+    const fields = 'id,name,status,effective_status,creative{id,url_tags,object_story_spec,asset_feed_spec{link_urls}}';
+    const filtering = JSON.stringify([{ field: 'effective_status', operator: 'IN', value: ['ACTIVE', 'IN_PROCESS'] }]);
+    let next: string | undefined = `https://graph.facebook.com/v25.0/${account}/ads?fields=${encodeURIComponent(fields)}&filtering=${encodeURIComponent(filtering)}&limit=100&access_token=${encodeURIComponent(token)}`;
     const allAds: MetaAd[] = [];
     while (next) {
       const response = await fetch(next, { cache: 'no-store' });
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
       allAds.push(...(page.data ?? []));
       next = page.paging?.next;
     }
-    const ads = allAds.filter(ad => ad.status === 'ACTIVE');
+    const ads = allAds.filter(ad => ad.effective_status === 'ACTIVE' || ad.effective_status === 'IN_PROCESS');
     const broken = ads.filter(ad => !isCanonicalMetaTags(ad.creative?.url_tags));
     const now = new Date().toISOString();
     const since = new Date(Date.now() - 86400000).toISOString();
@@ -45,6 +46,10 @@ export async function POST(request: NextRequest) {
         fingerprint, alert_type: alertType, severity, entity_type: entityId ? 'meta_ad' : 'site',
         entity_id: entityId, status: 'open', evidence, last_seen_at: now,
       }, { onConflict: 'fingerprint' });
+    };
+    const resolveAlert = async (fingerprint: string) => {
+      await sb.from('marketing_guardrail_alerts').update({ status: 'resolved', resolved_at: now, last_seen_at: now })
+        .eq('fingerprint', fingerprint).eq('status', 'open');
     };
     for (const ad of broken) {
       await upsertAlert(`meta_url_tags_missing:${ad.id}`, 'meta_url_tags_missing', 'high', ad.id,
@@ -73,19 +78,19 @@ export async function POST(request: NextRequest) {
     for (const [adId, metric] of Array.from(metrics.entries())) {
       if ((metric.spend >= 5 || metric.clicks >= 5) && metric.lpv === 0) {
         await upsertAlert(`meta_spend_no_lpv:${adId}`, 'meta_spend_no_lpv', 'high', adId, metric);
-      }
+      } else await resolveAlert(`meta_spend_no_lpv:${adId}`);
       if (metric.clicks >= 10 && metric.lpv / metric.clicks < 0.6) {
         await upsertAlert(`meta_low_lpv_to_click:${adId}`, 'meta_low_lpv_to_click', 'medium', adId, { ...metric, lpv_to_click_rate: metric.lpv / metric.clicks });
-      }
+      } else await resolveAlert(`meta_low_lpv_to_click:${adId}`);
       if (metric.lpv >= 5 && (sessionsByAd.get(adId)?.size ?? 0) === 0) {
         await upsertAlert(`meta_lpv_no_matched_sessions:${adId}`, 'meta_lpv_no_matched_sessions', 'high', adId, { ...metric, matched_sessions: 0 });
-      }
+      } else await resolveAlert(`meta_lpv_no_matched_sessions:${adId}`);
     }
     const paidSessions = new Set((touchRows ?? []).map(row => row.session_id)).size;
     const identifiedSessions = new Set((touchRows ?? []).filter(row => row.meta_ad_id).map(row => row.session_id)).size;
     if (paidSessions >= 10 && identifiedSessions / paidSessions < 0.9) {
       await upsertAlert('meta_paid_session_id_coverage', 'meta_paid_session_id_coverage', 'high', null, { paid_sessions: paidSessions, identified_sessions: identifiedSessions, coverage: identifiedSessions / paidSessions });
-    }
+    } else await resolveAlert('meta_paid_session_id_coverage');
     return NextResponse.json({
       success: true,
       active_ads_checked: ads.length,
