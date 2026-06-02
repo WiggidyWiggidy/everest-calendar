@@ -9,6 +9,16 @@ ALTER TABLE public.attribution_touches
   ADD COLUMN IF NOT EXISTS is_internal BOOLEAN NOT NULL DEFAULT FALSE,
   ADD COLUMN IF NOT EXISTS traffic_class TEXT;
 
+ALTER TABLE public.attribution_touches
+  DROP CONSTRAINT IF EXISTS attribution_touches_event_type_check;
+ALTER TABLE public.attribution_touches
+  ADD CONSTRAINT attribution_touches_event_type_check CHECK (event_type = ANY (ARRAY[
+    'session_start','page_view','product_view','add_to_cart','checkout_start','order_placed',
+    'cart_add_request','cart_add_failed','whatsapp_click','shopify_inbox_click','compatibility_cta_click',
+    'installation_faq_open','hose_connection_faq_open','delivery_faq_open','returns_faq_open',
+    'comparison_section_view','reviews_section_view','offer_section_view','guarantee_section_view'
+  ]));
+
 CREATE INDEX IF NOT EXISTS idx_attribution_touches_meta_ad_ts
   ON public.attribution_touches(meta_ad_id, ts DESC);
 CREATE INDEX IF NOT EXISTS idx_attribution_touches_anonymous_ts
