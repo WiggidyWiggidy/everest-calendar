@@ -22,7 +22,10 @@ export async function middleware(request: NextRequest) {
 
   // PUBLIC pixel endpoint — called from storefront browsers (no x-sync-secret possible).
   // The route does its own validation (event_type whitelist + session_id requirement).
-  if (path === '/api/marketing/sync/storefront-event') {
+  if (
+    path === '/api/marketing/sync/storefront-event' ||
+    path === '/api/marketing/sync/kryo-session-quality'
+  ) {
     return NextResponse.next();
   }
 
