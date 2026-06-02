@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { META_ATTRIBUTION_WINDOW } from '@/lib/marketing-attribution';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const DEFAULT_USER_ID = '174f2dff-7a96-464c-a919-b473c328d531';
@@ -113,6 +114,7 @@ export async function POST(request: NextRequest) {
             `fields=impressions,clicks,spend,ctr,actions,action_values` +
             `&breakdowns=${breakdown}` +
             `&time_increment=1` +
+            `&action_attribution_windows=${encodeURIComponent(JSON.stringify(META_ATTRIBUTION_WINDOW))}` +
             `&time_range=${encodeURIComponent(JSON.stringify({ since, until }))}` +
             `&limit=100` +
             `&access_token=${metaToken}`;

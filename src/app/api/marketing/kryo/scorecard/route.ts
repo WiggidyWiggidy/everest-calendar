@@ -199,6 +199,11 @@ export async function POST(request: NextRequest) {
       Number(metaNow.landing_page_views) > 0 ? `Meta click-to-LPV rate is ${(Number(metaNow.landing_page_views) / Math.max(Number(metaNow.link_clicks), 1) * 100).toFixed(1)}%.` : null,
       Number(gaNow.add_to_carts) > 0 ? `GA4 paid session-to-ATC rate is ${(Number(gaNow.add_to_carts) / Math.max(Number(gaNow.sessions), 1) * 100).toFixed(1)}%.` : null,
     ].filter(Boolean);
+    const [{ data: adLevelReport = [] }, { data: journeySummary = {} }, { data: guardrailRows = [] }] = await Promise.all([
+      sb.rpc('get_kryo_ad_downstream_report', { p_page_path: PAGE_PATH, p_window_hours: 24 }),
+      sb.rpc('get_kryo_purchase_journeys', { p_days: 30 }),
+      sb.from('marketing_guardrail_alerts').select('*').eq('status', 'open').order('last_seen_at', { ascending: false }).limit(50),
+    ]);
     const status = warnings.some(item => item.includes('missing')) ? 'partial' : 'success';
     const payload = {
       page_path: PAGE_PATH,
@@ -225,6 +230,15 @@ export async function POST(request: NextRequest) {
         avg_position: rate((gscRows ?? []).reduce((total, row) => total + Number(row.avg_position ?? 0) * Number(row.impressions ?? 0), 0), sum(gscRows ?? [], 'impressions')),
       },
       storefront_metrics: storefrontMetrics(paidTouches),
+      ad_level_report: adLevelReport ?? [],
+      journey_summary: journeySummary ?? {},
+      guardrail_alerts: guardrailRows ?? [],
+      data_quality: {
+        paid_storefront_sessions: new Set(paidTouches.map(row => row.session_id).filter(Boolean)).size,
+        paid_storefront_rows: paidTouches.length,
+        historical_storefront_events_incomplete: true,
+        gsc_reporting_delay_expected: true,
+      },
       comparisons: {
         previous_24h: {
           ga4_sessions_delta: delta(Number(gaNow.sessions), Number(gaPrev.sessions)),

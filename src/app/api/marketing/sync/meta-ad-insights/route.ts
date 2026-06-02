@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { META_ATTRIBUTION_WINDOW } from '@/lib/marketing-attribution';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const DEFAULT_USER_ID = '174f2dff-7a96-464c-a919-b473c328d531';
@@ -74,6 +75,7 @@ export async function POST(request: NextRequest) {
     const allRows: MetaInsightRow[] = [];
     let nextUrl: string | null = `https://graph.facebook.com/v25.0/${adAccountId}/insights?` +
       `level=ad&fields=${fields}&time_increment=1` +
+      `&action_attribution_windows=${encodeURIComponent(JSON.stringify(META_ATTRIBUTION_WINDOW))}` +
       `&time_range=${encodeURIComponent(JSON.stringify({ since, until }))}` +
       `&limit=500&access_token=${metaToken}`;
 
@@ -106,6 +108,7 @@ export async function POST(request: NextRequest) {
 
       const spend = parseFloat(row.spend ?? '0');
       const purchaseCount = purchases ? parseInt(purchases, 10) : 0;
+      const action = (names: string[]) => parseInt(actions.find(a => names.includes(a.action_type))?.value ?? '0', 10);
 
       const record = {
         meta_ad_id: row.ad_id,
@@ -113,6 +116,10 @@ export async function POST(request: NextRequest) {
         impressions: parseInt(row.impressions ?? '0', 10),
         clicks: parseInt(row.clicks ?? '0', 10),
         spend,
+        link_clicks: action(['link_click']),
+        landing_page_views: action(['landing_page_view']),
+        add_to_carts: action(['add_to_cart', 'omni_add_to_cart']),
+        checkouts_started: action(['initiate_checkout', 'omni_initiated_checkout']),
         ctr: row.ctr ? parseFloat(row.ctr) / 100 : null,
         cpc: row.cpc ? parseFloat(row.cpc) : null,
         cpm: row.cpm ? parseFloat(row.cpm) : null,

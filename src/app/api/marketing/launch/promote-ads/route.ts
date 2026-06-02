@@ -9,6 +9,7 @@
 // Auth: x-sync-secret.
 
 import { NextRequest, NextResponse } from 'next/server';
+import { addMetaAttributionParams, META_URL_TAGS } from '@/lib/marketing-attribution';
 import { createClient } from '@supabase/supabase-js';
 import { auditLog, enforceAdPaused } from '@/lib/marketing-safety';
 
@@ -75,7 +76,7 @@ async function metaCreateAdset(adAccountId: string, token: string, campaignId: s
 // metaUploadImage removed in 6ead431 — we now use link_data.picture URL directly,
 // which bypasses the /adimages capability requirement entirely.
 
-async function metaCreateCreative(adAccountId: string, token: string, c: { headline: string; body_copy: string; image_url: string; link: string; cta_type?: string; }): Promise<{ ok: boolean; id?: string; error?: string }> {
+async function metaCreateCreative(adAccountId: string, token: string, c: { headline: string; body_copy: string; image_url: string; link: string; cta_type?: string; url_tags?: string; }): Promise<{ ok: boolean; id?: string; error?: string }> {
   const res = await fetch(`https://graph.facebook.com/v25.0/${adAccountId}/adcreatives`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -92,6 +93,7 @@ async function metaCreateCreative(adAccountId: string, token: string, c: { headl
           call_to_action: { type: c.cta_type || 'SHOP_NOW' },
         },
       },
+      url_tags: c.url_tags,
       access_token: token,
     }),
   });
@@ -196,17 +198,13 @@ export async function POST(request: NextRequest) {
         // join via {{ad.id}} (Meta substitutes at click-time, even when URL-encoded).
         const audience = (c.target_audience as { link_url?: string; landing_page_id?: string } | null) ?? {};
         const baseLink = audience.link_url || `https://${process.env.SHOPIFY_STORE_URL || 'everestlabs.co'}/products/kryo_`;
-        const linkObj = new URL(baseLink);
-        if (!linkObj.searchParams.has('utm_source')) linkObj.searchParams.set('utm_source', 'meta');
-        if (!linkObj.searchParams.has('utm_medium')) linkObj.searchParams.set('utm_medium', 'paid_social');
-        if (!linkObj.searchParams.has('utm_campaign')) linkObj.searchParams.set('utm_campaign', '{{campaign.id}}');
-        if (!linkObj.searchParams.has('utm_content')) linkObj.searchParams.set('utm_content', '{{ad.id}}');
-        const link = linkObj.toString();
+        const link = addMetaAttributionParams(baseLink);
         const creative = await metaCreateCreative(adAccountId, metaToken, {
           headline: c.headline || 'KRYO',
           body_copy: c.body_copy || '',
           image_url: c.composite_image_url,
           link,
+          url_tags: META_URL_TAGS,
           cta_type: c.cta_text === 'Learn More' ? 'LEARN_MORE' : 'SHOP_NOW',
         });
         if (!creative.ok) { results.push({ ad_creative_id: c.id, status: 'failed', step: 'creative', error: creative.error }); continue; }

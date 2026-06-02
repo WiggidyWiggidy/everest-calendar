@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service';
+import { META_ATTRIBUTION_WINDOW } from '@/lib/marketing-attribution';
 
 // Sync ad-level performance metrics from Meta Insights API → ad_metrics_daily
 // Called by: ad-performance-monitor scheduled task, or manually via GET
@@ -58,6 +59,7 @@ export async function POST(request: NextRequest) {
   insightsUrl.searchParams.set('time_range', JSON.stringify({ since, until }));
   insightsUrl.searchParams.set('filtering', JSON.stringify([{ field: 'ad.id', operator: 'IN', value: metaAdIds }]));
   insightsUrl.searchParams.set('limit', '200');
+  insightsUrl.searchParams.set('action_attribution_windows', JSON.stringify(META_ATTRIBUTION_WINDOW));
   insightsUrl.searchParams.set('access_token', metaToken);
 
   const insightsRes = await fetch(insightsUrl.toString());
