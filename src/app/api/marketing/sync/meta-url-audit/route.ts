@@ -38,22 +38,53 @@ export async function POST(request: NextRequest) {
     }
     const broken = ads.filter(ad => !isCanonicalMetaTags(ad.creative?.url_tags));
     const now = new Date().toISOString();
-    for (const ad of broken) {
+    const since = new Date(Date.now() - 86400000).toISOString();
+    const upsertAlert = async (fingerprint: string, alertType: string, severity: 'warning' | 'medium' | 'high', entityId: string | null, evidence: Record<string, unknown>) => {
       await sb.from('marketing_guardrail_alerts').upsert({
-        fingerprint: `meta_url_tags_missing:${ad.id}`,
-        alert_type: 'meta_url_tags_missing',
-        severity: 'high',
-        entity_type: 'meta_ad',
-        entity_id: ad.id,
-        status: 'open',
-        evidence: { ad_name: ad.name, destination: destination(ad.creative), current_url_tags: ad.creative?.url_tags ?? null, required_url_tags: META_URL_TAGS },
-        last_seen_at: now,
+        fingerprint, alert_type: alertType, severity, entity_type: entityId ? 'meta_ad' : 'site',
+        entity_id: entityId, status: 'open', evidence, last_seen_at: now,
       }, { onConflict: 'fingerprint' });
+    };
+    for (const ad of broken) {
+      await upsertAlert(`meta_url_tags_missing:${ad.id}`, 'meta_url_tags_missing', 'high', ad.id,
+        { ad_name: ad.name, destination: destination(ad.creative), current_url_tags: ad.creative?.url_tags ?? null, required_url_tags: META_URL_TAGS });
+    }
+    const { data: metricRows = [] } = await sb.from('meta_ad_metrics_hourly').select('meta_ad_id,spend,link_clicks,landing_page_views').gte('report_hour', since);
+    const metrics = new Map<string, { spend: number; clicks: number; lpv: number }>();
+    for (const row of metricRows ?? []) {
+      const current = metrics.get(row.meta_ad_id) ?? { spend: 0, clicks: 0, lpv: 0 };
+      current.spend += Number(row.spend ?? 0); current.clicks += Number(row.link_clicks ?? 0); current.lpv += Number(row.landing_page_views ?? 0);
+      metrics.set(row.meta_ad_id, current);
+    }
+    const { data: touchRows = [] } = await sb.from('attribution_touches').select('session_id,meta_ad_id').eq('page_path', '/products/kryo2')
+      .eq('traffic_class', 'paid_meta').eq('is_internal', false).gte('ts', since);
+    const sessionsByAd = new Map<string, Set<string>>();
+    for (const row of touchRows ?? []) {
+      if (!row.meta_ad_id) continue;
+      if (!sessionsByAd.has(row.meta_ad_id)) sessionsByAd.set(row.meta_ad_id, new Set());
+      sessionsByAd.get(row.meta_ad_id)!.add(row.session_id);
+    }
+    for (const [adId, metric] of Array.from(metrics.entries())) {
+      if ((metric.spend >= 5 || metric.clicks >= 5) && metric.lpv === 0) {
+        await upsertAlert(`meta_spend_no_lpv:${adId}`, 'meta_spend_no_lpv', 'high', adId, metric);
+      }
+      if (metric.clicks >= 10 && metric.lpv / metric.clicks < 0.6) {
+        await upsertAlert(`meta_low_lpv_to_click:${adId}`, 'meta_low_lpv_to_click', 'medium', adId, { ...metric, lpv_to_click_rate: metric.lpv / metric.clicks });
+      }
+      if (metric.lpv >= 5 && (sessionsByAd.get(adId)?.size ?? 0) === 0) {
+        await upsertAlert(`meta_lpv_no_matched_sessions:${adId}`, 'meta_lpv_no_matched_sessions', 'high', adId, { ...metric, matched_sessions: 0 });
+      }
+    }
+    const paidSessions = new Set((touchRows ?? []).map(row => row.session_id)).size;
+    const identifiedSessions = new Set((touchRows ?? []).filter(row => row.meta_ad_id).map(row => row.session_id)).size;
+    if (paidSessions >= 10 && identifiedSessions / paidSessions < 0.9) {
+      await upsertAlert('meta_paid_session_id_coverage', 'meta_paid_session_id_coverage', 'high', null, { paid_sessions: paidSessions, identified_sessions: identifiedSessions, coverage: identifiedSessions / paidSessions });
     }
     return NextResponse.json({
       success: true,
       active_ads_checked: ads.length,
       broken_ads: broken.map(ad => ({ meta_ad_id: ad.id, name: ad.name, destination: destination(ad.creative), url_tags: ad.creative?.url_tags ?? null })),
+      downstream_checks: { ads_with_metrics: metrics.size, paid_sessions: paidSessions, identified_sessions: identifiedSessions },
       required_url_tags: META_URL_TAGS,
     });
   } catch (err) {
