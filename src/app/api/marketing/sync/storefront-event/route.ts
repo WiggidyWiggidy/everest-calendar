@@ -1,6 +1,8 @@
 // /api/marketing/sync/storefront-event
-// Receives storefront-side pixel events from theme-assets/snippets/everest-attribution-pixel.liquid.
-// Writes one row per event to attribution_touches.
+// Receives storefront-side pixel events from the live Shopify theme.
+// Writes:
+//   - attribution_touches (page/cart/CTA/support/funnel events)
+//   - clarity_section_events (section friction telemetry)
 //
 // Closes the performance feedback loop: storefront events → Supabase → asset score → page-builder selector.
 //
@@ -17,17 +19,22 @@ const EVENT_ALIASES: Record<string, string> = {
   product_viewed: 'product_view',
   product_added_to_cart: 'add_to_cart',
   checkout_started: 'checkout_start',
+  shopify_inbox_click: 'chatway_click',
 };
 
 const ALLOWED_EVENTS = new Set([
   'session_start', 'page_view', 'product_view',
   'add_to_cart', 'checkout_start', 'order_placed',
   'product_viewed', 'product_added_to_cart', 'checkout_started',
-  'cart_add_request', 'cart_add_failed',
-  'whatsapp_click', 'shopify_inbox_click', 'compatibility_cta_click',
+  'cart_add_request', 'cart_add_failed', 'cart_view', 'cart_checkout_click',
+  'cart_remove_item', 'cart_quantity_change', 'cart_exit_without_checkout',
+  'checkout_error', 'hero_cta_click', 'sticky_cta_click',
+  'whatsapp_click', 'shopify_inbox_click', 'chatway_click', 'compatibility_cta_click',
   'installation_faq_open', 'hose_connection_faq_open', 'delivery_faq_open',
-  'returns_faq_open', 'comparison_section_view', 'reviews_section_view',
+  'returns_faq_open', 'comparison_section_view',
   'offer_section_view', 'guarantee_section_view',
+  'scroll_depth_25', 'scroll_depth_50', 'scroll_depth_75', 'scroll_depth_90',
+  'click', 'rage_click', 'dead_click', 'scroll_abandon',
 ]);
 
 function svc() {
@@ -40,6 +47,7 @@ function svc() {
 
 interface PixelEvent {
   event_type?: string;
+  event_name?: string;
   session_id?: string;
   page_path?: string;
   referrer?: string | null;
@@ -71,6 +79,10 @@ interface PixelEvent {
   fbclid?: string;
   is_internal?: boolean;
   event_properties?: Record<string, unknown>;
+  section_id?: string;
+  x_pct?: number;
+  y_pct?: number;
+  scroll_depth_pct?: number;
 }
 
 export async function POST(request: NextRequest) {
@@ -81,14 +93,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  if (!body.event_type || !ALLOWED_EVENTS.has(body.event_type)) {
+  const rawEventType = body.event_type || body.event_name;
+  if (!rawEventType || !ALLOWED_EVENTS.has(rawEventType)) {
     return NextResponse.json({ error: `event_type must be one of ${Array.from(ALLOWED_EVENTS).join(',')}` }, { status: 400 });
   }
   if (!body.session_id) {
     return NextResponse.json({ error: 'session_id required' }, { status: 400 });
   }
 
-  const eventType = EVENT_ALIASES[body.event_type] ?? body.event_type;
+  const eventType = EVENT_ALIASES[rawEventType] ?? rawEventType;
 
   // Resolve landing_page_id if the page_path matches a known KRYO variant
   const sb = svc();
@@ -130,6 +143,35 @@ export async function POST(request: NextRequest) {
     channel === 'meta' && (metaAdId || body.utm_source) ? 'paid_meta' :
     channel === 'direct' ? 'unknown_direct' : channel;
 
+  if (['click', 'rage_click', 'dead_click', 'scroll_abandon'].includes(eventType)) {
+    if (!body.page_url || !body.section_id) {
+      return NextResponse.json({ error: 'page_url and section_id required for section events' }, { status: 400 });
+    }
+    const { error } = await sb.from('clarity_section_events').insert({
+      ts: body.ts || new Date().toISOString(),
+      session_id: body.session_id,
+      page_url: body.page_url,
+      section_id: body.section_id,
+      event_type: eventType,
+      x_pct: body.x_pct ?? null,
+      y_pct: body.y_pct ?? null,
+      scroll_depth_pct: body.scroll_depth_pct ?? null,
+      device_type: body.device_type ?? null,
+      landing_page_id: landingPageId,
+    });
+    if (error) {
+      console.error('clarity_section_events insert failed:', error.message);
+      return NextResponse.json({ error: 'insert_failed' }, { status: 500 });
+    }
+    return NextResponse.json({ success: true }, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      },
+    });
+  }
+
   const { error } = await sb.from('attribution_touches').insert({
     ts: body.ts || new Date().toISOString(),
     session_id: body.session_id,
@@ -165,7 +207,7 @@ export async function POST(request: NextRequest) {
       locale: body.locale,
       market_handle: body.market_handle,
       quantity: body.quantity,
-      raw_event_type: body.event_type,
+      raw_event_type: rawEventType,
       anonymous_id: body.anonymous_id,
       page_url: body.page_url,
       first_touch: body.first_touch,
@@ -177,6 +219,7 @@ export async function POST(request: NextRequest) {
       fbp: body.fbp,
       fbc: body.fbc,
       fbclid: body.fbclid,
+      internal_reason: isInternal ? 'browser_or_referrer_flagged' : null,
       event_properties: body.event_properties,
     },
   });

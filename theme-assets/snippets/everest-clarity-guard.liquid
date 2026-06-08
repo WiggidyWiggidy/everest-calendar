@@ -1,0 +1,52 @@
+{%- comment -%}
+  Custom Clarity loader so KRYO2 excludes CN/HK and manual internal sessions
+  from raw Clarity collection going forward.
+{%- endcomment -%}
+
+<script id="everest-clarity-guard">
+(function(c, l, a, r, i, t, y) {
+  var INTERNAL_COOKIE = '__el_internal';
+  var countryIso = '{{ localization.country.iso_code | default: "" }}';
+  var params = new URLSearchParams(window.location.search || '');
+  if (params.get('el_internal') === '1') {
+    document.cookie = INTERNAL_COOKIE + '=1; path=/; max-age=' + (395 * 86400) + '; SameSite=Lax';
+  }
+  var suppress = countryIso === 'HK' || countryIso === 'CN' || document.cookie.indexOf(INTERNAL_COOKIE + '=1') !== -1;
+  window.__EL_CLARITY_SUPPRESS__ = suppress;
+  if (suppress) {
+    c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments); };
+    var originalInsertBefore = Node.prototype.insertBefore;
+    Node.prototype.insertBefore = function(node, referenceNode) {
+      try {
+        var src = node && (node.src || (node.getAttribute && node.getAttribute('src')) || '');
+        if (/clarity\\.ms\\/tag\\//i.test(String(src || ''))) {
+          return node;
+        }
+      } catch (e) {}
+      return originalInsertBefore.call(this, node, referenceNode);
+    };
+    return;
+  }
+
+  c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments); };
+  t = l.createElement(r); t.async = 1; t.src = 'https://www.clarity.ms/tag/' + i + '?ref=shopify-everest';
+  y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t, y);
+
+  c.Shopify.loadFeatures([{ name: 'consent-tracking-api', version: '0.1' }], function(error) {
+    if (error) return;
+    c[a]('consentv2', {
+      ad_Storage: c.Shopify.customerPrivacy.marketingAllowed() ? 'granted' : 'denied',
+      analytics_Storage: c.Shopify.customerPrivacy.analyticsProcessingAllowed() ? 'granted' : 'denied',
+      source: 101
+    });
+  });
+
+  l.addEventListener('visitorConsentCollected', function(e) {
+    c[a]('consentv2', {
+      ad_Storage: e.detail.marketingAllowed ? 'granted' : 'denied',
+      analytics_Storage: e.detail.analyticsAllowed ? 'granted' : 'denied',
+      source: 101
+    });
+  });
+})(window, document, 'clarity', 'script', 'vmr7jd6gld');
+</script>

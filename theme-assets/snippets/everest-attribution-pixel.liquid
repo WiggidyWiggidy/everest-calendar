@@ -1,35 +1,72 @@
 {%- comment -%}
-  Everest Labs attribution pixel.
-  Drop into theme.liquid (just before </body>) to start populating attribution_touches.
-  Closes the performance feedback loop: storefront events → Supabase → asset performance scoring.
-
-  Captures these events:
-    - session_start  (first page view per session)
-    - page_view       (every page load)
-    - product_view    (on /products/* pages)
-    - add_to_cart     (Shopify Web Pixel hook)
-    - checkout_start  (on /checkouts/* navigation)
-    - order_placed    (handled by Shopify webhook server-side, not this pixel)
-
-  POSTs to /api/marketing/sync/storefront-event on the everest-calendar.vercel.app deploy.
-
-  No PII collected. Only:
-    - utm_* params (from URL)
-    - landing_page_id (from page metafield if KRYO variant)
-    - shopify_product_id (from product page)
-    - device_type (sniff)
-    - referrer (document.referrer)
-
-  Idempotent — survives re-renders, dedupes session_start by sessionStorage flag.
+  Everest Labs customer journey pixel v2.4
+  KRYO2 priorities:
+    - suppress internal CN/HK traffic from first-party collection
+    - capture top clicked controls (CTA, Chatway, WhatsApp, compatibility)
+    - capture cart and checkout intent
+    - capture scroll milestones + section friction for KRYO2
 {%- endcomment -%}
 
-<script id="everest-attribution-pixel" data-pixel-version="1.0">
+<script id="everest-attribution-pixel" data-pixel-version="2.4">
 (function() {
   var EL_API = 'https://everest-calendar.vercel.app/api/marketing/sync/storefront-event';
+  var VISITOR_KEY = '__el_visitor_id';
+  var FIRST_TOUCH_KEY = '__el_first_touch';
   var SESSION_KEY = '__el_sess';
-  var SESSION_TTL = 30 * 60 * 1000; // 30 min sliding window
+  var SESSION_ATTR_KEY = '__el_session_touch';
+  var SESSION_TTL = 30 * 60 * 1000;
+  var INTERNAL_COOKIE = '__el_internal';
+  var EXCLUDED_COUNTRIES = { HK: true, CN: true };
+  var countryIso = '{{ localization.country.iso_code | default: "" }}';
 
-  function getOrCreateSession() {
+  function safeJson(raw) { try { return raw ? JSON.parse(raw) : null; } catch(e) { return null; } }
+  function setCookie(k, v, days) { try { document.cookie = k + '=' + encodeURIComponent(v) + '; path=/; max-age=' + (days*86400) + '; SameSite=Lax'; } catch(e) {} }
+  function getCookie(k) { try { var m = document.cookie.match(new RegExp('(?:^|; )' + k + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : null; } catch(e) { return null; } }
+  function uuid() { return 'elv_' + Date.now() + '_' + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2); }
+  function getQuery() { return new URLSearchParams(window.location.search || ''); }
+  function qAny(p, keys) { for (var i=0;i<keys.length;i++) { var v=p.get(keys[i]); if (v) return v; } return null; }
+
+  if (getQuery().get('el_internal') === '1') setCookie(INTERNAL_COOKIE, '1', 395);
+  var isSuppressed = !!EXCLUDED_COUNTRIES[countryIso] || getCookie(INTERNAL_COOKIE) === '1';
+  window.__EL_CLARITY_SUPPRESS__ = isSuppressed;
+
+  function getVisitorId() {
+    var id = localStorage.getItem(VISITOR_KEY) || getCookie(VISITOR_KEY);
+    if (!id) id = uuid();
+    localStorage.setItem(VISITOR_KEY, id);
+    setCookie(VISITOR_KEY, id, 395);
+    return id;
+  }
+
+  function readAttribution() {
+    var p = getQuery();
+    return {
+      source: qAny(p, ['utm_source']),
+      medium: qAny(p, ['utm_medium']),
+      campaign: qAny(p, ['utm_campaign']),
+      content: qAny(p, ['utm_content']),
+      term: qAny(p, ['utm_term']),
+      angle: qAny(p, ['utm_angle', 'angle']),
+      campaign_id: qAny(p, ['utm_campaign_id', 'campaign_id', 'meta_campaign_id']),
+      adset_id: qAny(p, ['utm_adset_id', 'adset_id', 'meta_adset_id']),
+      ad_id: qAny(p, ['utm_ad_id', 'ad_id', 'meta_ad_id']),
+      fbp: getCookie('_fbp'),
+      fbc: getCookie('_fbc'),
+      fbclid: qAny(p, ['fbclid']),
+      referrer: document.referrer || null,
+      landing_page: window.location.href
+    };
+  }
+  function hasAttribution(a) { return !!(a.source || a.medium || a.campaign || a.content || a.term || a.angle || a.campaign_id || a.adset_id || a.ad_id || a.fbclid); }
+  function getFirstTouch(current) {
+    var existing = safeJson(localStorage.getItem(FIRST_TOUCH_KEY));
+    if (existing && hasAttribution(existing)) return existing;
+    if (!hasAttribution(current)) return existing || current;
+    var first = Object.assign({}, current, { created_at: new Date().toISOString() });
+    localStorage.setItem(FIRST_TOUCH_KEY, JSON.stringify(first));
+    return first;
+  }
+  function getSession(current) {
     var raw = sessionStorage.getItem(SESSION_KEY);
     var now = Date.now();
     if (raw) {
@@ -40,113 +77,238 @@
           sessionStorage.setItem(SESSION_KEY, JSON.stringify(parsed));
           return { id: parsed.id, isNew: false };
         }
-      } catch (e) {}
+      } catch(e) {}
     }
-    var id = 'el_' + now + '_' + Math.random().toString(36).slice(2, 10);
+    var id = 'els_' + now + '_' + Math.random().toString(36).slice(2, 10);
     sessionStorage.setItem(SESSION_KEY, JSON.stringify({ id: id, last: now, started: now }));
+    sessionStorage.setItem(SESSION_ATTR_KEY, JSON.stringify(current));
     return { id: id, isNew: true };
   }
-
-  function getUtm() {
-    var p = new URLSearchParams(window.location.search);
-    var out = {};
-    ['utm_source','utm_medium','utm_campaign','utm_content','utm_term'].forEach(function(k) {
-      var v = p.get(k);
-      if (v) out[k] = v;
-    });
-    return out;
-  }
-
   function deviceType() {
     var ua = navigator.userAgent;
     if (/iPad|tablet/i.test(ua)) return 'tablet';
     if (/Mobile|iPhone|Android/i.test(ua)) return 'mobile';
     return 'desktop';
   }
-
-  function send(eventType, extra) {
-    extra = extra || {};
-    var session = getOrCreateSession();
-    var payload = Object.assign({
-      event_type: eventType,
-      session_id: session.id,
-      page_path: window.location.pathname,
-      referrer: document.referrer || null,
-      device_type: deviceType(),
-      ts: new Date().toISOString(),
-    }, getUtm(), extra);
-
-    // Use fetch with keepalive so events flush even on navigation away
-    try {
-      fetch(EL_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-        keepalive: true,
-        mode: 'no-cors',
-      }).catch(function() {});
-    } catch (e) {
-      // sendBeacon fallback
-      try {
-        var blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
-        navigator.sendBeacon(EL_API, blob);
-      } catch (e2) {}
-    }
-    return session;
+  function scrollPct() {
+    var doc = document.documentElement;
+    var max = Math.max(1, (doc.scrollHeight || 1) - (window.innerHeight || 0));
+    return Math.max(0, Math.min(100, Math.round((window.scrollY || 0) / max * 100)));
   }
 
-  // Page-context helpers populated from Liquid below
+  var currentTouch = readAttribution();
+  var firstTouch = getFirstTouch(currentTouch);
+  var session = getSession(currentTouch);
+  var sessionTouch = safeJson(sessionStorage.getItem(SESSION_ATTR_KEY)) || currentTouch;
   var ctx = {
+    anonymous_id: getVisitorId(),
+    session_id: session.id,
+    first_touch: firstTouch,
+    current_touch: sessionTouch,
+    page_url: window.location.href,
+    page_path: window.location.pathname,
+    referrer: document.referrer || null,
+    device_type: deviceType(),
+    ts: new Date().toISOString(),
+    utm_source: sessionTouch.source,
+    utm_medium: sessionTouch.medium,
+    utm_campaign: sessionTouch.campaign,
+    utm_content: sessionTouch.content,
+    utm_term: sessionTouch.term,
+    utm_angle: sessionTouch.angle,
+    utm_campaign_id: sessionTouch.campaign_id,
+    utm_adset_id: sessionTouch.adset_id,
+    utm_ad_id: sessionTouch.ad_id,
+    fbp: sessionTouch.fbp || firstTouch.fbp || getCookie('_fbp'),
+    fbc: sessionTouch.fbc || firstTouch.fbc || getCookie('_fbc'),
+    fbclid: sessionTouch.fbclid || firstTouch.fbclid || null,
+    is_internal: isSuppressed,
     {% if product %}
       shopify_product_id: '{{ product.id }}',
       shopify_product_handle: '{{ product.handle }}',
       shopify_variant_id: '{{ product.selected_or_first_available_variant.id }}',
     {% endif %}
+    {% if customer %}
+      shopify_customer_id: '{{ customer.id }}',
+    {% endif %}
     {% if request.page_type %}
       page_type: '{{ request.page_type }}',
     {% endif %}
     locale: '{{ request.locale.iso_code | default: "en" }}',
-    market_handle: '{{ localization.market.handle | default: "primary" }}',
+    market_handle: '{{ localization.market.handle | default: "primary" }}'
   };
 
-  // Fire on initial load
-  var sess = send('page_view', ctx);
-  if (sess.isNew) {
-    send('session_start', ctx);
-  }
-  if (ctx.shopify_product_id) {
-    send('product_view', ctx);
+  function send(eventName, extra) {
+    if (isSuppressed) return;
+    var payload = Object.assign({}, ctx, extra || {}, { event_name: eventName, event_type: eventName, ts: new Date().toISOString(), page_url: window.location.href, page_path: window.location.pathname });
+    try {
+      fetch(EL_API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), keepalive: true, mode: 'no-cors' }).catch(function() {});
+    } catch(e) {
+      try { navigator.sendBeacon(EL_API, new Blob([JSON.stringify(payload)], { type: 'application/json' })); } catch(e2) {}
+    }
   }
 
-  // Fire ATC via Shopify Web Pixel hook if available, else listen for cart/add fetch
+  function once(key, fn) {
+    var storeKey = '__el_once_' + key;
+    if (sessionStorage.getItem(storeKey)) return;
+    sessionStorage.setItem(storeKey, '1');
+    fn();
+  }
+
+  function sectionIdFor(el) {
+    if (!el) return 'unknown';
+    var explicit = el.getAttribute && el.getAttribute('data-el-section-id');
+    if (explicit) return explicit;
+    var host = el.closest && el.closest('[data-el-section-id], section, .shopify-section, [id]');
+    if (!host) return 'unknown';
+    if (host.getAttribute && host.getAttribute('data-el-section-id')) return host.getAttribute('data-el-section-id');
+    if (host.id) return host.id.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').slice(0, 80);
+    var cls = String(host.className || '').split(/\s+/).filter(Boolean)[0] || 'section';
+    return cls.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').slice(0, 80);
+  }
+
+  function sendSectionEvent(eventName, el, extra) {
+    if (isSuppressed || window.location.pathname.indexOf('/products/kryo2') !== 0) return;
+    send(eventName, Object.assign({
+      section_id: sectionIdFor(el),
+      scroll_depth_pct: scrollPct()
+    }, extra || {}));
+  }
+
+  var scrollSeen = { 25: false, 50: false, 75: false, 90: false };
+  var scrollMaxPct = 0;
+  var lastClickAt = 0;
+  var lastClickKey = '';
+  var sectionAtcFired = false;
+
+  function maybeTrackControlClick(el) {
+    if (!el) return;
+    var text = ((el.innerText || el.textContent || '') + ' ' + (el.getAttribute && el.getAttribute('aria-label') || '') + ' ' + (el.getAttribute && el.getAttribute('href') || '')).toLowerCase();
+    var sid = sectionIdFor(el);
+    if (/order now|buy now|add to cart/.test(text)) {
+      send('hero_cta_click', { event_properties: { section_id: sid } });
+      return;
+    }
+    if (/sticky/.test((el.className || '').toLowerCase())) {
+      send('sticky_cta_click', { event_properties: { section_id: sid } });
+      return;
+    }
+    if (/chatway|live chat|message us|message support|talk to us/.test(text)) {
+      send('chatway_click', { event_properties: { section_id: sid } });
+      return;
+    }
+    if (/wa\\.me|whatsapp/.test(text)) {
+      send('whatsapp_click', { event_properties: { section_id: sid } });
+      return;
+    }
+    if (/compatib|fit check|bathroom fit|shower fit/.test(text)) {
+      send('compatibility_cta_click', { event_properties: { section_id: sid } });
+    }
+  }
+
+  document.addEventListener('click', function(e) {
+    var el = e.target && e.target.closest ? e.target.closest('a,button,[role=\"button\"],summary,[data-el-section-id]') : null;
+    if (!el) return;
+    maybeTrackControlClick(el);
+    sendSectionEvent('click', el);
+    var key = sectionIdFor(el) + '|' + (el.innerText || el.textContent || '').trim().slice(0, 80);
+    var now = Date.now();
+    if (now - lastClickAt < 1200 && key === lastClickKey) sendSectionEvent('rage_click', el);
+    lastClickAt = now;
+    lastClickKey = key;
+  }, true);
+
+  document.addEventListener('change', function(e) {
+    var el = e.target;
+    if (!el || window.location.pathname.indexOf('/cart') !== 0) return;
+    var name = (el.getAttribute && el.getAttribute('name') || '').toLowerCase();
+    if (/updates|quantity/.test(name)) send('cart_quantity_change', { event_properties: { name: name, value: el.value || null } });
+  }, true);
+
+  window.addEventListener('scroll', function() {
+    var sd = scrollPct();
+    if (sd > scrollMaxPct) scrollMaxPct = sd;
+    if (sd >= 25 && !scrollSeen[25]) { scrollSeen[25] = true; send('scroll_depth_25'); }
+    if (sd >= 50 && !scrollSeen[50]) { scrollSeen[50] = true; send('scroll_depth_50'); }
+    if (sd >= 75 && !scrollSeen[75]) { scrollSeen[75] = true; send('scroll_depth_75'); }
+    if (sd >= 90 && !scrollSeen[90]) { scrollSeen[90] = true; send('scroll_depth_90'); }
+  }, { passive: true });
+
+  if ('IntersectionObserver' in window) {
+    var observer = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (!entry.isIntersecting || entry.intersectionRatio < 0.35) return;
+        var label = ((entry.target.id || '') + ' ' + (entry.target.className || '') + ' ' + (entry.target.getAttribute && entry.target.getAttribute('data-section-type') || '')).toLowerCase();
+        if (/comparison|compare/.test(label)) once('comparison_section_view', function(){ send('comparison_section_view'); });
+        if (/offer|price|pricing|buy-box|sticky-cta/.test(label)) once('offer_section_view', function(){ send('offer_section_view'); });
+        if (/guarantee|warranty|return|trust/.test(label)) once('guarantee_section_view', function(){ send('guarantee_section_view'); });
+      });
+    }, { threshold: [0.35] });
+
+    var observed = document.querySelectorAll('section, [data-section-type], [data-el-section-id]');
+    for (var i = 0; i < observed.length; i++) observer.observe(observed[i]);
+  }
+
+  function fireAtc(source, extra) {
+    sectionAtcFired = true;
+    send('add_to_cart', Object.assign({ event_properties: { tracking_source: source } }, extra || {}));
+  }
+
+  send('page_view');
+  if (ctx.shopify_product_id || /^\\/products\\//.test(window.location.pathname)) send('product_viewed');
+
   if (window.Shopify && window.Shopify.analytics && window.Shopify.analytics.subscribe) {
     try {
       window.Shopify.analytics.subscribe('product_added_to_cart', function(event) {
         var line = (event && event.data && event.data.cartLine) || {};
-        send('add_to_cart', Object.assign({}, ctx, {
-          shopify_variant_id: line.merchandise && line.merchandise.id,
-          quantity: line.quantity,
-          event_value: line.cost && line.cost.totalAmount && line.cost.totalAmount.amount,
-        }));
+        fireAtc('shopify_analytics_subscribe', { shopify_variant_id: line.merchandise && line.merchandise.id, quantity: line.quantity });
       });
       window.Shopify.analytics.subscribe('checkout_started', function(event) {
-        send('checkout_start', Object.assign({}, ctx, {
-          event_value: event && event.data && event.data.checkout && event.data.checkout.totalPrice && event.data.checkout.totalPrice.amount,
-        }));
+        send('checkout_started', { event_value: event && event.data && event.data.checkout && event.data.checkout.totalPrice && event.data.checkout.totalPrice.amount });
       });
-    } catch (e) {}
-  } else {
-    // Fallback: monkey-patch fetch for /cart/add
-    var originalFetch = window.fetch;
+    } catch(e) {}
+  }
+
+  var originalFetch = window.fetch;
+  if (originalFetch && !window.__el_fetch_patched) {
+    window.__el_fetch_patched = true;
     window.fetch = function(url, opts) {
-      try {
-        var u = typeof url === 'string' ? url : (url && url.url) || '';
-        if (/\/cart\/add/.test(u)) {
-          send('add_to_cart', ctx);
-        }
-      } catch (e) {}
-      return originalFetch.apply(this, arguments);
+      var u = typeof url === 'string' ? url : (url && url.url) || '';
+      var isCartAdd = /\\/cart\\/add/.test(u);
+      if (isCartAdd) send('cart_add_request');
+      var p = originalFetch.apply(this, arguments);
+      if (isCartAdd) {
+        p.then(function(res) { if (res && res.ok) fireAtc('fetch_cart_add'); else send('cart_add_failed', { event_properties: { status: res && res.status } }); }).catch(function() { send('cart_add_failed'); });
+      }
+      return p;
     };
   }
+
+  if (window.XMLHttpRequest && !window.__el_xhr_patched) {
+    window.__el_xhr_patched = true;
+    var xhrOpen = XMLHttpRequest.prototype.open;
+    var xhrSend = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.open = function(method, url) { this.__el_cart_add = /\\/cart\\/add/.test(String(url || '')); return xhrOpen.apply(this, arguments); };
+    XMLHttpRequest.prototype.send = function() {
+      if (this.__el_cart_add) {
+        send('cart_add_request', { event_properties: { tracking_source: 'xhr_cart_add' } });
+        this.addEventListener('load', function(){ if (this.status >= 200 && this.status < 400) fireAtc('xhr_cart_add'); else send('cart_add_failed', { event_properties: { status: this.status, tracking_source: 'xhr_cart_add' } }); });
+      }
+      return xhrSend.apply(this, arguments);
+    };
+  }
+
+  if (window.location.pathname.indexOf('/cart') === 0) {
+    send('cart_view');
+  }
+
+  window.addEventListener('pagehide', function() {
+    if (window.location.pathname.indexOf('/cart') === 0) {
+      send('cart_exit_without_checkout', { event_properties: { scroll_depth_pct: scrollMaxPct || scrollPct() } });
+    }
+    if (window.location.pathname.indexOf('/products/kryo2') !== 0 || !scrollSeen[50] || sectionAtcFired) return;
+    var visible = document.querySelector('[data-el-section-id]');
+    if (visible) sendSectionEvent('scroll_abandon', visible, { scroll_depth_pct: scrollMaxPct || scrollPct() });
+  });
 })();
 </script>
