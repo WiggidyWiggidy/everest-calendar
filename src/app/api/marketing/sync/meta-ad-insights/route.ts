@@ -18,15 +18,37 @@ async function authenticateSync(request: NextRequest) {
 interface MetaInsightRow {
   ad_id: string;
   date_start: string;
+  campaign_id?: string;
+  campaign_name?: string;
+  adset_id?: string;
+  adset_name?: string;
+  ad_name?: string;
   impressions?: string;
   clicks?: string;
   spend?: string;
   ctr?: string;
   cpc?: string;
   cpm?: string;
+  outbound_clicks?: { action_type: string; value: string }[];
   actions?: { action_type: string; value: string }[];
+  cost_per_action_type?: { action_type: string; value: string }[];
   action_values?: { action_type: string; value: string }[];
   purchase_roas?: { action_type: string; value: string }[];
+}
+
+const ATTRIBUTION_WINDOWS = JSON.stringify(['7d_click', '1d_view']);
+
+function firstMatchingValue(
+  rows: Array<{ action_type: string; value: string }> | undefined,
+  actionTypes: string[],
+): number | null {
+  for (const actionType of actionTypes) {
+    const row = rows?.find((entry) => entry.action_type === actionType);
+    if (row?.value == null) continue;
+    const value = Number(row.value);
+    if (Number.isFinite(value)) return value;
+  }
+  return null;
 }
 
 export async function POST(request: NextRequest) {
@@ -68,13 +90,32 @@ export async function POST(request: NextRequest) {
     const since = new Date(Date.now() - days * 86400000).toISOString().split('T')[0];
     const until = new Date().toISOString().split('T')[0];
 
-    const fields = 'ad_id,impressions,clicks,spend,ctr,cpc,cpm,actions,action_values,purchase_roas';
+    const fields = [
+      'ad_id',
+      'ad_name',
+      'adset_id',
+      'adset_name',
+      'campaign_id',
+      'campaign_name',
+      'impressions',
+      'clicks',
+      'spend',
+      'ctr',
+      'cpc',
+      'cpm',
+      'outbound_clicks',
+      'actions',
+      'cost_per_action_type',
+      'action_values',
+      'purchase_roas',
+    ].join(',');
 
     // Fetch insights at ad level for the entire account
     const allRows: MetaInsightRow[] = [];
     let nextUrl: string | null = `https://graph.facebook.com/v25.0/${adAccountId}/insights?` +
       `level=ad&fields=${fields}&time_increment=1` +
       `&time_range=${encodeURIComponent(JSON.stringify({ since, until }))}` +
+      `&action_attribution_windows=${encodeURIComponent(ATTRIBUTION_WINDOWS)}` +
       `&limit=500&access_token=${metaToken}`;
 
     while (nextUrl) {
@@ -106,6 +147,22 @@ export async function POST(request: NextRequest) {
 
       const spend = parseFloat(row.spend ?? '0');
       const purchaseCount = purchases ? parseInt(purchases, 10) : 0;
+      const outboundClicks = firstMatchingValue(row.outbound_clicks, ['outbound_click']);
+      const landingPageViews = firstMatchingValue(actions, ['landing_page_view', 'omni_landing_page_view']);
+      const websiteAddsToCart = firstMatchingValue(actions, [
+        'offsite_conversion.fb_pixel_add_to_cart',
+        'onsite_web_add_to_cart',
+        'onsite_web_app_add_to_cart',
+        'add_to_cart',
+        'omni_add_to_cart',
+      ]);
+      const websiteInitiateCheckouts = firstMatchingValue(actions, [
+        'offsite_conversion.fb_pixel_initiate_checkout',
+        'onsite_web_initiate_checkout',
+        'onsite_web_app_initiate_checkout',
+        'initiate_checkout',
+        'omni_initiated_checkout',
+      ]);
 
       const record = {
         meta_ad_id: row.ad_id,
@@ -116,10 +173,23 @@ export async function POST(request: NextRequest) {
         ctr: row.ctr ? parseFloat(row.ctr) / 100 : null,
         cpc: row.cpc ? parseFloat(row.cpc) : null,
         cpm: row.cpm ? parseFloat(row.cpm) : null,
+        outbound_clicks: outboundClicks,
+        cost_per_outbound_click: outboundClicks && outboundClicks > 0 ? spend / outboundClicks : null,
+        landing_page_views: landingPageViews,
+        cost_per_lpv: landingPageViews && landingPageViews > 0 ? spend / landingPageViews : null,
+        add_to_carts: websiteAddsToCart,
+        cost_per_atc: websiteAddsToCart && websiteAddsToCart > 0 ? spend / websiteAddsToCart : null,
+        initiate_checkouts: websiteInitiateCheckouts,
+        cost_per_ic: websiteInitiateCheckouts && websiteInitiateCheckouts > 0 ? spend / websiteInitiateCheckouts : null,
         purchases: purchaseCount,
         revenue: revenue ? parseFloat(revenue) : 0,
         roas: roas ? parseFloat(roas) : null,
         cost_per_purchase: purchaseCount > 0 ? spend / purchaseCount : null,
+        campaign_id: row.campaign_id ?? null,
+        adset_id: row.adset_id ?? null,
+        ad_name: row.ad_name ?? null,
+        adset_name: row.adset_name ?? null,
+        updated_at: new Date().toISOString(),
       };
 
       const { error: upsertErr } = await supabase

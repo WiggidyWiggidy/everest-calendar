@@ -56,7 +56,10 @@ export async function updateSession(request: NextRequest) {
     (request.nextUrl.pathname.startsWith('/api/cron/') && (request.headers.get('x-cron-secret') !== null || request.nextUrl.searchParams.has('secret'))) ||
     (request.nextUrl.pathname.startsWith('/api/marketing/') && request.headers.get('x-sync-secret') !== null) ||
     (request.nextUrl.pathname === '/api/marketing/subscribe' && request.method === 'POST') ||
+    (request.nextUrl.pathname === '/api/marketing/sync/storefront-event' && ['POST', 'OPTIONS'].includes(request.method)) ||
+    (request.nextUrl.pathname === '/api/marketing/kryo/leads/capture' && ['POST', 'OPTIONS'].includes(request.method)) ||
     (request.nextUrl.pathname === '/api/webhooks/meta-leads') ||
+    (request.nextUrl.pathname === '/api/webhooks/meta-whatsapp') ||
     (request.nextUrl.pathname === '/api/marketing/survey' && request.method === 'POST') ||
     (request.nextUrl.pathname === '/api/marketing/token-health' && request.headers.get('x-sync-secret') !== null) ||
     // Phase 2 attribution pipeline:

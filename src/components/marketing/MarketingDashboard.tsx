@@ -10,8 +10,9 @@ import { FunnelView } from './FunnelView';
 import { ExperimentsTab } from './ExperimentsTab';
 import { ContentView } from './ContentView';
 import { Phase2InsightsPanel } from './Phase2InsightsPanel';
+import { ICEMatrixTab } from './ICEMatrixTab';
 
-type View = 'insights' | 'pulse' | 'campaigns' | 'funnel' | 'experiments' | 'content';
+type View = 'insights' | 'ice_matrix' | 'pulse' | 'campaigns' | 'funnel' | 'experiments' | 'content';
 
 interface PageWithProposal extends LandingPage {
   latest_proposal: { id: string; status: string } | null;
@@ -19,6 +20,7 @@ interface PageWithProposal extends LandingPage {
 
 const VIEWS: { key: View; label: string }[] = [
   { key: 'insights', label: 'Insights' },
+  { key: 'ice_matrix', label: 'ICE Matrix' },
   { key: 'pulse', label: 'Pulse' },
   { key: 'campaigns', label: 'Campaigns' },
   { key: 'funnel', label: 'Funnel' },
@@ -125,6 +127,7 @@ export function MarketingDashboard() {
             <Phase2InsightsPanel />
           </div>
         )}
+        {activeView === 'ice_matrix' && <ICEMatrixTab />}
         {activeView === 'pulse' && (
           <PulseView
             history={history}

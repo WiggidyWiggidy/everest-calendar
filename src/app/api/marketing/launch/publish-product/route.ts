@@ -7,10 +7,21 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getShopifyToken, getShopifyStoreUrl } from '@/lib/shopify-auth';
+import { createClient } from '@supabase/supabase-js';
+import { logMarketingChange } from '@/lib/marketing/change-log';
 
 function authOk(req: NextRequest): boolean {
   const secret = req.headers.get('x-sync-secret');
   return Boolean(secret && secret === process.env.MARKETING_SYNC_SECRET);
+}
+
+
+function svcClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } },
+  );
 }
 
 interface PublishRequest {
@@ -139,6 +150,25 @@ export async function POST(request: NextRequest) {
       }
     }
   } catch { /* non-fatal */ }
+
+  try {
+    const sb = svcClient();
+    await logMarketingChange(sb, {
+      source: 'launch.publish-product',
+      surface: 'shopify_page',
+      objectType: 'shopify_product',
+      objectId: String(body.shopify_product_id),
+      market: 'AE',
+      productHandle: 'kryo2',
+      changeType: 'publish_product',
+      beforePayload: { requested_status: body.status ?? null },
+      afterPayload: { activated, publications_count: publications.length, markets_published: marketsPublished },
+      note: 'Published product to storefront publications / markets',
+      metadata: { user_errors: userErrors, scope_warning },
+    });
+  } catch (error) {
+    console.warn('marketing change log failed (non-fatal):', error);
+  }
 
   return NextResponse.json({
     success: userErrors.length === 0 && activated,

@@ -69,7 +69,17 @@ export async function POST(request: NextRequest) {
           if (name === 'phone_number' || name === 'phone') phone = value;
         }
 
-        // Store in customer_feedback
+        const adContext = adId
+          ? await supabase
+              .from('kryo_growth_experiments')
+              .select('id,experiment_key,landing_page_version,angle_id,hook_id')
+              .contains('ad_ids', [adId])
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle()
+          : { data: null };
+
+        // Store legacy feedback copy for backwards compatibility.
         const { error } = await supabase
           .from('customer_feedback')
           .insert({
@@ -85,25 +95,59 @@ export async function POST(request: NextRequest) {
             meta_ad_id: adId,
           });
 
-        if (error) {
-          console.error('Failed to store lead:', error.message);
+        if (error) console.error('Failed to store lead feedback:', error.message);
+
+        // Store canonical KRYO lead spine row for cost-per-WhatsApp-lead reporting.
+        const { error: kryoLeadError } = await supabase
+          .from('kryo_leads')
+          .insert({
+            source: 'whatsapp',
+            status: 'new',
+            consent_to_follow_up: true,
+            consent_captured_at: new Date().toISOString(),
+            phone_e164: phone || null,
+            meta_ad_id: adId || null,
+            experiment_id: adContext.data?.id || null,
+            experiment_key: adContext.data?.experiment_key || null,
+            landing_page_version: adContext.data?.landing_page_version || null,
+            angle_id: adContext.data?.angle_id || null,
+            hook_id: adContext.data?.hook_id || null,
+            qualification_notes: email ? `Meta lead form email: ${email}` : null,
+            raw_payload: {
+              source: 'meta_lead_ad_webhook',
+              form_id: formId,
+              leadgen_id: leadgenId,
+              created_time: createdTime,
+              responses,
+            },
+          });
+
+        if (kryoLeadError) {
+          console.error('Failed to store KRYO lead spine row:', kryoLeadError.message);
         } else {
           processed++;
         }
 
-        // Create inbox item for Tom
+        // Create inbox item for Tom using the current platform_inbox shape.
         await supabase
           .from('platform_inbox')
           .insert({
-            platform: 'system',
+            platform: 'marketing',
             contact_name: 'Meta Lead Ad',
-            message_preview: `New lead: ${email || phone || 'unknown'}`,
-            draft_response: `New WhatsApp lead ad submission.\nEmail: ${email || 'not provided'}\nPhone: ${phone || 'not provided'}\nResponses: ${JSON.stringify(responses, null, 2)}`,
+            contact_identifier: phone || email || leadgenId,
+            ai_summary: `New WhatsApp lead: ${email || phone || 'unknown'}`,
+            raw_content: `New WhatsApp lead ad submission.
+Email: ${email || 'not provided'}
+Phone: ${phone || 'not provided'}
+Responses: ${JSON.stringify(responses, null, 2)}`,
             status: 'pending',
+            approval_tier: 1,
             metadata: {
+              category: 'whatsapp_lead',
               type: 'lead_ad',
               ad_id: adId,
               form_id: formId,
+              leadgen_id: leadgenId,
             },
           });
       }

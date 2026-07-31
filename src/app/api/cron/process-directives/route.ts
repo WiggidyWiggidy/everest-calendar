@@ -808,12 +808,12 @@ export async function GET(request: NextRequest) {
     'resolve-meta-asset-urls',    // resolve image hash → URL + video_id → URL on extracted assets
     'meta-ad-insights',           // per-ad daily metrics
     'meta-dce',                   // per-DCE-asset breakdowns → meta_dce_metrics + meta_asset_performance_daily
-    'meta-breakdowns',            // age/gender/region/placement breakdowns → meta_ad_breakdowns_daily (2026-05-04)
     'clarity',                    // Clarity engagement + per-URL rage/dead clicks
     'shopify',                    // site-aggregate Shopify revenue/orders
     'shopify-funnel',             // checkout abandonment funnel
     'ga4',                        // site-aggregate GA4 sessions/bounce
-    'ga4-pages',                  // per-page GA4 (ice_shower pages by default)
+    'ga4-pages',                  // per-page GA4 daily cache
+    'ga4-hourly',                 // recent 72h hourly GA4 cache for fast 48h diagnosis
   ];
   const syncResults: Record<string, string> = {};
 
@@ -861,6 +861,15 @@ export async function GET(request: NextRequest) {
       : (findingsData.error || `${findingsRes.status}`);
   } catch (e) {
     syncResults['refresh-findings'] = (e as Error).message;
+  }
+
+  // Aggregate raw clarity_section_events into per-day clarity_section_heatmap.
+  // Powers the funnel_bottlenecks view + propose_lp_experiments() RPC used by the ICE Matrix tab.
+  try {
+    const { data: rowsWritten, error: heatmapErr } = await supabase.rpc('compute_clarity_section_heatmap');
+    syncResults['section-heatmap'] = heatmapErr ? heatmapErr.message : `ok rows=${rowsWritten ?? 0}`;
+  } catch (e) {
+    syncResults['section-heatmap'] = (e as Error).message;
   }
 
   await logAgentActivity({

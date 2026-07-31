@@ -12,9 +12,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getShopifyToken, getShopifyStoreUrl } from '@/lib/shopify-auth';
 import { auditLog } from '@/lib/marketing-safety';
+import { logMarketingChange } from '@/lib/marketing/change-log';
 
 const TOM_USER_ID = '174f2dff-7a96-464c-a919-b473c328d531';
-const SOURCE_PRODUCT_HANDLE = 'kryo_';
+const DEFAULT_STOREFRONT_BASE_URL = 'https://everestlabs.co';
 
 function authSkill(request: NextRequest): boolean {
   const secret = request.headers.get('x-sync-secret');
@@ -30,6 +31,7 @@ function svcClient() {
 }
 
 interface CloneRequest {
+  source_handle: string;         // exact Shopify handle to clone from. Required.
   variant_angle: string;          // e.g. "morning_energy", "athlete_recovery", "luxury_upgrade"
   target_name: string;            // becomes new product title (H1 of product page)
   overrides?: Array<{ find: string; replace: string; reason?: string }>;
@@ -45,6 +47,12 @@ interface CloneRequest {
   // creatives (e.g. /products/kryo-uae), the handle must be exact, not "kryo-uae-1".
   // If the requested handle is already taken, Shopify returns 422 and we surface that.
   target_handle?: string;
+  // Optional: for market-specific clones, pin the duplicate's base variant pricing to the
+  // source product's live storefront pricing for the given country.
+  // SAFETY: disabled until it is backed by catalog/price-list parity. Copying storefront
+  // pricing into base variant prices can double-convert in Markets and create wrong cart totals.
+  storefront_country?: string;
+  copy_storefront_pricing_from_source?: boolean;
   // Optional: per-product metafield writes (e.g. kryo.hero_eyebrow = "KRYO V4 · UAE allocation · 28 / 50 left").
   // Applied via metafieldsSet GraphQL after the duplicate is created. Lets a caller override copy
   // that lives in the kryo-* Liquid sections (which read from product.metafields.kryo.*) without
@@ -59,8 +67,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body = (await request.json()) as CloneRequest;
-    if (!body.variant_angle || !body.target_name) {
-      return NextResponse.json({ error: 'variant_angle and target_name required' }, { status: 400 });
+    if (!body.source_handle || !body.variant_angle || !body.target_name) {
+      return NextResponse.json({ error: 'source_handle, variant_angle and target_name required' }, { status: 400 });
+    }
+    if (body.copy_storefront_pricing_from_source) {
+      return NextResponse.json({
+        error: 'copy_storefront_pricing_from_source is disabled',
+        detail: 'Use a market price list mutation after clone. Copying storefront prices into base variant prices can double-convert in Shopify Markets.',
+      }, { status: 400 });
     }
 
     let shopifyUrl: string;
@@ -74,7 +88,7 @@ export async function POST(request: NextRequest) {
 
     // 1. Look up source product id by handle
     const lookupRes = await fetch(
-      `https://${shopifyUrl}/admin/api/2024-01/products.json?handle=${SOURCE_PRODUCT_HANDLE}&fields=id,handle,title,body_html,template_suffix`,
+      `https://${shopifyUrl}/admin/api/2024-01/products.json?handle=${encodeURIComponent(body.source_handle)}&fields=id,handle,title,body_html,template_suffix`,
       { headers: { 'X-Shopify-Access-Token': shopifyToken } }
     );
     if (!lookupRes.ok) {
@@ -86,10 +100,36 @@ export async function POST(request: NextRequest) {
     const lookupPayload = await lookupRes.json();
     const sourceProduct = lookupPayload.products?.[0];
     if (!sourceProduct?.id) {
-      return NextResponse.json({ error: `Source product '${SOURCE_PRODUCT_HANDLE}' not found in Shopify` }, { status: 404 });
+      return NextResponse.json({ error: `Source product '${body.source_handle}' not found in Shopify` }, { status: 404 });
     }
     const sourceProductId: number = sourceProduct.id;
     const sourceBodyHtml: string = sourceProduct.body_html ?? '';
+    const storefrontPricingByVariantIndex = new Map<number, { price: string; compare_at_price: string | null }>();
+    if (body.copy_storefront_pricing_from_source && body.storefront_country) {
+      const storefrontRes = await fetch(
+        `${DEFAULT_STOREFRONT_BASE_URL}/products/${encodeURIComponent(body.source_handle)}.js?country=${encodeURIComponent(body.storefront_country)}`,
+        { cache: 'no-store' },
+      );
+      if (!storefrontRes.ok) {
+        return NextResponse.json({
+          error: `Source storefront pricing fetch failed: ${storefrontRes.status}`,
+          detail: await storefrontRes.text().catch(() => ''),
+        }, { status: 502 });
+      }
+      const storefrontPayload = await storefrontRes.json();
+      const variants = Array.isArray(storefrontPayload?.variants) ? storefrontPayload.variants : [];
+      variants.forEach((variant: { price?: number; compare_at_price?: number | null }, index: number) => {
+        if (typeof variant?.price === 'number') {
+          storefrontPricingByVariantIndex.set(index, {
+            price: (variant.price / 100).toFixed(2),
+            compare_at_price:
+              typeof variant.compare_at_price === 'number'
+                ? (variant.compare_at_price / 100).toFixed(2)
+                : null,
+          });
+        }
+      });
+    }
 
     // 2. Compute the variant body_html.
     // Two modes: (a) full replace from composed premium sections, or (b) find/replace overrides.
@@ -253,6 +293,45 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    if (storefrontPricingByVariantIndex.size > 0) {
+      const dupVariantsRes = await fetch(
+        `https://${shopifyUrl}/admin/api/2024-01/products/${newProductId}.json?fields=id,variants`,
+        { headers: { 'X-Shopify-Access-Token': shopifyToken } },
+      );
+      if (!dupVariantsRes.ok) {
+        return NextResponse.json({
+          error: `Duplicate variant fetch failed: ${dupVariantsRes.status}`,
+          detail: await dupVariantsRes.text().catch(() => ''),
+        }, { status: 502 });
+      }
+      const dupVariantsPayload = await dupVariantsRes.json();
+      const dupVariants: Array<{ id: number }> = dupVariantsPayload?.product?.variants ?? [];
+      for (const [index, pricing] of Array.from(storefrontPricingByVariantIndex.entries())) {
+        const dupVariant = dupVariants[index];
+        if (!dupVariant?.id) continue;
+        const variantUpdateRes = await fetch(
+          `https://${shopifyUrl}/admin/api/2024-01/variants/${dupVariant.id}.json`,
+          {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': shopifyToken },
+            body: JSON.stringify({
+              variant: {
+                id: dupVariant.id,
+                price: pricing.price,
+                compare_at_price: pricing.compare_at_price,
+              },
+            }),
+          },
+        );
+        if (!variantUpdateRes.ok) {
+          return NextResponse.json({
+            error: `Duplicate variant pricing update failed: ${variantUpdateRes.status}`,
+            detail: await variantUpdateRes.text().catch(() => ''),
+          }, { status: 502 });
+        }
+      }
+    }
+
     // 4b. Optional: force the handle to an exact value. Required when the URL is hard-coded into ad
     //     creatives (e.g. /products/kryo-uae) — Shopify auto-slugifies the title and may collide.
     let finalHandle: string = newHandle;
@@ -330,7 +409,7 @@ export async function POST(request: NextRequest) {
       .from('landing_pages')
       .select('id')
       .eq('user_id', TOM_USER_ID)
-      .eq('shopify_url', `https://${shopifyUrl}/products/${SOURCE_PRODUCT_HANDLE}`)
+      .eq('shopify_url', `https://${shopifyUrl}/products/${body.source_handle}`)
       .eq('variant_angle', 'control')
       .maybeSingle();
 
@@ -348,7 +427,7 @@ export async function POST(request: NextRequest) {
         parent_page_id: parentPage?.id ?? null,
         variant_angle: body.variant_angle,
         experiment_id: body.experiment_id ?? null,
-        notes: `Duplicated from /products/${SOURCE_PRODUCT_HANDLE} on ${new Date().toISOString().split('T')[0]}. ${body.hypothesis ? 'Hypothesis: ' + body.hypothesis : ''} Title override: yes. Body overrides applied: ${appliedChanges.length}.${overridesSuppliedButUnmatched ? ' (overrides supplied but find strings did not match — title-only change)' : ''}${body.publish_active ? ` [v2: published ACTIVE to ${publicationsPublished.length} publication(s)]` : ' [v1: DRAFT pending approval]'}`,
+        notes: `Duplicated from /products/${body.source_handle} on ${new Date().toISOString().split('T')[0]}. ${body.hypothesis ? 'Hypothesis: ' + body.hypothesis : ''} Title override: yes. Body overrides applied: ${appliedChanges.length}.${overridesSuppliedButUnmatched ? ' (overrides supplied but find strings did not match — title-only change)' : ''}${body.publish_active ? ` [v2: published ACTIVE to ${publicationsPublished.length} publication(s)]` : ' [v1: DRAFT pending approval]'}${storefrontPricingByVariantIndex.size > 0 ? ` [storefront pricing copied for ${body.storefront_country}]` : ''}`,
       })
       .select('*')
       .single();
@@ -363,11 +442,32 @@ export async function POST(request: NextRequest) {
       'product_cloned_draft',
       'shopify_product',
       newProductId,
-      { source_handle: SOURCE_PRODUCT_HANDLE, source_id: sourceProductId, status: 'active' },
+      { source_handle: body.source_handle, source_id: sourceProductId, status: 'active' },
       { handle: finalHandle, status: 'draft', title: body.target_name },
       'scheduled_agent',
-      { variant_angle: body.variant_angle, changes_applied: appliedChanges, overrides_unmatched: overridesSuppliedButUnmatched, full_replace_applied: fullReplaceApplied, body_html_bytes: variantBodyHtml.length, landing_page_id: lpRow?.id, handle_conflict: handleConflict, metafields_written: metafieldsWritten },
+      { variant_angle: body.variant_angle, changes_applied: appliedChanges, overrides_unmatched: overridesSuppliedButUnmatched, full_replace_applied: fullReplaceApplied, body_html_bytes: variantBodyHtml.length, landing_page_id: lpRow?.id, handle_conflict: handleConflict, metafields_written: metafieldsWritten, source_handle: body.source_handle, storefront_pricing_country: body.storefront_country ?? null, storefront_pricing_copied: storefrontPricingByVariantIndex.size },
     );
+
+    try {
+      const sb = svcClient();
+      await logMarketingChange(sb, {
+        source: 'launch.clone-page',
+        surface: 'shopify_page',
+        objectType: 'shopify_product',
+        objectId: String(newProductId),
+        objectName: finalHandle,
+        market: 'AE',
+        productHandle: 'kryo2',
+        changeType: 'clone_page',
+        beforePayload: { source_handle: body.source_handle, source_title: sourceProduct.title },
+        afterPayload: { shopify_product_id: newProductId, handle: finalHandle, target_name: body.target_name, publish_active: body.publish_active ?? false },
+        note: body.hypothesis ?? `Clone page for angle ${body.variant_angle}`,
+        experimentId: body.experiment_id ?? null,
+        metadata: { variant_angle: body.variant_angle, applied_changes: appliedChanges.length, full_replace_applied: fullReplaceApplied, source_handle: body.source_handle, storefront_pricing_country: body.storefront_country ?? null, storefront_pricing_copied: storefrontPricingByVariantIndex.size },
+      });
+    } catch (error) {
+      console.warn('marketing change log failed (non-fatal):', error);
+    }
 
     return NextResponse.json({
       success: true,
@@ -386,6 +486,9 @@ export async function POST(request: NextRequest) {
       handle_conflict: handleConflict,                          // null if requested handle was applied; { requested, actual } if Shopify suffixed
       metafields_written: metafieldsWritten,                    // number of metafields successfully set
       metafield_errors: metafieldErrors,                        // userErrors from metafieldsSet (non-fatal, surfaced for caller)
+      source_handle: body.source_handle,
+      storefront_pricing_country: body.storefront_country ?? null,
+      storefront_pricing_copied: storefrontPricingByVariantIndex.size,
       note: body.publish_active
         ? `Product cloned ACTIVE and published to ${publicationsPublished.length} publication(s). preview_url is reachable from any geo. Run QC + inbox-write next.`
         : 'Product cloned in DRAFT. Approve via platform_inbox UPDATE status=approved → process-approvals will set status=active (publishes to storefront).',

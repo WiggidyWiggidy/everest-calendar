@@ -1,10 +1,14 @@
-// Upload an image to Shopify Files via stagedUploadsCreate + fileCreate.
+// Upload an image OR video to Shopify Files via stagedUploadsCreate + fileCreate.
 // Auth: x-sync-secret = MARKETING_SYNC_SECRET.
 //
 // POST /api/marketing/shopify/upload-image
-// Body: { filename: "kryo_v4_hero_white.png", data_b64: "<base64>", mime_type: "image/png", alt?: "..." }
+// Body: { filename: "kryo_v4_hero_white.png", data_b64: "<base64>", mime_type?: "image/png", alt?: "..." }
 //
-// Returns: { success, gid, filename, cdn_url, file_status }
+// Resource detection: derived from filename extension.
+//   .png/.jpg/.jpeg/.webp/.gif → resource: IMAGE, contentType: IMAGE
+//   .mp4/.mov/.webm            → resource: VIDEO, contentType: VIDEO
+//
+// Returns: { success, gid, filename, cdn_url, file_status, content_type: 'IMAGE'|'VIDEO' }
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getShopifyToken, getShopifyStoreUrl } from '@/lib/shopify-auth';
@@ -28,6 +32,10 @@ interface ShopifyFile {
   fileStatus: 'UPLOADED' | 'PROCESSING' | 'READY' | 'FAILED';
   alt?: string;
   image?: { url: string; width: number; height: number };
+  // Video sources — populated for MediaImage(video) once processed
+  sources?: Array<{ url: string; mimeType: string; width?: number; height?: number; format?: string }>;
+  preview?: { image?: { url: string } };
+  originalSource?: { url: string };
 }
 
 const STAGED_UPLOADS_MUTATION = `
@@ -47,6 +55,11 @@ const FILE_CREATE_MUTATION = `
         fileStatus
         alt
         ... on MediaImage { image { url width height } }
+        ... on Video {
+          sources { url mimeType width height format }
+          preview { image { url } }
+          originalSource { url }
+        }
       }
       userErrors { field message }
     }
@@ -61,6 +74,14 @@ const FILE_NODE_QUERY = `
         fileStatus
         alt
         image { url width height }
+      }
+      ... on Video {
+        id
+        fileStatus
+        alt
+        sources { url mimeType width height format }
+        preview { image { url } }
+        originalSource { url }
       }
     }
   }
@@ -95,13 +116,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'filename + (data_b64 OR source_url) required' }, { status: 400 });
   }
 
+  const lowerName = filename.toLowerCase();
+  const isVideo = /\.(mp4|mov|webm|m4v)$/i.test(lowerName);
   const mimeType = body.mime_type ?? (
-    filename.endsWith('.png') ? 'image/png' :
-    filename.endsWith('.jpg') || filename.endsWith('.jpeg') ? 'image/jpeg' :
-    filename.endsWith('.webp') ? 'image/webp' :
-    filename.endsWith('.gif') ? 'image/gif' :
+    lowerName.endsWith('.png') ? 'image/png' :
+    lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg') ? 'image/jpeg' :
+    lowerName.endsWith('.webp') ? 'image/webp' :
+    lowerName.endsWith('.gif') ? 'image/gif' :
+    lowerName.endsWith('.mp4') ? 'video/mp4' :
+    lowerName.endsWith('.mov') ? 'video/quicktime' :
+    lowerName.endsWith('.webm') ? 'video/webm' :
+    lowerName.endsWith('.m4v') ? 'video/x-m4v' :
     'application/octet-stream'
   );
+  const resource: 'IMAGE' | 'VIDEO' = isVideo ? 'VIDEO' : 'IMAGE';
+  const contentType: 'IMAGE' | 'VIDEO' = resource;
 
   let token: string, storeUrl: string;
   try {
@@ -128,7 +157,7 @@ export async function POST(req: NextRequest) {
       input: [{
         filename,
         mimeType,
-        resource: 'IMAGE',
+        resource,
         fileSize: String(bytes.length),
         httpMethod: 'POST',
       }],
@@ -165,8 +194,8 @@ export async function POST(req: NextRequest) {
     createData = (await gql(storeUrl, token, FILE_CREATE_MUTATION, {
       files: [{
         originalSource: target.resourceUrl,
-        contentType: 'IMAGE',
-        alt: alt ?? filename.replace(/\.[a-z]+$/, ''),
+        contentType,
+        alt: alt ?? filename.replace(/\.[a-z0-9]+$/i, ''),
       }],
     })) as { fileCreate: { files: ShopifyFile[]; userErrors: Array<{ field: string[]; message: string }> } };
   } catch (e) {
@@ -180,12 +209,18 @@ export async function POST(req: NextRequest) {
   const file = createData.fileCreate.files[0];
   if (!file) return NextResponse.json({ error: 'fileCreate returned no file' }, { status: 502 });
 
-  // Step 4: poll node(id) until image.url is populated (Shopify async-processes images)
+  // Step 4: poll node(id) until processed.
+  // Images: image.url populated. Videos: sources[] populated (longer process — up to 30s+).
+  // Use higher poll budget for video.
+  const maxPolls = isVideo ? 30 : 12;
   let resolved: ShopifyFile = file;
-  for (let i = 0; i < 12; i++) {
-    if (resolved.image?.url) break;
+  for (let i = 0; i < maxPolls; i++) {
+    const ready =
+      (!isVideo && resolved.image?.url) ||
+      (isVideo && (resolved.sources?.length ?? 0) > 0);
+    if (ready) break;
     if (resolved.fileStatus === 'FAILED') break;
-    await new Promise((r) => setTimeout(r, 1000));
+    await new Promise((r) => setTimeout(r, 1500));
     try {
       const node = (await gql(storeUrl, token, FILE_NODE_QUERY, { id: file.id })) as { node: ShopifyFile };
       resolved = node.node ?? resolved;
@@ -195,13 +230,31 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Pick best CDN URL based on type
+  let cdnUrl: string | null = null;
+  let width: number | null = null;
+  let height: number | null = null;
+  if (isVideo) {
+    // Prefer mp4 source if multiple, fall back to first
+    const mp4 = resolved.sources?.find((s) => s.mimeType === 'video/mp4') ?? resolved.sources?.[0];
+    cdnUrl = mp4?.url ?? resolved.preview?.image?.url ?? resolved.originalSource?.url ?? null;
+    width = mp4?.width ?? null;
+    height = mp4?.height ?? null;
+  } else {
+    cdnUrl = resolved.image?.url ?? null;
+    width = resolved.image?.width ?? null;
+    height = resolved.image?.height ?? null;
+  }
+
   return NextResponse.json({
-    success: !!resolved.image?.url,
+    success: !!cdnUrl,
     gid: resolved.id,
     file_status: resolved.fileStatus,
-    cdn_url: resolved.image?.url ?? null,
-    width: resolved.image?.width ?? null,
-    height: resolved.image?.height ?? null,
+    content_type: contentType,
+    cdn_url: cdnUrl,
+    preview_image_url: isVideo ? resolved.preview?.image?.url ?? null : null,
+    width,
+    height,
     filename,
     mime_type: mimeType,
     bytes_uploaded: bytes.length,

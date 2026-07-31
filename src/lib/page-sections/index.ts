@@ -18,6 +18,14 @@ export type {
   CryoEngineDeepDiveProps,
   PressLogosProps,
   LifestyleStripProps,
+  MarqueeBandProps,
+  BentoGridProps,
+  BentoCardProps,
+  StickyScrollytellingProps,
+  StickyScrollytellingPanel,
+  ComparisonSliderProps,
+  ScrollRevealMetricsProps,
+  ScrollRevealMetric,
 } from './types';
 
 export { BASE_CSS } from './_helpers';
@@ -34,6 +42,11 @@ export { renderRiskReversal } from './riskReversal';
 export { renderCryoEngineDeepDive } from './cryoEngineDeepDive';
 export { renderPressLogos } from './pressLogos';
 export { renderLifestyleStrip } from './lifestyleStrip';
+export { renderMarqueeBand } from './marqueeBand';
+export { renderBentoGrid } from './bentoGrid';
+export { renderStickyScrollytelling } from './stickyScrollytelling';
+export { renderComparisonSlider } from './comparisonSlider';
+export { renderScrollRevealMetrics } from './scrollRevealMetrics';
 
 import type { SectionSpec, SectionOutput } from './types';
 import { renderHeroVideo } from './heroVideo';
@@ -48,6 +61,11 @@ import { renderRiskReversal } from './riskReversal';
 import { renderCryoEngineDeepDive } from './cryoEngineDeepDive';
 import { renderPressLogos } from './pressLogos';
 import { renderLifestyleStrip } from './lifestyleStrip';
+import { renderMarqueeBand } from './marqueeBand';
+import { renderBentoGrid } from './bentoGrid';
+import { renderStickyScrollytelling } from './stickyScrollytelling';
+import { renderComparisonSlider } from './comparisonSlider';
+import { renderScrollRevealMetrics } from './scrollRevealMetrics';
 
 // Dispatcher: render a section by spec.
 export function renderSection(spec: SectionSpec): SectionOutput {
@@ -64,6 +82,11 @@ export function renderSection(spec: SectionSpec): SectionOutput {
     case 'cryo_engine_deep_dive': return renderCryoEngineDeepDive(spec.props);
     case 'press_logos':           return renderPressLogos(spec.props);
     case 'lifestyle_strip':       return renderLifestyleStrip(spec.props);
+    case 'marquee_band':          return renderMarqueeBand(spec.props);
+    case 'bento_grid':            return renderBentoGrid(spec.props);
+    case 'sticky_scrollytelling': return renderStickyScrollytelling(spec.props);
+    case 'comparison_slider':     return renderComparisonSlider(spec.props);
+    case 'scroll_reveal_metrics': return renderScrollRevealMetrics(spec.props);
     default: {
       const _exhaustive: never = spec;
       throw new Error(`Unknown section type: ${JSON.stringify(_exhaustive)}`);

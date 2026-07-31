@@ -23,7 +23,12 @@ export type PremiumSectionType =
   | 'risk_reversal'
   | 'cryo_engine_deep_dive'
   | 'press_logos'
-  | 'lifestyle_strip';
+  | 'lifestyle_strip'
+  | 'marquee_band'
+  | 'bento_grid'
+  | 'sticky_scrollytelling'
+  | 'comparison_slider'
+  | 'scroll_reveal_metrics';
 
 export interface HeroVideoProps {
   eyebrow?: string;
@@ -118,6 +123,85 @@ export interface LifestyleStripProps {
   images: Array<{ url: string; alt?: string; caption?: string }>;
 }
 
+// ── New premium-quality sections (CSS-only, body_html-safe) ──
+
+export interface MarqueeBandProps {
+  items: string[];
+  speed?: number;          // seconds per loop, default 40
+  direction?: 'left' | 'right';
+  variant?: 'dark' | 'light' | 'accent';
+  separator?: string;      // default '·'
+  aria_label?: string;
+}
+
+export interface BentoCardProps {
+  size?: 'large' | 'medium' | 'small';
+  eyebrow?: string;
+  headline?: string;
+  body?: string;
+  metric_value?: string;
+  metric_label?: string;
+  accent_image?: string;
+  accent_alt?: string;
+  cta_text?: string;
+  cta_href?: string;
+}
+
+export interface BentoGridProps {
+  eyebrow?: string;
+  headline?: string;
+  sub?: string;
+  cards: BentoCardProps[];   // up to 5 (hero + 2 medium + 2 small)
+}
+
+export interface StickyScrollytellingPanel {
+  eyebrow?: string;
+  headline?: string;
+  body?: string;
+  metric_value?: string;
+  metric_label?: string;
+}
+
+export interface StickyScrollytellingProps {
+  eyebrow?: string;
+  headline?: string;
+  hero_media_url: string;
+  hero_media_alt?: string;
+  hero_media_is_video?: boolean;
+  panels: StickyScrollytellingPanel[];
+  media_position?: 'left' | 'right';
+}
+
+export interface ComparisonSliderProps {
+  eyebrow?: string;
+  headline?: string;
+  sub?: string;
+  before_image_url: string;
+  before_alt?: string;
+  before_label?: string;
+  after_image_url: string;
+  after_alt?: string;
+  after_label?: string;
+  initial_position?: number;   // 0-100, default 50
+}
+
+export interface ScrollRevealMetric {
+  value: string;                  // displayed string ('1°C', 'AED 3,990')
+  label: string;
+  sub?: string;
+  numeric_target?: number;        // optional: animate count from 0 → this number
+  decimals?: number;              // for numeric_target rounding
+  value_prefix?: string;          // e.g. 'AED ' before counter
+  value_suffix?: string;          // e.g. '°C' after counter
+}
+
+export interface ScrollRevealMetricsProps {
+  eyebrow?: string;
+  headline?: string;
+  layout?: 'horizontal' | 'stacked';
+  metrics: ScrollRevealMetric[];
+}
+
 export type SectionSpec =
   | { type: 'hero_video'; props: HeroVideoProps }
   | { type: 'sticky_cta_bar'; props: StickyCtaBarProps }
@@ -130,7 +214,12 @@ export type SectionSpec =
   | { type: 'risk_reversal'; props: RiskReversalProps }
   | { type: 'cryo_engine_deep_dive'; props: CryoEngineDeepDiveProps }
   | { type: 'press_logos'; props: PressLogosProps }
-  | { type: 'lifestyle_strip'; props: LifestyleStripProps };
+  | { type: 'lifestyle_strip'; props: LifestyleStripProps }
+  | { type: 'marquee_band'; props: MarqueeBandProps }
+  | { type: 'bento_grid'; props: BentoGridProps }
+  | { type: 'sticky_scrollytelling'; props: StickyScrollytellingProps }
+  | { type: 'comparison_slider'; props: ComparisonSliderProps }
+  | { type: 'scroll_reveal_metrics'; props: ScrollRevealMetricsProps };
 
 export interface BodyHtmlSpec {
   sections: SectionSpec[];

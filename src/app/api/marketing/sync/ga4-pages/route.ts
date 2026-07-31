@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
+import { createSign } from 'crypto';
 
 const DEFAULT_USER_ID = '174f2dff-7a96-464c-a919-b473c328d531';
 
@@ -23,36 +24,91 @@ async function authenticateSync(request: NextRequest) {
   return { authenticated: false, userId: null };
 }
 
-async function getGoogleAccessToken(): Promise<string | null> {
+async function getServiceAccountAccessToken(): Promise<string | null> {
   const saJson = process.env.GA_SERVICE_ACCOUNT_JSON;
   if (!saJson) return null;
-  const sa = JSON.parse(Buffer.from(saJson, 'base64').toString('utf-8'));
-  const now = Math.floor(Date.now() / 1000);
-  const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
-  const payload = Buffer.from(JSON.stringify({
-    iss: sa.client_email,
-    scope: 'https://www.googleapis.com/auth/analytics.readonly',
-    aud: 'https://oauth2.googleapis.com/token',
-    iat: now, exp: now + 3600,
-  })).toString('base64url');
-  const crypto = await import('crypto');
-  const sign = crypto.createSign('RSA-SHA256');
-  sign.update(`${header}.${payload}`);
-  const signature = sign.sign(sa.private_key, 'base64url');
-  const jwt = `${header}.${payload}.${signature}`;
+  try {
+    const sa = JSON.parse(Buffer.from(saJson, 'base64').toString('utf-8'));
+    const now = Math.floor(Date.now() / 1000);
+    const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
+    const payload = Buffer.from(JSON.stringify({
+      iss: sa.client_email,
+      scope: 'https://www.googleapis.com/auth/analytics.readonly',
+      aud: 'https://oauth2.googleapis.com/token',
+      iat: now, exp: now + 3600,
+    })).toString('base64url');
+    const sign = createSign('RSA-SHA256');
+    sign.update(`${header}.${payload}`);
+    const signature = sign.sign(sa.private_key, 'base64url');
+    const jwt = `${header}.${payload}.${signature}`;
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
+    });
+    if (!tokenRes.ok) return null;
+    const tokenData = await tokenRes.json();
+    return tokenData.access_token;
+  } catch {
+    return null;
+  }
+}
+
+async function getOAuthAccessToken(): Promise<string | null> {
+  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
+  if (!clientId || !clientSecret || !refreshToken) return null;
   const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token',
+    }),
   });
   if (!tokenRes.ok) return null;
   const tokenData = await tokenRes.json();
   return tokenData.access_token;
 }
 
+async function getGoogleAccessToken(): Promise<{ accessToken: string | null; authMethod: string }> {
+  const serviceAccountToken = await getServiceAccountAccessToken();
+  if (serviceAccountToken) return { accessToken: serviceAccountToken, authMethod: 'service_account' };
+  const oauthToken = await getOAuthAccessToken();
+  if (oauthToken) return { accessToken: oauthToken, authMethod: 'oauth_refresh_token' };
+  return { accessToken: null, authMethod: 'none' };
+}
+
 interface GA4Row {
   dimensionValues?: Array<{ value?: string }>;
   metricValues?: Array<{ value?: string }>;
+}
+
+function mergeMetricReports(primaryRows: GA4Row[], secondaryRows: GA4Row[]): GA4Row[] {
+  const byKey = new Map<string, GA4Row>();
+  for (const row of primaryRows) {
+    const key = JSON.stringify((row.dimensionValues ?? []).map((dim) => dim?.value ?? ''));
+    byKey.set(key, {
+      dimensionValues: row.dimensionValues ?? [],
+      metricValues: [...(row.metricValues ?? [])],
+    });
+  }
+  for (const row of secondaryRows) {
+    const key = JSON.stringify((row.dimensionValues ?? []).map((dim) => dim?.value ?? ''));
+    const existing = byKey.get(key);
+    if (existing) {
+      existing.metricValues = [...(existing.metricValues ?? []), ...(row.metricValues ?? [])];
+    } else {
+      byKey.set(key, {
+        dimensionValues: row.dimensionValues ?? [],
+        metricValues: row.metricValues ?? [],
+      });
+    }
+  }
+  return Array.from(byKey.values());
 }
 
 export async function POST(request: NextRequest) {
@@ -76,36 +132,18 @@ export async function POST(request: NextRequest) {
       if (body.kryo_only === false) kryoOnly = false;
     } catch { /* defaults */ }
 
-    const accessToken = await getGoogleAccessToken();
+    let { accessToken, authMethod } = await getGoogleAccessToken();
     if (!accessToken) return NextResponse.json({ error: 'Failed to get Google access token' }, { status: 500 });
 
     const since = new Date(Date.now() - days * 86400000).toISOString().split('T')[0];
     const until = new Date(Date.now() - 86400000).toISOString().split('T')[0];
 
-    // Single GA4 runReport — date × pagePath × pageTitle with the rich engagement metric set
-    const reportBody = {
+    const reportBase = {
       dateRanges: [{ startDate: since, endDate: until }],
       dimensions: [
         { name: 'date' },
         { name: 'pagePath' },
         { name: 'pageTitle' },
-      ],
-      metrics: [
-        { name: 'sessions' },
-        { name: 'screenPageViews' },
-        { name: 'totalUsers' },
-        { name: 'newUsers' },
-        { name: 'activeUsers' },
-        { name: 'averageSessionDuration' },
-        { name: 'userEngagementDuration' },
-        { name: 'engagementRate' },
-        { name: 'bounceRate' },
-        { name: 'eventCount' },
-        { name: 'addToCarts' },
-        { name: 'checkouts' },
-        { name: 'ecommercePurchases' },
-        { name: 'purchaseRevenue' },
-        { name: 'itemsViewed' },
       ],
       // Filter to KRYO-related pages by default. /products/kryo* + /pages/kryo*.
       ...(kryoOnly && {
@@ -122,22 +160,55 @@ export async function POST(request: NextRequest) {
       limit: 10000,
     };
 
-    const reportRes = await fetch(
+    const metricBatchA = [
+      { name: 'sessions' },
+      { name: 'screenPageViews' },
+      { name: 'totalUsers' },
+      { name: 'newUsers' },
+      { name: 'activeUsers' },
+      { name: 'averageSessionDuration' },
+      { name: 'userEngagementDuration' },
+      { name: 'engagementRate' },
+      { name: 'bounceRate' },
+      { name: 'eventCount' },
+    ];
+    const metricBatchB = [
+      { name: 'addToCarts' },
+      { name: 'checkouts' },
+      { name: 'ecommercePurchases' },
+      { name: 'purchaseRevenue' },
+      { name: 'itemsViewed' },
+    ];
+
+    const runReport = async (token: string, metrics: Array<{ name: string }>) => fetch(
       `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
       {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(reportBody),
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...reportBase, metrics }),
       }
     );
 
-    if (!reportRes.ok) {
-      const err = await reportRes.text();
-      return NextResponse.json({ error: 'GA4 runReport failed', status: reportRes.status, detail: err.slice(0, 1000) }, { status: 502 });
+    let reportResA = await runReport(accessToken, metricBatchA);
+    let reportResB = await runReport(accessToken, metricBatchB);
+    if ((!reportResA.ok || !reportResB.ok) && authMethod === 'service_account') {
+      const oauthToken = await getOAuthAccessToken();
+      if (oauthToken) {
+        reportResA = await runReport(oauthToken, metricBatchA);
+        reportResB = await runReport(oauthToken, metricBatchB);
+        accessToken = oauthToken;
+        authMethod = 'oauth_refresh_token_after_service_account_failed';
+      }
     }
 
-    const json = await reportRes.json();
-    const rows: GA4Row[] = json.rows ?? [];
+    if (!reportResA.ok || !reportResB.ok) {
+      const err = !reportResA.ok ? await reportResA.text() : await reportResB.text();
+      const status = !reportResA.ok ? reportResA.status : reportResB.status;
+      return NextResponse.json({ error: 'GA4 runReport failed', status, detail: err.slice(0, 1000) }, { status: 502 });
+    }
+
+    const [jsonA, jsonB] = await Promise.all([reportResA.json(), reportResB.json()]);
+    const rows: GA4Row[] = mergeMetricReports(jsonA.rows ?? [], jsonB.rows ?? []);
 
     const supabase = auth.userId ? await createClient() : createServiceClient();
     void DEFAULT_USER_ID;
@@ -212,6 +283,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      auth_method: authMethod,
       kryo_only: kryoOnly,
       days_range: { since, until },
       rows_returned: rows.length,

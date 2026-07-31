@@ -29,10 +29,16 @@ interface DeployRequest {
   value: string;
 }
 
-const ALLOWED_PREFIXES = ['sections/kryo-', 'sections/_kryo-', 'templates/product.kryo-'];
+const ALLOWED_PREFIXES = [
+  'sections/kryo-',
+  'sections/_kryo-',
+  'templates/product.kryo',
+  'blocks/ai_gen_block_',
+];
+const ALLOWED_EXACT_KEYS = ['templates/cart.json'];
 
 function isAllowedKey(key: string): boolean {
-  return ALLOWED_PREFIXES.some((p) => key.startsWith(p));
+  return ALLOWED_EXACT_KEYS.includes(key) || ALLOWED_PREFIXES.some((p) => key.startsWith(p));
 }
 
 export async function POST(request: NextRequest) {
@@ -55,8 +61,8 @@ export async function POST(request: NextRequest) {
   }
   if (!isAllowedKey(body.key)) {
     return NextResponse.json({
-      error: 'Refused: key must start with sections/kryo-, sections/_kryo-, or templates/product.kryo-',
-      detail: `Got: "${body.key}". This route is strictly additive to protect existing theme files.`,
+      error: 'Refused: key must be templates/cart.json or start with sections/kryo-, sections/_kryo-, templates/product.kryo, or blocks/ai_gen_block_',
+      detail: `Got: "${body.key}". This route is restricted to vetted KRYO/cart assets to protect existing theme files.`,
     }, { status: 422 });
   }
   if (typeof body.value !== 'string' || body.value.length === 0) {

@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getShopifyToken, getShopifyStoreUrl } from '@/lib/shopify-auth';
 import { createClient } from '@supabase/supabase-js';
 import { auditLog } from '@/lib/marketing-safety';
+import { logMarketingChange } from '@/lib/marketing/change-log';
 
 const TOM_USER_ID = '174f2dff-7a96-464c-a919-b473c328d531';
 
@@ -28,6 +29,8 @@ interface ConfigureRequest {
   template_suffix?: string | null;
   clear_body_html?: boolean;
   body_html?: string;
+  title?: string;
+  handle?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -45,8 +48,8 @@ export async function POST(request: NextRequest) {
   if (!body.product_id || typeof body.product_id !== 'string') {
     return NextResponse.json({ error: 'product_id (numeric string) required' }, { status: 400 });
   }
-  if (body.template_suffix === undefined && body.clear_body_html !== true && body.body_html === undefined) {
-    return NextResponse.json({ error: 'Specify at least one of: template_suffix, clear_body_html=true, body_html' }, { status: 400 });
+  if (body.template_suffix === undefined && body.clear_body_html !== true && body.body_html === undefined && body.title === undefined && body.handle === undefined) {
+    return NextResponse.json({ error: 'Specify at least one of: template_suffix, clear_body_html=true, body_html, title, handle' }, { status: 400 });
   }
 
   let shopifyUrl: string;
@@ -59,7 +62,7 @@ export async function POST(request: NextRequest) {
   }
 
   const beforeRes = await fetch(
-    `https://${shopifyUrl}/admin/api/2025-04/products/${body.product_id}.json?fields=id,handle,template_suffix,status`,
+    `https://${shopifyUrl}/admin/api/2025-04/products/${body.product_id}.json?fields=id,handle,title,template_suffix,status`,
     { headers: { 'X-Shopify-Access-Token': shopifyToken } },
   );
   if (!beforeRes.ok) {
@@ -69,10 +72,12 @@ export async function POST(request: NextRequest) {
     }, { status: 502 });
   }
   const beforePayload = await beforeRes.json();
-  const before = beforePayload.product as { id: number; handle: string; template_suffix: string | null; status: string };
+  const before = beforePayload.product as { id: number; handle: string; title: string; template_suffix: string | null; status: string };
 
   const input: Record<string, unknown> = { id: `gid://shopify/Product/${body.product_id}` };
   if (body.template_suffix !== undefined) input.templateSuffix = body.template_suffix;
+  if (body.title !== undefined) input.title = body.title;
+  if (body.handle !== undefined) input.handle = body.handle;
   if (body.body_html !== undefined) input.descriptionHtml = body.body_html;
   else if (body.clear_body_html === true) input.descriptionHtml = '';
 
@@ -86,7 +91,7 @@ export async function POST(request: NextRequest) {
       query: `
         mutation ConfigureProduct($input: ProductInput!) {
           productUpdate(input: $input) {
-            product { id handle templateSuffix status }
+            product { id handle title templateSuffix status }
             userErrors { field message }
           }
         }
@@ -96,7 +101,7 @@ export async function POST(request: NextRequest) {
   });
 
   const gqlText = await gqlRes.text();
-  let gqlPayload: { data?: { productUpdate?: { product?: { id: string; handle: string; templateSuffix: string | null; status: string }; userErrors?: Array<{ field: string[]; message: string }> } }; errors?: unknown } | null = null;
+  let gqlPayload: { data?: { productUpdate?: { product?: { id: string; handle: string; title: string; templateSuffix: string | null; status: string }; userErrors?: Array<{ field: string[]; message: string }> } }; errors?: unknown } | null = null;
   try { gqlPayload = JSON.parse(gqlText); } catch { /* not JSON */ }
 
   if (!gqlRes.ok || !gqlPayload || gqlPayload.errors) {
@@ -124,11 +129,25 @@ export async function POST(request: NextRequest) {
       'product_configured',
       'shopify_product',
       String(body.product_id),
-      { template_suffix: before.template_suffix, status: before.status },
-      { template_suffix: updated?.templateSuffix ?? null, status: updated?.status ?? before.status },
+      { title: before.title, handle: before.handle, template_suffix: before.template_suffix, status: before.status },
+      { title: updated?.title ?? before.title, handle: updated?.handle ?? before.handle, template_suffix: updated?.templateSuffix ?? null, status: updated?.status ?? before.status },
       'scheduled_agent',
       { product_id: body.product_id, applied: { template_suffix: body.template_suffix, clear_body_html: body.clear_body_html ?? false } },
     );
+    await logMarketingChange(sb, {
+      source: 'theme.configure-product',
+      surface: 'shopify_page',
+      objectType: 'shopify_product',
+      objectId: String(body.product_id),
+      objectName: updated?.handle ?? before.handle,
+      market: 'AE',
+      productHandle: 'kryo2',
+      changeType: 'configure_product',
+      beforePayload: { title: before.title, handle: before.handle, template_suffix: before.template_suffix, status: before.status },
+      afterPayload: { title: updated?.title ?? before.title, handle: updated?.handle ?? before.handle, template_suffix: updated?.templateSuffix ?? null, status: updated?.status ?? before.status },
+      note: 'Template / body / title / handle configuration updated via configure-product route',
+      metadata: { applied: { template_suffix: body.template_suffix, clear_body_html: body.clear_body_html ?? false, title: body.title, handle: body.handle } },
+    });
   } catch (e) {
     console.warn('audit log failed (non-fatal):', e);
   }
@@ -137,7 +156,7 @@ export async function POST(request: NextRequest) {
     success: true,
     product_id: body.product_id,
     handle: updated?.handle ?? before.handle,
-    before: { template_suffix: before.template_suffix, status: before.status },
-    after: { template_suffix: updated?.templateSuffix ?? null, status: updated?.status ?? before.status },
+    before: { title: before.title, handle: before.handle, template_suffix: before.template_suffix, status: before.status },
+    after: { title: updated?.title ?? before.title, handle: updated?.handle ?? before.handle, template_suffix: updated?.templateSuffix ?? null, status: updated?.status ?? before.status },
   });
 }
