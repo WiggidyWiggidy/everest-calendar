@@ -27,6 +27,21 @@ ALL LLM calls route through Max plan OAuth. Never use Anthropic API keys or Open
 - If 2 consecutive approaches fail, STOP and ask Tom before trying a 3rd
 - When uncertain, say "I haven't verified this yet" -- never state assumptions as facts
 
+### DATA FRESHNESS GATE (CRITICAL -- added 2026-07-08 after a stale-data near-miss)
+
+The failure this prevents: pulling a number from a table/cache, not checking WHEN it was measured, and building a recommendation on it. This happened -- a page-speed recommendation was nearly made on 2-month-old data that was completely wrong when re-measured. It cannot happen again.
+
+**Hard rules -- no exceptions:**
+1. **Every number carries its as-of date, checked at the moment of use.** A metric without a visible measured-at date is forbidden in any analysis or recommendation -- same status as a fabricated number. Always read the row's `max(date)`/`measured_at`/`fetched_at` before using it.
+2. **Freshness thresholds. If the newest available datapoint is older than its threshold, it is INVALID for a recommendation.** Re-measure/re-sync FIRST, or make the first sentence "No current data -- cannot recommend until refreshed."
+   - Page performance / live page state / anything that changes on deploy: **stale after 24h** -- re-measure before ANY recommendation
+   - Ad + traffic metrics: stale after 24h -- re-sync first
+   - Conversion / funnel / intent: stale after 48h
+   - Datasheet specs / benchmarks: longer, but still date-tagged
+3. **Before ANY recommendation to act, run the freshness check on every input.** If one input is stale, the recommendation is BLOCKED until refreshed. Say you are refreshing, refresh, then recommend.
+4. **The tell you are failing:** you are about to recommend an action and you have NOT confirmed when the underlying data was measured. STOP. Check the date. Refresh if stale.
+5. **When you measure, record the method AND the as-of time AND the conditions** (mobile vs desktop, throttling) so the next reader can judge freshness. A number without its conditions is half a number.
+
 ### CAD File Safety
 
 - CAD files: `/Users/happy/Desktop/ISU001_SHELL_CAD/` (primary, git) and `everest-calendar/cad/shell/` (backup)
@@ -140,3 +155,23 @@ Never use status values outside those listed -- Postgres CHECK constraints will 
 After every task, always end with these two lines:
 - **Next**: Single most impactful action to take now, and why
 - **Gap**: One thing that's still missing, unverified, or could break
+
+---
+
+# Meta Ads operating rules (added 2026-07-28)
+
+This project uses the official Meta Ads MCP server (`mcp__meta-ads__*`). Optimise for correct decisions and minimal tool usage.
+
+- Use Meta MCP only when current account data is required. Read `.claude/meta/` context and the latest relevant `reports/` file first.
+- For a normal request, use at most 3 Meta MCP calls: one summary query, one targeted drill-down, one optional creative/object lookup.
+- Query the narrowest level, date range, fields, filters and row limit that can answer the question. Never pull lifetime data or every object by default.
+- Start at campaign level. Drill into ad sets or ads only for material spend, material change, or a specific user question.
+- One breakdown per query, only after aggregate performance shows a reason.
+- Treat today and very recent conversion data as provisional. State account timezone, reporting window and attribution basis used.
+- Separate facts returned by Meta from calculations, interpretations and recommendations. Never invent missing metrics.
+- Use commercial thresholds in `.claude/meta/account-context.md`; do not substitute generic benchmarks when business economics are available.
+- Never create, edit, pause, delete, duplicate, publish, change budget/bid/status, or otherwise mutate Meta objects unless the user explicitly invokes `/meta-change` or unmistakably requests that exact change.
+- Before any mutation: read the current object, show an exact change preview and rollback, make the smallest change, then verify it.
+- Save useful completed analyses as compact Markdown in `reports/`. Do not save access tokens, secrets or giant raw API payloads.
+
+Skills: `/meta-setup`, `/meta-daily`, `/meta-audit`, `/meta-creative`, `/meta-experiment`, `/meta-change`, `/meta-verify`.
