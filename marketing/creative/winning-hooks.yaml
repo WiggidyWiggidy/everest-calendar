@@ -1,0 +1,14 @@
+# Evidence-linked KRYO hooks.
+hooks:
+  - hook_id: plunge_is_dead
+    angle_id: anti_tub_replacement
+    status: historical_winner
+    promise: "Cold exposure without owning a plunge."
+    evidence: "Historical Meta winner through 2026-07-16. Current paid verdicts blocked while ads are off."
+    allowed_use: "Historical seed for paused ad variations and LP message match."
+  - hook_id: founding_access_aug30
+    angle_id: anti_tub_replacement
+    status: proposed_test
+    promise: "Secure August 30 dispatch access before the small batch fills."
+    evidence: "Trust/cart hesitation in analyst pack, real August 30 dispatch memory, planned 10-unit scarcity pending Tom confirmation."
+    allowed_use: "Experiment copy only after copy gate and page/ad review."
