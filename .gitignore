@@ -47,3 +47,9 @@ tmp/
 tmp-*.liquid
 supabase/.temp/
 $CODEX_HOME/
+
+# Playwright test artifacts
+test-results/
+playwright-report/
+blob-report/
+.playwright-mcp/
