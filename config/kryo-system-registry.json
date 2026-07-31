@@ -1,0 +1,191 @@
+{
+  "version": "2026-07-25",
+  "policy": "quarantine-first; do not delete until canonical system is stable for 7 days",
+  "website_mutation_policy": "No Shopify/theme/product/ad mutation without Tom explicitly approving a named patch.",
+  "canonical": {
+    "scheduled_task": "kryo-marketing-watch",
+    "shopify_routes": [
+      "shopify/whoami",
+      "shopify/admin-graphql",
+      "shopify/get-product",
+      "theme/info",
+      "theme/asset",
+      "theme/clone-template",
+      "theme/configure-product",
+      "launch/clone-page"
+    ],
+    "commands": [
+      "audit:kryo-source-health",
+      "audit:kryo-shopify-readiness",
+      "gate:kryo-recommendations",
+      "health:kryo-tools",
+      "gate:kryo"
+    ],
+    "data_sources": {
+      "paid_meta_verdicts": "meta_ad_metrics_daily when Pipeboard Meta is connected and there are fresh delivery rows; direct Meta is deprecated fallback only",
+      "onsite_intent": "vw_kryo_intent_daily / attribution_touches",
+      "whatsapp_interest": "attribution_touches where event_type='whatsapp_click'",
+      "shopify_orders_revenue": "shopify_funnel_daily when fresh",
+      "clarity_friction": "clarity_friction_elements / clarity_section_heatmap when fresh",
+      "ga4": "Pipeboard Google Analytics MCP at https://google-analytics.mcp.pipeboard.co/"
+    }
+  },
+  "quarantine": {
+    "scheduled_tasks": [
+      {
+        "name": "kryo-hourly-meta-sync",
+        "status": "manual-only",
+        "reason": "Pipeboard Meta is canonical but ads are off/no fresh delivery rows; duplicate sync path is unsafe for current claims."
+      },
+      {
+        "name": "kryo-daily-ads-briefing",
+        "status": "deprecated",
+        "reason": "Overlaps canonical kryo-marketing-watch."
+      },
+      {
+        "name": "kryo-cost-per-x-monitor",
+        "status": "manual-only",
+        "reason": "Unsafe while Meta data is stale."
+      },
+      {
+        "name": "marketing-data-sync",
+        "status": "deprecated",
+        "reason": "Overlaps canonical watch/source-health flow."
+      },
+      {
+        "name": "marketing-agent",
+        "status": "quarantine",
+        "reason": "Must consume source-health and recommendation gate before recommendations."
+      },
+      {
+        "name": "ad-performance-monitor",
+        "status": "quarantine",
+        "reason": "Current ad performance claims blocked until fresh delivery rows exist."
+      },
+      {
+        "name": "creative-tester",
+        "status": "manual-only",
+        "reason": "Strategy only; no winner claims while Meta is stale."
+      }
+    ],
+    "routes": [
+      {
+        "path": "seed-mock",
+        "status": "quarantine",
+        "reason": "Mock data path; never canonical for KRYO decisions."
+      },
+      {
+        "path": "restore",
+        "status": "manual-only",
+        "reason": "Potentially destructive; explicit approval only."
+      },
+      {
+        "path": "backup/full",
+        "status": "manual-only",
+        "reason": "Legacy broad backup route; prefer targeted Shopify template backups."
+      },
+      {
+        "path": "compose-body-html",
+        "status": "deprecated",
+        "reason": "KRYO pages use theme templates, not body_html composer."
+      },
+      {
+        "path": "execute-proposal",
+        "status": "quarantine",
+        "reason": "Proposal executors must pass source-health/recommendation gate first."
+      },
+      {
+        "path": "experiments/execute",
+        "status": "quarantine",
+        "reason": "No autonomous experiment execution."
+      },
+      {
+        "path": "sync/meta",
+        "status": "manual-only",
+        "reason": "Duplicate Meta sync path; Pipeboard Meta is canonical and direct Meta app is deprecated/deleted."
+      },
+      {
+        "path": "sync/meta-ads",
+        "status": "manual-only",
+        "reason": "Duplicate Meta sync path; Pipeboard Meta is canonical and direct Meta app is deprecated/deleted."
+      },
+      {
+        "path": "sync/meta-ad-insights",
+        "status": "manual-only",
+        "reason": "Duplicate Meta sync path; Pipeboard Meta is canonical and direct Meta app is deprecated/deleted."
+      },
+      {
+        "path": "sync/meta-campaigns",
+        "status": "manual-only",
+        "reason": "Duplicate Meta sync path; Pipeboard Meta is canonical and direct Meta app is deprecated/deleted."
+      },
+      {
+        "path": "sync/meta-dce",
+        "status": "manual-only",
+        "reason": "Duplicate Meta sync path; Pipeboard Meta is canonical and direct Meta app is deprecated/deleted."
+      },
+      {
+        "path": "sync/extract-assets",
+        "status": "manual-only",
+        "reason": "Asset extraction is not required for daily source-health; run only for deliberate creative inventory work."
+      },
+      {
+        "path": "sync/resolve-meta-asset-urls",
+        "status": "manual-only",
+        "reason": "Depends on Meta/creative inventory state; not required for daily KRYO operating health."
+      },
+      {
+        "path": "sync/ga4",
+        "status": "manual-only",
+        "reason": "Legacy service-account route is stale/permission-blocked; Pipeboard Google Analytics is canonical but currently quota-limited."
+      },
+      {
+        "path": "sync/ga4-hourly",
+        "status": "manual-only",
+        "reason": "Legacy service-account route is stale/permission-blocked; Pipeboard Google Analytics is canonical but currently quota-limited."
+      },
+      {
+        "path": "sync/ga4-pages",
+        "status": "manual-only",
+        "reason": "Legacy service-account route is stale/permission-blocked; Pipeboard Google Analytics is canonical but currently quota-limited."
+      },
+      {
+        "path": "sync/gsc",
+        "status": "manual-only",
+        "reason": "GSC permission/access blocked."
+      }
+    ],
+    "connectors": [
+      {
+        "name": "shopify-dev-mcp",
+        "status": "docs-only",
+        "reason": "Live Shopify reads/writes use Vercel marketing API."
+      },
+      {
+        "name": "supabase-mcp",
+        "status": "quarantine-until-token-verified",
+        "reason": "Supabase REST is canonical until MCP credentials are healthy."
+      },
+      {
+        "name": "pipeboard-meta",
+        "status": "canonical-for-meta",
+        "reason": "Connected and usable for Meta reads/backfill; recent delivery status may still be no-spend."
+      },
+      {
+        "name": "analytics-mcp",
+        "status": "deprecated-service-account-fallback",
+        "reason": "Local service-account analytics MCP still returns 403; Pipeboard Google Analytics is canonical for GA4."
+      },
+      {
+        "name": "chrome-devtools",
+        "status": "optional-render-debug",
+        "reason": "Useful for screenshots/debugging, not required for source-health."
+      },
+      {
+        "name": "pipeboard-google-analytics",
+        "status": "canonical-for-ga4",
+        "reason": "Connected and can run GA4 reports for property 353715595."
+      }
+    ]
+  }
+}

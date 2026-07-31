@@ -1,0 +1,57 @@
+{
+  "pages": {
+    "kryo2_": {
+      "handle": "kryo2_",
+      "canonicalUrl": "https://everestlabs.co/products/kryo2_",
+      "sectionId": "blocks_dijJNt",
+      "maxEmptyGapPx": {
+        "desktop": 1500,
+        "mobile": 1900
+      },
+      "requiredMarkers": [
+        {
+          "id": "above_fold_offer",
+          "text": "Founding price AED 3,990",
+          "source": "manifest"
+        },
+        {
+          "id": "mid_difference",
+          "text": "What makes KRYO different?",
+          "source": "manifest"
+        },
+        {
+          "id": "bathroom_setup",
+          "text": "Designed for the bathroom you already use.",
+          "source": "manifest"
+        },
+        {
+          "id": "mid_page_cta",
+          "text": "LOCK IN FOUNDING PRICE",
+          "source": "manifest"
+        },
+        {
+          "id": "reviews_slider_testimonial",
+          "text": "Tom M.",
+          "source": "manifest"
+        }
+      ],
+      "productFormSelectors": [
+        "product-form form[action*='/cart/add']",
+        "form[action*='/cart/add']",
+        "product-form"
+      ],
+      "addToCartSelectors": [
+        "button[name='add']",
+        "product-form button[type='submit']",
+        "form[action*='/cart/add'] button[type='submit']",
+        "button:has-text('Add to Cart')"
+      ],
+      "consoleWarningAllowlist": [
+        "sf_private_access_tokens",
+        "k.clarity.ms/collect",
+        "Refused to frame 'https://shop.app/'",
+        "chrome-error://chromewebdata/"
+      ]
+    }
+  }
+}
