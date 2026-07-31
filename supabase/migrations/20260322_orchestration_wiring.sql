@@ -41,6 +41,7 @@ CREATE POLICY "user_owns_proposals" ON public.system_proposals
   FOR ALL USING (user_id = auth.uid());
 
 -- Allow service role + anon (for API route inserts via log_activity pattern)
+DROP POLICY IF EXISTS "service_write_proposals" ON public.system_proposals;
 CREATE POLICY "service_write_proposals" ON public.system_proposals
   FOR INSERT WITH CHECK (true);
 

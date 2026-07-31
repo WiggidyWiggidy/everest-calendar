@@ -1,0 +1,3 @@
+-- Placeholder for remote-applied migration 20260709032000.
+-- Added to reconcile local migration history with Supabase remote before applying reviewed KRYO measurement-spine migration.
+-- The schema change for this version already exists remotely; do not add SQL here.
