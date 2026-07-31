@@ -1,3 +1,9 @@
+> **SUPERSEDED 2026-07-31 — DO NOT USE.**
+> This file states the 6 completed checkouts were 6 real sales. That is WRONG.
+> `shopify_funnel_daily.checkouts_completed` is a raw Shopify order count that
+> double-counts cart upsells. True customer count is 5 (Feb 1, Mar 1, May 0, Jun 2, Jul 1).
+> See `CORRECTION-2-real-order-counts.md` and `uptime-and-winner-ad-finding.md`.
+
 # CORRECTION — the business is profitable; my baseline was wrong
 
 Date: 2026-07-31. This supersedes the "zero purchases / broken funnel" framing in
