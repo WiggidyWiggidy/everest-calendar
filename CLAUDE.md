@@ -12,6 +12,8 @@ Previous version archived at
 
 ---
 
+**Before any conversion analysis, run [marketing/data-contracts/diagnostic-protocol.md](marketing/data-contracts/diagnostic-protocol.md).**
+
 ## Read before any analysis
 
 | Concern | File |
