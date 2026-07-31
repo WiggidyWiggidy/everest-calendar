@@ -1,32 +1,34 @@
-# Owner Decisions — 2026-07-31
+# Owner Decisions — updated 2026-07-31 after the live-ux-tester lens
 
 ## Decisions only Tom can make
 
-| # | Decision | Why it needs Tom | Blocks |
+| # | Decision | Why it needs Tom | Note |
 |---|---|---|---|
-| 1 | Approve the mobile add-to-cart reproduction test | Touches the live storefront (read-only, no change) | Everything |
-| 2 | Pause / reduce paid Meta spend until mobile can transact | 97% of paid traffic lands on a page it cannot buy from. Campaign state is Tom-only. | Ongoing spend |
-| 3 | **Is `shopify_orders` being empty a sync failure or genuinely zero sales?** | Cannot be resolved from data. Determines whether this is a measurement problem or a demand problem — and reorders every priority below. | Revenue analysis |
-| 4 | Restore or retire the Meta breakdowns route | Product decision. Deletion is uncommitted and fully recoverable. | EXP-3 |
-| 5 | Approve deploying WhatsApp lead capture | `kryo_leads` empty; the whole WhatsApp funnel is unmeasurable | EXP-2 |
-| 6 | Confirm offer facts are current (AED 3,990, Aug 30 dispatch, 10-unit batch) | Marked "pending Tom confirmation" in `marketing/foundation/offer.md` since before this session | Any live copy |
-| 7 | Approve pushing `consolidation/b2c-marketing-2026-07-31` to origin | Push was denied twice by the permission layer | Backup of 181 files |
+| 1 | **Revert ads to the old page?** | Campaign change | ⚠️ **`/products/kryo2` returns 404.** It is unpublished. There is nothing to revert to — it must be **republished first**. This changes the option Tom was offered. |
+| 2 | **Approve deploying the sticky add-to-cart** (`theme-assets/snippets/kryo-sticky-atc.liquid`) | Live Shopify theme change | Prepared, not deployed. Highest-leverage change; also the discriminating test for H5 vs H2. |
+| 3 | **Confirm the kryo2_ launch date (~2026-07-26)** | Decision-critical fact | Data-consistent (~0 sessions/day before, 21–45 after) but not owner-confirmed. |
+| 4 | **Confirm the cart-tracking-broken window** (Tom said May–early June) | Decision-critical fact | Needed to bound which historical comparisons are valid. |
+| 5 | **Is `shopify_orders` empty a sync failure or genuinely zero sales?** | Cannot be resolved from data | Still open from the previous session. Reorders every priority. |
+| 6 | Restore or retire the meta-breakdowns route | Product decision | Deletion remains uncommitted and fully recoverable. |
+| 7 | **Fix the hero section** — `product.kryo-premium.json` sets `cta_href:"#ProductForm"` but neither the anchor nor the hero renders live | Live theme change | The page has **no above-fold buy affordance at all**. |
+| 8 | Investigate market/currency routing | Live store config | A non-UAE visitor is served **JPY** under a `shopify_AU` context. UAE behaviour unverified. |
+| 9 | Approve pushing the branch | Push denied 4× by the permission layer | See below. |
 
 ## Actions Claude can execute after approval
 
 | # | Action | Needs |
 |---|---|---|
-| 1 | Run the mobile reproduction test and report which hypothesis survives | Decision 1 |
-| 2 | Fix the mobile add-to-cart path on a branch (no deploy) | Result of 1 |
-| 3 | Prepare a migration adding the preview-host exclusion to ingestion | — |
-| 4 | Restore the Meta breakdowns route + sync inclusion on a branch | Decision 4 |
-| 5 | Prepare the asset-performance refresh path | — |
-| 6 | Re-run `/kryo-growth-diagnose` after any fix to verify recovery | Fix landed |
-| 7 | Build EXP-1 challenger page as a draft (unpublished) | EXP-0 verified |
+| 1 | Deploy sticky ATC to a theme preview and re-run the Playwright reachability assertion | Decision 2 |
+| 2 | Republish `kryo2` if Tom wants the revert option | Decision 1 |
+| 3 | Wire `meta-capi.ts` into the storefront-event route for AddToCart/InitiateCheckout/Purchase | Approval |
+| 4 | Implement internal-traffic exclusion as a reusable SQL view | — |
+| 5 | Instrument WhatsApp lead capture into `kryo_leads` + CAPI Lead | Approval |
+| 6 | Restore the meta-breakdowns route | Decision 6 |
+| 7 | Re-run the full diagnosis post-fix to measure recovery | Fix deployed |
 
-## Standing constraints observed this session
-
-- `main` not merged, not modified.
-- No production Supabase, Shopify, Meta or Vercel write performed. All queries read-only.
-- Existing add-to-cart tracking untouched.
-- No experiment launched.
+## Standing constraints observed
+- `main` not merged, not modified (`633b6cd`).
+- No production system modified. No deploy, no theme change, no campaign edit, no migration applied.
+- Existing add-to-cart tracking untouched — the sticky bar reuses the proven `/cart/add`
+  contract and emits a **separate** `sticky_atc_click` event so its effect stays separable.
+- No checkout completed during live testing.
