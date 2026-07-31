@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+Optional launchd LaunchAgent: auto-sync agent_memory mirror whenever any file in
+the shared memory dir changes (write/create/delete) + as a safety-net every 30 min.
+
+Install with ONE command (Tom does this manually since auto-mode blocks LaunchAgent installs):
+
+    cp "/Users/happy/Desktop/Claude Project/everest-calendar/scripts/ai.everestlabs.agent-memory-sync.plist" \
+       ~/Library/LaunchAgents/ && \
+    launchctl load ~/Library/LaunchAgents/ai.everestlabs.agent-memory-sync.plist && \
+    echo "Installed. Tail log: tail -F /tmp/agent_memory_sync.log"
+
+Uninstall:
+
+    launchctl unload ~/Library/LaunchAgents/ai.everestlabs.agent-memory-sync.plist && \
+    rm ~/Library/LaunchAgents/ai.everestlabs.agent-memory-sync.plist
+
+Without this installed, the mirror still stays fresh via:
+  - Codex's AGENTS.md session_end convention (codex runs the script when wrapping up)
+  - Claude's CLAUDE.md session_end convention (Claude does the same)
+  - Manual: python3 scripts/sync_agent_memory.py (any time)
+
+Filesystem at ~/.claude/projects/.../memory/ is always source of truth — both tools
+read+write there directly, so cross-tool memory ALREADY works without this agent.
+This agent only keeps the Supabase queryable mirror current.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>ai.everestlabs.agent-memory-sync</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>/Users/happy/Desktop/Claude Project/everest-calendar/scripts/sync_agent_memory.py</string>
+    </array>
+
+    <key>WatchPaths</key>
+    <array>
+        <string>/Users/happy/.claude/projects/-Users-happy-Desktop-Claude-Project/memory</string>
+    </array>
+
+    <key>StartInterval</key>
+    <integer>1800</integer>
+
+    <key>ThrottleInterval</key>
+    <integer>60</integer>
+
+    <key>KeepAlive</key>
+    <false/>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/happy</string>
+        <key>PATH</key>
+        <string>/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin</string>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/agent_memory_sync.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/agent_memory_sync.err</string>
+</dict>
+</plist>

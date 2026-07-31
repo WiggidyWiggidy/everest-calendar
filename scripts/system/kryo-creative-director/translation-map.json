@@ -1,0 +1,49 @@
+{
+  "version": "2026-05-20.v1",
+  "principle": "Emulate Eight Sleep structure and proof density, not Eight Sleep wording. KRYO stays short, premium, numerical, and cold-shower specific.",
+  "reference_brand": "eight_sleep",
+  "target_brand": "kryo",
+  "translations": [
+    {
+      "eight_sleep_pattern": "Up to 34% more deep sleep",
+      "kryo_pattern": "1°C water. 5× colder than Dubai tap.",
+      "use_for": ["big_stat_banner", "hero_subproof", "meta_static"]
+    },
+    {
+      "eight_sleep_pattern": "Sleep the way you were meant to.",
+      "kryo_pattern": "Cold the way it was meant to be.",
+      "use_for": ["hero_headline", "bottom_cta"]
+    },
+    {
+      "eight_sleep_pattern": "Smart technology that fits on any bed",
+      "kryo_pattern": "Active cold that fits your ensuite.",
+      "use_for": ["four_card_feature_strip"]
+    },
+    {
+      "eight_sleep_pattern": "30-night risk-free trial / warranty / free returns / free shipping repeated near buy moments",
+      "kryo_pattern": "UAE delivery / WhatsApp setup help / payment plan / warranty repeated near buy moments",
+      "use_for": ["pricing", "sticky_cta", "faq", "checkout_confidence"]
+    },
+    {
+      "eight_sleep_pattern": "System components annotated diagram",
+      "kryo_pattern": "Bathroom-side shower panel + cryo-engine + reservoir + 6.5mm cable architecture diagram",
+      "use_for": ["setup_confidence", "system_architecture"]
+    },
+    {
+      "eight_sleep_pattern": "Named testimonial carousel with sentiment filters",
+      "kryo_pattern": "Use-case proof cards: morning fog / pre-workout / pre-meeting / jetlag / luxury bathroom until real reviews exist",
+      "use_for": ["social_proof", "faq"]
+    },
+    {
+      "eight_sleep_pattern": "Dark cinematic hero and stat moments alternating with light reading sections",
+      "kryo_pattern": "Dark product/stat moments alternating with white bathroom/setup reading sections",
+      "use_for": ["page_rhythm", "image_direction"]
+    }
+  ],
+  "do_not_copy": [
+    "Do not copy Eight Sleep sentences verbatim.",
+    "Do not import sleep-specific claims into KRYO.",
+    "Do not make KRYO voice wordier to match Eight Sleep.",
+    "Do not lead above-fold with setup/electrical objections unless Tom explicitly asks."
+  ]
+}
