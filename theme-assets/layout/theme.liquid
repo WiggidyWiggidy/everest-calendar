@@ -1,0 +1,875 @@
+<!doctype html>
+<html class="js" lang="{{ request.locale.iso_code }}">
+  <head>
+    {% if template contains 'lp'
+      or template contains 'thankyou-page'
+      or template contains 'narcolepsy'
+      or template contains 'cart'
+      or template contains 'uae'
+      or template contains 'aue'
+      or template contains 'nue'
+      or template contains 'kryo'
+    %}
+      <style>
+        .header-wrapper{
+            display: none !important;
+        }
+
+        footer.footer{
+            display: none !important;
+        }
+
+        .kryo-resource-page .kryo-two { display:grid !important; }
+        .kryo-resource-page .kryo-image-card { display:block !important; }
+        .kryo-resource-page .kryo-everest-word { font-size:13px !important; font-weight:800 !important; letter-spacing:.08em !important; line-height:1 !important; margin:0 0 30px !important; }
+        .kryo-resource-page .kryo-wordmark { font-size:30px !important; font-weight:300 !important; letter-spacing:.24em !important; line-height:1 !important; margin:0 !important; }
+      </style>
+    {% endif %}
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="theme-color" content="">
+    <link rel="canonical" href="{{ canonical_url }}">
+    <link rel="preconnect" href="https://cdn.shopify.com" crossorigin>
+    <link rel="dns-prefetch" href="https://cdn.shopify.com">
+
+    {%- if settings.favicon != blank -%}
+      <link rel="icon" type="image/png" href="{{ settings.favicon | image_url: width: 32, height: 32 }}">
+    {%- endif -%}
+
+    {%- unless settings.type_header_font.system? and settings.type_body_font.system? -%}
+      <link rel="preconnect" href="https://fonts.shopifycdn.com" crossorigin>
+    {%- endunless -%}
+
+    <title>
+      {{ page_title }}
+      {%- if current_tags %} &ndash; tagged "{{ current_tags | join: ', ' }}"{% endif -%}
+      {%- if current_page != 1 %} &ndash; Page {{ current_page }}{% endif -%}
+      {%- unless page_title contains shop.name %} &ndash; {{ shop.name }}{% endunless -%}
+    </title>
+
+    {% if page_description %}
+      <meta name="description" content="{{ page_description | escape }}">
+    {% endif %}
+
+    {% render 'meta-tags-clean-20260603' %}
+
+    <script src="{{ 'constants.js' | asset_url }}" defer="defer"></script>
+    <script src="{{ 'pubsub.js' | asset_url }}" defer="defer"></script>
+    <script src="{{ 'global.js' | asset_url }}" defer="defer"></script>
+    {%- if settings.animations_reveal_on_scroll -%}
+      <script src="{{ 'animations.js' | asset_url }}" defer="defer"></script>
+    {%- endif -%}
+
+    
+
+    {{ content_for_header }}
+
+    {%- liquid
+      assign body_font_bold = settings.type_body_font | font_modify: 'weight', 'bold'
+      assign body_font_italic = settings.type_body_font | font_modify: 'style', 'italic'
+      assign body_font_bold_italic = body_font_bold | font_modify: 'style', 'italic'
+    %}
+
+    {% style %}
+      {{ settings.type_body_font | font_face: font_display: 'swap' }}
+      {{ body_font_bold | font_face: font_display: 'swap' }}
+      {{ body_font_italic | font_face: font_display: 'swap' }}
+      {{ body_font_bold_italic | font_face: font_display: 'swap' }}
+      {{ settings.type_header_font | font_face: font_display: 'swap' }}
+
+      {% for scheme in settings.color_schemes -%}
+        {% assign scheme_classes = scheme_classes | append: ', .color-' | append: scheme.id %}
+        {% if forloop.index == 1 -%}
+          :root,
+        {%- endif %}
+        .color-{{ scheme.id }} {
+          --color-background: {{ scheme.settings.background.red }},{{ scheme.settings.background.green }},{{ scheme.settings.background.blue }};
+        {% if scheme.settings.background_gradient != empty %}
+          --gradient-background: {{ scheme.settings.background_gradient }};
+        {% else %}
+          --gradient-background: {{ scheme.settings.background }};
+        {% endif %}
+
+        {% liquid
+          assign background_color = scheme.settings.background
+          assign background_color_brightness = background_color | color_brightness
+          if background_color_brightness <= 26
+            assign background_color_contrast = background_color | color_lighten: 50
+          elsif background_color_brightness <= 65
+            assign background_color_contrast = background_color | color_lighten: 5
+          else
+            assign background_color_contrast = background_color | color_darken: 25
+          endif
+        %}
+
+        --color-foreground: {{ scheme.settings.text.red }},{{ scheme.settings.text.green }},{{ scheme.settings.text.blue }};
+        --color-background-contrast: {{ background_color_contrast.red }},{{ background_color_contrast.green }},{{ background_color_contrast.blue }};
+        --color-shadow: {{ scheme.settings.shadow.red }},{{ scheme.settings.shadow.green }},{{ scheme.settings.shadow.blue }};
+        --color-button: {{ scheme.settings.button.red }},{{ scheme.settings.button.green }},{{ scheme.settings.button.blue }};
+        --color-button-text: {{ scheme.settings.button_label.red }},{{ scheme.settings.button_label.green }},{{ scheme.settings.button_label.blue }};
+        --color-secondary-button: {{ scheme.settings.background.red }},{{ scheme.settings.background.green }},{{ scheme.settings.background.blue }};
+        --color-secondary-button-text: {{ scheme.settings.secondary_button_label.red }},{{ scheme.settings.secondary_button_label.green }},{{ scheme.settings.secondary_button_label.blue }};
+        --color-link: {{ scheme.settings.secondary_button_label.red }},{{ scheme.settings.secondary_button_label.green }},{{ scheme.settings.secondary_button_label.blue }};
+        --color-badge-foreground: {{ scheme.settings.text.red }},{{ scheme.settings.text.green }},{{ scheme.settings.text.blue }};
+        --color-badge-background: {{ scheme.settings.background.red }},{{ scheme.settings.background.green }},{{ scheme.settings.background.blue }};
+        --color-badge-border: {{ scheme.settings.text.red }},{{ scheme.settings.text.green }},{{ scheme.settings.text.blue }};
+        --payment-terms-background-color: rgb({{ scheme.settings.background.rgb }});
+      }
+      {% endfor %}
+
+      {{ scheme_classes | prepend: 'body' }} {
+        color: rgba(var(--color-foreground), 0.75);
+        background-color: rgb(var(--color-background));
+      }
+
+      :root {
+        --font-body-family: {{ settings.type_body_font.family }}, {{ settings.type_body_font.fallback_families }};
+        --font-body-style: {{ settings.type_body_font.style }};
+        --font-body-weight: {{ settings.type_body_font.weight }};
+        --font-body-weight-bold: {{ settings.type_body_font.weight | plus: 300 | at_most: 1000 }};
+
+        --font-heading-family: {{ settings.type_header_font.family }}, {{ settings.type_header_font.fallback_families }};
+        --font-heading-style: {{ settings.type_header_font.style }};
+        --font-heading-weight: {{ settings.type_header_font.weight }};
+
+        --font-body-scale: {{ settings.body_scale | divided_by: 100.0 }};
+        --font-heading-scale: {{ settings.heading_scale | times: 1.0 | divided_by: settings.body_scale }};
+
+        --media-padding: {{ settings.media_padding }}px;
+        --media-border-opacity: {{ settings.media_border_opacity | divided_by: 100.0 }};
+        --media-border-width: {{ settings.media_border_thickness }}px;
+        --media-radius: {{ settings.media_radius }}px;
+        --media-shadow-opacity: {{ settings.media_shadow_opacity | divided_by: 100.0 }};
+        --media-shadow-horizontal-offset: {{ settings.media_shadow_horizontal_offset }}px;
+        --media-shadow-vertical-offset: {{ settings.media_shadow_vertical_offset }}px;
+        --media-shadow-blur-radius: {{ settings.media_shadow_blur }}px;
+        --media-shadow-visible: {% if settings.media_shadow_opacity > 0 %}1{% else %}0{% endif %};
+
+        --page-width: {{ settings.page_width | divided_by: 10 }}rem;
+        --page-width-margin: {% if settings.page_width == '1600' %}2{% else %}0{% endif %}rem;
+
+        --product-card-image-padding: {{ settings.card_image_padding | divided_by: 10.0 }}rem;
+        --product-card-corner-radius: {{ settings.card_corner_radius | divided_by: 10.0 }}rem;
+        --product-card-text-alignment: {{ settings.card_text_alignment }};
+        --product-card-border-width: {{ settings.card_border_thickness | divided_by: 10.0 }}rem;
+        --product-card-border-opacity: {{ settings.card_border_opacity | divided_by: 100.0 }};
+        --product-card-shadow-opacity: {{ settings.card_shadow_opacity | divided_by: 100.0 }};
+        --product-card-shadow-visible: {% if settings.card_shadow_opacity > 0 %}1{% else %}0{% endif %};
+        --product-card-shadow-horizontal-offset: {{ settings.card_shadow_horizontal_offset | divided_by: 10.0 }}rem;
+        --product-card-shadow-vertical-offset: {{ settings.card_shadow_vertical_offset | divided_by: 10.0 }}rem;
+        --product-card-shadow-blur-radius: {{ settings.card_shadow_blur | divided_by: 10.0 }}rem;
+
+        --collection-card-image-padding: {{ settings.collection_card_image_padding | divided_by: 10.0 }}rem;
+        --collection-card-corner-radius: {{ settings.collection_card_corner_radius | divided_by: 10.0 }}rem;
+        --collection-card-text-alignment: {{ settings.collection_card_text_alignment }};
+        --collection-card-border-width: {{ settings.collection_card_border_thickness | divided_by: 10.0 }}rem;
+        --collection-card-border-opacity: {{ settings.collection_card_border_opacity | divided_by: 100.0 }};
+        --collection-card-shadow-opacity: {{ settings.collection_card_shadow_opacity | divided_by: 100.0 }};
+        --collection-card-shadow-visible: {% if settings.collection_card_shadow_opacity > 0 %}1{% else %}0{% endif %};
+        --collection-card-shadow-horizontal-offset: {{ settings.collection_card_shadow_horizontal_offset | divided_by: 10.0 }}rem;
+        --collection-card-shadow-vertical-offset: {{ settings.collection_card_shadow_vertical_offset | divided_by: 10.0 }}rem;
+        --collection-card-shadow-blur-radius: {{ settings.collection_card_shadow_blur | divided_by: 10.0 }}rem;
+
+        --blog-card-image-padding: {{ settings.blog_card_image_padding | divided_by: 10.0 }}rem;
+        --blog-card-corner-radius: {{ settings.blog_card_corner_radius | divided_by: 10.0 }}rem;
+        --blog-card-text-alignment: {{ settings.blog_card_text_alignment }};
+        --blog-card-border-width: {{ settings.blog_card_border_thickness | divided_by: 10.0 }}rem;
+        --blog-card-border-opacity: {{ settings.blog_card_border_opacity | divided_by: 100.0 }};
+        --blog-card-shadow-opacity: {{ settings.blog_card_shadow_opacity | divided_by: 100.0 }};
+        --blog-card-shadow-visible: {% if settings.blog_card_shadow_opacity > 0 %}1{% else %}0{% endif %};
+        --blog-card-shadow-horizontal-offset: {{ settings.blog_card_shadow_horizontal_offset | divided_by: 10.0 }}rem;
+        --blog-card-shadow-vertical-offset: {{ settings.blog_card_shadow_vertical_offset | divided_by: 10.0 }}rem;
+        --blog-card-shadow-blur-radius: {{ settings.blog_card_shadow_blur | divided_by: 10.0 }}rem;
+
+        --badge-corner-radius: {{ settings.badge_corner_radius | divided_by: 10.0 }}rem;
+
+        --popup-border-width: {{ settings.popup_border_thickness }}px;
+        --popup-border-opacity: {{ settings.popup_border_opacity | divided_by: 100.0 }};
+        --popup-corner-radius: {{ settings.popup_corner_radius }}px;
+        --popup-shadow-opacity: {{ settings.popup_shadow_opacity | divided_by: 100.0 }};
+        --popup-shadow-horizontal-offset: {{ settings.popup_shadow_horizontal_offset }}px;
+        --popup-shadow-vertical-offset: {{ settings.popup_shadow_vertical_offset }}px;
+        --popup-shadow-blur-radius: {{ settings.popup_shadow_blur }}px;
+
+        --drawer-border-width: {{ settings.drawer_border_thickness }}px;
+        --drawer-border-opacity: {{ settings.drawer_border_opacity | divided_by: 100.0 }};
+        --drawer-shadow-opacity: {{ settings.drawer_shadow_opacity | divided_by: 100.0 }};
+        --drawer-shadow-horizontal-offset: {{ settings.drawer_shadow_horizontal_offset }}px;
+        --drawer-shadow-vertical-offset: {{ settings.drawer_shadow_vertical_offset }}px;
+        --drawer-shadow-blur-radius: {{ settings.drawer_shadow_blur }}px;
+
+        --spacing-sections-desktop: {{ settings.spacing_sections }}px;
+        --spacing-sections-mobile: {% if settings.spacing_sections < 24 %}{{ settings.spacing_sections }}{% else %}{{ settings.spacing_sections | times: 0.7 | round | at_least: 20 }}{% endif %}px;
+
+        --grid-desktop-vertical-spacing: {{ settings.spacing_grid_vertical }}px;
+        --grid-desktop-horizontal-spacing: {{ settings.spacing_grid_horizontal }}px;
+        --grid-mobile-vertical-spacing: {{ settings.spacing_grid_vertical | divided_by: 2 }}px;
+        --grid-mobile-horizontal-spacing: {{ settings.spacing_grid_horizontal | divided_by: 2 }}px;
+
+        --text-boxes-border-opacity: {{ settings.text_boxes_border_opacity | divided_by: 100.0 }};
+        --text-boxes-border-width: {{ settings.text_boxes_border_thickness }}px;
+        --text-boxes-radius: {{ settings.text_boxes_radius }}px;
+        --text-boxes-shadow-opacity: {{ settings.text_boxes_shadow_opacity | divided_by: 100.0 }};
+        --text-boxes-shadow-visible: {% if settings.text_boxes_shadow_opacity > 0 %}1{% else %}0{% endif %};
+        --text-boxes-shadow-horizontal-offset: {{ settings.text_boxes_shadow_horizontal_offset }}px;
+        --text-boxes-shadow-vertical-offset: {{ settings.text_boxes_shadow_vertical_offset }}px;
+        --text-boxes-shadow-blur-radius: {{ settings.text_boxes_shadow_blur }}px;
+
+        --buttons-radius: {{ settings.buttons_radius }}px;
+        --buttons-radius-outset: {% if settings.buttons_radius > 0 %}{{ settings.buttons_radius | plus: settings.buttons_border_thickness }}{% else %}0{% endif %}px;
+        --buttons-border-width: {% if settings.buttons_border_opacity > 0 %}{{ settings.buttons_border_thickness }}{% else %}0{% endif %}px;
+        --buttons-border-opacity: {{ settings.buttons_border_opacity | divided_by: 100.0 }};
+        --buttons-shadow-opacity: {{ settings.buttons_shadow_opacity | divided_by: 100.0 }};
+        --buttons-shadow-visible: {% if settings.buttons_shadow_opacity > 0 %}1{% else %}0{% endif %};
+        --buttons-shadow-horizontal-offset: {{ settings.buttons_shadow_horizontal_offset }}px;
+        --buttons-shadow-vertical-offset: {{ settings.buttons_shadow_vertical_offset }}px;
+        --buttons-shadow-blur-radius: {{ settings.buttons_shadow_blur }}px;
+        --buttons-border-offset: {% if settings.buttons_radius > 0 or settings.buttons_shadow_opacity > 0 %}0.3{% else %}0{% endif %}px;
+
+        --inputs-radius: {{ settings.inputs_radius }}px;
+        --inputs-border-width: {{ settings.inputs_border_thickness }}px;
+        --inputs-border-opacity: {{ settings.inputs_border_opacity | divided_by: 100.0 }};
+        --inputs-shadow-opacity: {{ settings.inputs_shadow_opacity | divided_by: 100.0 }};
+        --inputs-shadow-horizontal-offset: {{ settings.inputs_shadow_horizontal_offset }}px;
+        --inputs-margin-offset: {% if settings.inputs_shadow_vertical_offset != 0 and settings.inputs_shadow_opacity > 0 %}{{ settings.inputs_shadow_vertical_offset | abs }}{% else %}0{% endif %}px;
+        --inputs-shadow-vertical-offset: {{ settings.inputs_shadow_vertical_offset }}px;
+        --inputs-shadow-blur-radius: {{ settings.inputs_shadow_blur }}px;
+        --inputs-radius-outset: {% if settings.inputs_radius > 0 %}{{ settings.inputs_radius | plus: settings.inputs_border_thickness }}{% else %}0{% endif %}px;
+
+        --variant-pills-radius: {{ settings.variant_pills_radius }}px;
+        --variant-pills-border-width: {{ settings.variant_pills_border_thickness }}px;
+        --variant-pills-border-opacity: {{ settings.variant_pills_border_opacity | divided_by: 100.0 }};
+        --variant-pills-shadow-opacity: {{ settings.variant_pills_shadow_opacity | divided_by: 100.0 }};
+        --variant-pills-shadow-horizontal-offset: {{ settings.variant_pills_shadow_horizontal_offset }}px;
+        --variant-pills-shadow-vertical-offset: {{ settings.variant_pills_shadow_vertical_offset }}px;
+        --variant-pills-shadow-blur-radius: {{ settings.variant_pills_shadow_blur }}px;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: inherit;
+      }
+
+      html {
+        scroll-behavior: smooth;
+        box-sizing: border-box;
+        font-size: calc(var(--font-body-scale) * 62.5%);
+        height: 100%;
+      }
+
+      body {
+        scroll-behavior: smooth;
+        display: grid;
+        grid-template-rows: auto auto 1fr auto;
+        grid-template-columns: 100%;
+        min-height: 100%;
+        margin: 0;
+        font-size: 1.4rem;
+        /* letter-spacing: 0.06rem; */
+        letter-spacing: -.04em;
+        line-height: calc(1 + 0.5 / var(--font-body-scale));
+        font-family: var(--font-body-family);
+        font-style: var(--font-body-style);
+        font-weight: var(--font-body-weight);
+      }
+
+      #MainContent {
+        scroll-behavior: smooth;
+      }
+
+      @media screen and (min-width: 750px) {
+        body {
+          font-size: 1.5rem;
+        }
+      }
+    {% endstyle %}
+
+    {{ 'base.css' | asset_url | stylesheet_tag }}
+    {{ 'custom.css' | asset_url | stylesheet_tag }}
+
+    {%- if localization.available_countries.size > 1 or localization.available_languages.size > 1 -%}
+      {{ 'component-localization-form.css' | asset_url | stylesheet_tag: preload: true }}
+      <script src="{{ 'localization-form.js' | asset_url }}" defer="defer"></script>
+    {%- endif -%}
+
+    {%- if settings.predictive_search_enabled -%}
+      <link
+        rel="stylesheet"
+        href="{{ 'component-predictive-search.css' | asset_url }}"
+        media="print"
+        onload="this.media='all'"
+      >
+    {%- endif -%}
+
+    <script>
+      if (Shopify.designMode) {
+        document.documentElement.classList.add('shopify-design-mode');
+      }
+    </script>
+    {% render 'lazyload' %}
+    <script>
+      window.dataLayer = window.dataLayer || [];
+    </script>
+    <!-- Google Tag Manager -->
+    <script>
+      (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+      new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+      j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+      'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+      })(window,document,'script','dataLayer','GTM-KF7K6X4');
+    </script>
+    <!-- End Google Tag Manager -->
+
+    <script>
+      // Prioritize LCP resources
+      document.addEventListener('DOMContentLoaded', function() {
+        // Find the LCP element (likely your heading or hero image)
+        const observer = new PerformanceObserver((entryList) => {
+          const entries = entryList.getEntries();
+          if (entries.length > 0) {
+            const lcpElement = entries[0].element;
+            if (lcpElement) {
+              // Add high priority to LCP element
+              lcpElement.setAttribute('fetchpriority', 'high');
+
+              // Force immediate visibility
+              lcpElement.style.visibility = 'visible';
+              lcpElement.style.display = 'block';
+
+              // If it's an image, ensure eager loading
+              if (lcpElement.tagName === 'IMG') {
+                lcpElement.setAttribute('loading', 'eager');
+              }
+            }
+          }
+        });
+
+        // Start observing LCP
+        observer.observe({type: 'largest-contentful-paint', buffered: true});
+      });
+
+      // Preload critical resources
+      const preloadLinks = [
+        {href: "{{ 'global.js' | asset_url }}", as: "script"},
+        // Add other critical resources here
+      ];
+
+      preloadLinks.forEach(function(link) {
+        const preload = document.createElement('link');
+        preload.rel = 'preload';
+        preload.href = link.href;
+        preload.as = link.as;
+        if (link.as === 'font') {
+          preload.crossOrigin = 'anonymous';
+        }
+        document.head.appendChild(preload);
+      });
+    </script>
+
+    {% if page.handle == 'kryo-resources' %}
+      <style id="kryo-resources-critical-css">
+        .kryo-resource-page .kryo-hero h1,
+        .kryo-resource-page .kryo-section:not(.alt) .kryo-section-head h2,
+        .kryo-resource-page .kryo-panel h2,
+        .kryo-resource-page .kryo-faq-item h3,
+        .kryo-resource-page .kryo-cta h2,
+        .kryo-resource-page .kryo-stat strong { color:#f7fbff !important; }
+        .kryo-resource-page .kryo-section.alt .kryo-section-head h2,
+        .kryo-resource-page .kryo-section.alt .kryo-card h3,
+        .kryo-resource-page .kryo-time h3,
+        .kryo-resource-page .kryo-list h3 { color:#081018 !important; }
+        .kryo-resource-page .kryo-btn-primary,
+        .kryo-resource-page a.kryo-btn-primary { background:#f7fbff !important; color:#070b10 !important; border-color:#f7fbff !important; }
+        .kryo-resource-page .kryo-btn-secondary,
+        .kryo-resource-page a.kryo-btn-secondary { color:#f7fbff !important; }
+        .kryo-resource-page .kryo-everest-word,
+        .kryo-resource-page .kryo-wordmark { color:#f7fbff !important; }
+
+        .kryo-resource-page .kryo-two { display:grid !important; }
+        .kryo-resource-page .kryo-image-card { display:block !important; }
+        .kryo-resource-page .kryo-everest-word { font-size:13px !important; font-weight:800 !important; letter-spacing:.08em !important; line-height:1 !important; margin:0 0 30px !important; }
+        .kryo-resource-page .kryo-wordmark { font-size:30px !important; font-weight:300 !important; letter-spacing:.24em !important; line-height:1 !important; margin:0 !important; }
+      </style>
+    {% endif %}
+  </head>
+
+  <body class="gradient{% if settings.animations_hover_elements != 'none' %} animate--hover-{{ settings.animations_hover_elements }}{% endif %}">
+    <!-- Google Tag Manager (noscript) -->
+    <noscript
+      ><iframe
+        src="https://www.googletagmanager.com/ns.html?id=GTM-KF7K6X4"
+        height="0"
+        width="0"
+        style="display:none;visibility:hidden"
+      ></iframe
+    ></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+
+    <a class="skip-to-content-link button visually-hidden" href="#MainContent">
+      {{ 'accessibility.skip_to_text' | t }}
+    </a>
+
+    {%- if settings.cart_type == 'drawer' -%}
+      {%- render 'cart-drawer' -%}
+    {%- endif -%}
+
+    {% sections 'header-group' %}
+
+    <main id="MainContent" class="content-for-layout focus-none" role="main" tabindex="-1">
+      {{ content_for_layout }}
+    </main>
+
+    {% sections 'footer-group' %}
+
+    <ul hidden>
+      <li id="a11y-refresh-page-message">{{ 'accessibility.refresh_page' | t }}</li>
+      <li id="a11y-new-window-message">{{ 'accessibility.link_messages.new_window' | t }}</li>
+    </ul>
+
+    <script>
+      window.shopUrl = '{{ request.origin }}';
+      window.routes = {
+        cart_add_url: '{{ routes.cart_add_url }}',
+        cart_change_url: '{{ routes.cart_change_url }}',
+        cart_update_url: '{{ routes.cart_update_url }}',
+        cart_url: '{{ routes.cart_url }}',
+        predictive_search_url: '{{ routes.predictive_search_url }}',
+      };
+
+      window.cartStrings = {
+        error: `{{ 'sections.cart.cart_error' | t }}`,
+        quantityError: `{{ 'sections.cart.cart_quantity_error_html' | t: quantity: '[quantity]' }}`,
+      };
+
+      window.variantStrings = {
+        addToCart: `{{ 'products.product.add_to_cart' | t }}`,
+        soldOut: `{{ 'products.product.sold_out' | t }}`,
+        unavailable: `{{ 'products.product.unavailable' | t }}`,
+        unavailable_with_option: `{{ 'products.product.value_unavailable' | t: option_value: '[value]' }}`,
+      };
+
+      window.quickOrderListStrings = {
+        itemsAdded: `{{ 'sections.quick_order_list.items_added.other' | t: quantity: '[quantity]' }}`,
+        itemAdded: `{{ 'sections.quick_order_list.items_added.one' | t: quantity: '[quantity]' }}`,
+        itemsRemoved: `{{ 'sections.quick_order_list.items_removed.other' | t: quantity: '[quantity]' }}`,
+        itemRemoved: `{{ 'sections.quick_order_list.items_removed.one' | t: quantity: '[quantity]' }}`,
+        viewCart: `{{- 'sections.quick_order_list.view_cart' | t -}}`,
+        each: `{{- 'sections.quick_order_list.each' | t: money: '[money]' }}`,
+        min_error: `{{- 'sections.quick_order_list.min_error' | t: min: '[min]' }}`,
+        max_error: `{{- 'sections.quick_order_list.max_error' | t: max: '[max]' }}`,
+        step_error: `{{- 'sections.quick_order_list.step_error' | t: step: '[step]' }}`,
+      };
+
+      window.accessibilityStrings = {
+        imageAvailable: `{{ 'products.product.media.image_available' | t: index: '[index]' }}`,
+        shareSuccess: `{{ 'general.share.success_message' | t }}`,
+        pauseSlideshow: `{{ 'sections.slideshow.pause_slideshow' | t }}`,
+        playSlideshow: `{{ 'sections.slideshow.play_slideshow' | t }}`,
+        recipientFormExpanded: `{{ 'recipient.form.expanded' | t }}`,
+        recipientFormCollapsed: `{{ 'recipient.form.collapsed' | t }}`,
+        countrySelectorSearchCount: `{{ 'localization.country_results_count' | t: count: '[count]' }}`,
+      };
+    </script>
+
+    {%- if settings.predictive_search_enabled -%}
+      <script src="{{ 'predictive-search.js' | asset_url }}" defer="defer"></script>
+    {%- endif -%}
+    {{ 'smooth-scroll.js' | asset_url | script_tag }}
+{%- comment -%}
+  Everest Labs customer journey pixel v2.
+  Captures first-touch attribution, current session attribution, anonymous visitor ID,
+  repeat sessions, and KRYO warm-intent actions.
+{%- endcomment -%}
+
+{%- comment -%}
+  Everest Labs customer journey pixel v2.4
+  KRYO2 priorities:
+    - suppress internal CN/HK traffic from first-party collection
+    - capture top clicked controls (CTA, Chatway, WhatsApp, compatibility)
+    - capture cart and checkout intent
+    - capture scroll milestones + section friction for KRYO2
+{%- endcomment -%}
+
+{%- comment -%}
+  Everest Labs customer journey pixel v2.4
+  KRYO2 priorities:
+    - suppress internal CN/HK traffic from first-party collection
+    - capture top clicked controls (CTA, Chatway, WhatsApp, compatibility)
+    - capture cart and checkout intent
+    - capture scroll milestones + section friction for KRYO2
+{%- endcomment -%}
+
+<script id="everest-attribution-pixel" data-pixel-version="2.4">
+(function() {
+  var EL_API = 'https://everest-calendar.vercel.app/api/marketing/sync/storefront-event';
+  var VISITOR_KEY = '__el_visitor_id';
+  var FIRST_TOUCH_KEY = '__el_first_touch';
+  var SESSION_KEY = '__el_sess';
+  var SESSION_ATTR_KEY = '__el_session_touch';
+  var SESSION_TTL = 30 * 60 * 1000;
+  var INTERNAL_COOKIE = '__el_internal';
+  var EXCLUDED_COUNTRIES = { HK: true, CN: true };
+  var countryIso = '{{ localization.country.iso_code | default: "" }}';
+
+  function safeJson(raw) { try { return raw ? JSON.parse(raw) : null; } catch(e) { return null; } }
+  function setCookie(k, v, days) { try { document.cookie = k + '=' + encodeURIComponent(v) + '; path=/; max-age=' + (days*86400) + '; SameSite=Lax'; } catch(e) {} }
+  function getCookie(k) { try { var m = document.cookie.match(new RegExp('(?:^|; )' + k + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : null; } catch(e) { return null; } }
+  function uuid() { return 'elv_' + Date.now() + '_' + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2); }
+  function getQuery() { return new URLSearchParams(window.location.search || ''); }
+  function qAny(p, keys) { for (var i=0;i<keys.length;i++) { var v=p.get(keys[i]); if (v) return v; } return null; }
+
+  if (getQuery().get('el_internal') === '1') setCookie(INTERNAL_COOKIE, '1', 395);
+  var isSuppressed = !!EXCLUDED_COUNTRIES[countryIso] || getCookie(INTERNAL_COOKIE) === '1';
+  window.__EL_CLARITY_SUPPRESS__ = isSuppressed;
+
+  function getVisitorId() {
+    var id = localStorage.getItem(VISITOR_KEY) || getCookie(VISITOR_KEY);
+    if (!id) id = uuid();
+    localStorage.setItem(VISITOR_KEY, id);
+    setCookie(VISITOR_KEY, id, 395);
+    return id;
+  }
+
+  function readAttribution() {
+    var p = getQuery();
+    return {
+      source: qAny(p, ['utm_source']),
+      medium: qAny(p, ['utm_medium']),
+      campaign: qAny(p, ['utm_campaign']),
+      content: qAny(p, ['utm_content']),
+      term: qAny(p, ['utm_term']),
+      angle: qAny(p, ['utm_angle', 'angle']),
+      campaign_id: qAny(p, ['utm_campaign_id', 'campaign_id', 'meta_campaign_id']),
+      adset_id: qAny(p, ['utm_adset_id', 'adset_id', 'meta_adset_id']),
+      ad_id: qAny(p, ['utm_ad_id', 'ad_id', 'meta_ad_id']),
+      fbp: getCookie('_fbp'),
+      fbc: getCookie('_fbc'),
+      fbclid: qAny(p, ['fbclid']),
+      referrer: document.referrer || null,
+      landing_page: window.location.href
+    };
+  }
+  function hasAttribution(a) { return !!(a.source || a.medium || a.campaign || a.content || a.term || a.angle || a.campaign_id || a.adset_id || a.ad_id || a.fbclid); }
+  function getFirstTouch(current) {
+    var existing = safeJson(localStorage.getItem(FIRST_TOUCH_KEY));
+    if (existing && hasAttribution(existing)) return existing;
+    if (!hasAttribution(current)) return existing || current;
+    var first = Object.assign({}, current, { created_at: new Date().toISOString() });
+    localStorage.setItem(FIRST_TOUCH_KEY, JSON.stringify(first));
+    return first;
+  }
+  function getSession(current) {
+    var raw = sessionStorage.getItem(SESSION_KEY);
+    var now = Date.now();
+    if (raw) {
+      try {
+        var parsed = JSON.parse(raw);
+        if (now - parsed.last < SESSION_TTL) {
+          parsed.last = now;
+          sessionStorage.setItem(SESSION_KEY, JSON.stringify(parsed));
+          return { id: parsed.id, isNew: false };
+        }
+      } catch(e) {}
+    }
+    var id = 'els_' + now + '_' + Math.random().toString(36).slice(2, 10);
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ id: id, last: now, started: now }));
+    sessionStorage.setItem(SESSION_ATTR_KEY, JSON.stringify(current));
+    return { id: id, isNew: true };
+  }
+  function deviceType() {
+    var ua = navigator.userAgent;
+    if (/iPad|tablet/i.test(ua)) return 'tablet';
+    if (/Mobile|iPhone|Android/i.test(ua)) return 'mobile';
+    return 'desktop';
+  }
+  function scrollPct() {
+    var doc = document.documentElement;
+    var max = Math.max(1, (doc.scrollHeight || 1) - (window.innerHeight || 0));
+    return Math.max(0, Math.min(100, Math.round((window.scrollY || 0) / max * 100)));
+  }
+
+  var currentTouch = readAttribution();
+  var firstTouch = getFirstTouch(currentTouch);
+  var session = getSession(currentTouch);
+  var sessionTouch = safeJson(sessionStorage.getItem(SESSION_ATTR_KEY)) || currentTouch;
+  var ctx = {
+    anonymous_id: getVisitorId(),
+    session_id: session.id,
+    first_touch: firstTouch,
+    current_touch: sessionTouch,
+    page_url: window.location.href,
+    page_path: window.location.pathname,
+    referrer: document.referrer || null,
+    device_type: deviceType(),
+    ts: new Date().toISOString(),
+    utm_source: sessionTouch.source,
+    utm_medium: sessionTouch.medium,
+    utm_campaign: sessionTouch.campaign,
+    utm_content: sessionTouch.content,
+    utm_term: sessionTouch.term,
+    utm_angle: sessionTouch.angle,
+    utm_campaign_id: sessionTouch.campaign_id,
+    utm_adset_id: sessionTouch.adset_id,
+    utm_ad_id: sessionTouch.ad_id,
+    fbp: sessionTouch.fbp || firstTouch.fbp || getCookie('_fbp'),
+    fbc: sessionTouch.fbc || firstTouch.fbc || getCookie('_fbc'),
+    fbclid: sessionTouch.fbclid || firstTouch.fbclid || null,
+    is_internal: isSuppressed,
+    {% if product %}
+      shopify_product_id: '{{ product.id }}',
+      shopify_product_handle: '{{ product.handle }}',
+      shopify_variant_id: '{{ product.selected_or_first_available_variant.id }}',
+    {% endif %}
+    {% if customer %}
+      shopify_customer_id: '{{ customer.id }}',
+    {% endif %}
+    {% if request.page_type %}
+      page_type: '{{ request.page_type }}',
+    {% endif %}
+    locale: '{{ request.locale.iso_code | default: "en" }}',
+    market_handle: '{{ localization.market.handle | default: "primary" }}'
+  };
+
+  function send(eventName, extra) {
+    if (isSuppressed) return;
+    var payload = Object.assign({}, ctx, extra || {}, { event_name: eventName, event_type: eventName, ts: new Date().toISOString(), page_url: window.location.href, page_path: window.location.pathname });
+    try {
+      fetch(EL_API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), keepalive: true, mode: 'no-cors' }).catch(function() {});
+    } catch(e) {
+      try { navigator.sendBeacon(EL_API, new Blob([JSON.stringify(payload)], { type: 'application/json' })); } catch(e2) {}
+    }
+  }
+
+  function once(key, fn) {
+    var storeKey = '__el_once_' + key;
+    if (sessionStorage.getItem(storeKey)) return;
+    sessionStorage.setItem(storeKey, '1');
+    fn();
+  }
+
+  function sectionIdFor(el) {
+    if (!el) return 'unknown';
+    var explicit = el.getAttribute && el.getAttribute('data-el-section-id');
+    if (explicit) return explicit;
+    var host = el.closest && el.closest('[data-el-section-id], section, .shopify-section, [id]');
+    if (!host) return 'unknown';
+    if (host.getAttribute && host.getAttribute('data-el-section-id')) return host.getAttribute('data-el-section-id');
+    if (host.id) return host.id.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').slice(0, 80);
+    var cls = String(host.className || '').split(/\s+/).filter(Boolean)[0] || 'section';
+    return cls.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').slice(0, 80);
+  }
+
+  function sendSectionEvent(eventName, el, extra) {
+    if (isSuppressed || window.location.pathname.indexOf('/products/kryo2') !== 0) return;
+    send(eventName, Object.assign({
+      section_id: sectionIdFor(el),
+      scroll_depth_pct: scrollPct()
+    }, extra || {}));
+  }
+
+  var scrollSeen = { 25: false, 50: false, 75: false, 90: false };
+  var scrollMaxPct = 0;
+  var lastClickAt = 0;
+  var lastClickKey = '';
+  var sectionAtcFired = false;
+
+  function maybeTrackControlClick(el) {
+    if (!el) return;
+    var text = ((el.innerText || el.textContent || '') + ' ' + (el.getAttribute && el.getAttribute('aria-label') || '') + ' ' + (el.getAttribute && el.getAttribute('href') || '')).toLowerCase();
+    var sid = sectionIdFor(el);
+    if (/order now|buy now|add to cart/.test(text)) {
+      send('hero_cta_click', { event_properties: { section_id: sid } });
+      return;
+    }
+    if (/sticky/.test((el.className || '').toLowerCase())) {
+      send('sticky_cta_click', { event_properties: { section_id: sid } });
+      return;
+    }
+    if (/chatway|live chat|message us|message support|talk to us/.test(text)) {
+      send('chatway_click', { event_properties: { section_id: sid } });
+      return;
+    }
+    if (/wa\.me|whatsapp/.test(text)) {
+      send('whatsapp_click', { event_properties: { section_id: sid } });
+      return;
+    }
+    if (/compatib|fit check|bathroom fit|shower fit/.test(text)) {
+      send('compatibility_cta_click', { event_properties: { section_id: sid } });
+    }
+  }
+
+  document.addEventListener('click', function(e) {
+    var el = e.target && e.target.closest ? e.target.closest('a,button,[role=\"button\"],summary,[data-el-section-id]') : null;
+    if (!el) return;
+    maybeTrackControlClick(el);
+    sendSectionEvent('click', el);
+    var key = sectionIdFor(el) + '|' + (el.innerText || el.textContent || '').trim().slice(0, 80);
+    var now = Date.now();
+    if (now - lastClickAt < 1200 && key === lastClickKey) sendSectionEvent('rage_click', el);
+    lastClickAt = now;
+    lastClickKey = key;
+  }, true);
+
+  document.addEventListener('change', function(e) {
+    var el = e.target;
+    if (!el || window.location.pathname.indexOf('/cart') !== 0) return;
+    var name = (el.getAttribute && el.getAttribute('name') || '').toLowerCase();
+    if (/updates|quantity/.test(name)) send('cart_quantity_change', { event_properties: { name: name, value: el.value || null } });
+  }, true);
+
+  window.addEventListener('scroll', function() {
+    var sd = scrollPct();
+    if (sd > scrollMaxPct) scrollMaxPct = sd;
+    if (sd >= 25 && !scrollSeen[25]) { scrollSeen[25] = true; send('scroll_depth_25'); }
+    if (sd >= 50 && !scrollSeen[50]) { scrollSeen[50] = true; send('scroll_depth_50'); }
+    if (sd >= 75 && !scrollSeen[75]) { scrollSeen[75] = true; send('scroll_depth_75'); }
+    if (sd >= 90 && !scrollSeen[90]) { scrollSeen[90] = true; send('scroll_depth_90'); }
+  }, { passive: true });
+
+  if ('IntersectionObserver' in window) {
+    var observer = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (!entry.isIntersecting || entry.intersectionRatio < 0.35) return;
+        var label = ((entry.target.id || '') + ' ' + (entry.target.className || '') + ' ' + (entry.target.getAttribute && entry.target.getAttribute('data-section-type') || '')).toLowerCase();
+        if (/comparison|compare/.test(label)) once('comparison_section_view', function(){ send('comparison_section_view'); });
+        if (/offer|price|pricing|buy-box|sticky-cta/.test(label)) once('offer_section_view', function(){ send('offer_section_view'); });
+        if (/guarantee|warranty|return|trust/.test(label)) once('guarantee_section_view', function(){ send('guarantee_section_view'); });
+      });
+    }, { threshold: [0.35] });
+
+    var observed = document.querySelectorAll('section, [data-section-type], [data-el-section-id]');
+    for (var i = 0; i < observed.length; i++) observer.observe(observed[i]);
+  }
+
+  function fireAtc(source, extra) {
+    sectionAtcFired = true;
+    send('add_to_cart', Object.assign({ event_properties: { tracking_source: source } }, extra || {}));
+  }
+
+  send('page_view');
+  if (ctx.shopify_product_id || window.location.pathname.indexOf('/products/') === 0) send('product_viewed');
+
+  if (window.Shopify && window.Shopify.analytics && window.Shopify.analytics.subscribe) {
+    try {
+      window.Shopify.analytics.subscribe('product_added_to_cart', function(event) {
+        var line = (event && event.data && event.data.cartLine) || {};
+        fireAtc('shopify_analytics_subscribe', { shopify_variant_id: line.merchandise && line.merchandise.id, quantity: line.quantity });
+      });
+      window.Shopify.analytics.subscribe('checkout_started', function(event) {
+        send('checkout_started', { event_value: event && event.data && event.data.checkout && event.data.checkout.totalPrice && event.data.checkout.totalPrice.amount });
+      });
+    } catch(e) {}
+  }
+
+  var originalFetch = window.fetch;
+  if (originalFetch && !window.__el_fetch_patched) {
+    window.__el_fetch_patched = true;
+    window.fetch = function(url, opts) {
+      var u = typeof url === 'string' ? url : (url && url.url) || '';
+      var isCartAdd = u.indexOf('/cart/add') !== -1;
+      if (isCartAdd) send('cart_add_request');
+      var p = originalFetch.apply(this, arguments);
+      if (isCartAdd) {
+        p.then(function(res) { if (res && res.ok) fireAtc('fetch_cart_add'); else send('cart_add_failed', { event_properties: { status: res && res.status } }); }).catch(function() { send('cart_add_failed'); });
+      }
+      return p;
+    };
+  }
+
+  if (window.XMLHttpRequest && !window.__el_xhr_patched) {
+    window.__el_xhr_patched = true;
+    var xhrOpen = XMLHttpRequest.prototype.open;
+    var xhrSend = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.open = function(method, url) { this.__el_cart_add = /\/cart\/add/.test(String(url || '')); return xhrOpen.apply(this, arguments); };
+    XMLHttpRequest.prototype.send = function() {
+      if (this.__el_cart_add) {
+        send('cart_add_request', { event_properties: { tracking_source: 'xhr_cart_add' } });
+        this.addEventListener('load', function(){ if (this.status >= 200 && this.status < 400) fireAtc('xhr_cart_add'); else send('cart_add_failed', { event_properties: { status: this.status, tracking_source: 'xhr_cart_add' } }); });
+      }
+      return xhrSend.apply(this, arguments);
+    };
+  }
+
+  if (window.location.pathname.indexOf('/cart') === 0) {
+    send('cart_view');
+  }
+
+  window.addEventListener('pagehide', function() {
+    if (window.location.pathname.indexOf('/cart') === 0) {
+      send('cart_exit_without_checkout', { event_properties: { scroll_depth_pct: scrollMaxPct || scrollPct() } });
+    }
+    if (window.location.pathname.indexOf('/products/kryo2') !== 0 || !scrollSeen[50] || sectionAtcFired) return;
+    var visible = document.querySelector('[data-el-section-id]');
+    if (visible) sendSectionEvent('scroll_abandon', visible, { scroll_depth_pct: scrollMaxPct || scrollPct() });
+  });
+})();
+</script>
+
+    {% render 'everest-kryo2-quality-pixel' %}
+
+
+{% if page.handle == 'kryo-resources' %}
+<div id="kryo-safety-ack-modal-v1" class="kryo-safety-modal" role="dialog" aria-modal="true" aria-labelledby="kryoSafetyTitle">
+  <div class="kryo-safety-card">
+    <div class="kryo-safety-brand"><span>EVEREST LABS</span><strong>KRYO</strong></div>
+    <p class="kryo-safety-kicker">Required safety acknowledgement</p>
+    <h2 id="kryoSafetyTitle">Read before setting up KRYO.</h2>
+    <p class="kryo-safety-copy">Cold exposure and water-powered electrical appliances carry risk. Before continuing, confirm you understand the key safety notices below.</p>
+    <div class="kryo-safety-list" aria-label="KRYO safety notices">
+      <p><strong>Medical:</strong> Do not use KRYO if cold exposure is unsafe for you. Speak with a qualified clinician first if you are pregnant, have heart/circulation issues, high blood pressure, fainting history, Raynaud’s, cold urticaria, nerve issues, or any condition affected by cold.</p>
+      <p><strong>Stop immediately:</strong> Exit if you feel chest pain, severe breathlessness, dizziness, numbness, confusion, unusual pain, or loss of coordination.</p>
+      <p><strong>Electrical:</strong> Keep the mains power supply outside the wet area. Do not plug into bathroom shaver outlets. Do not use KRYO with damaged cables, loose connectors, standing water around power, or modified components.</p>
+      <p><strong>Water and slips:</strong> Use on a stable surface. Keep children and pets away. Do not submerge the unit. Keep hose paths clear to reduce trip and slip risk.</p>
+      <p><strong>Use responsibly:</strong> Do not use while impaired by alcohol, drugs, or medication. Start short. KRYO is not a medical device and this page is not medical advice.</p>
+    </div>
+    <form id="kryoSafetyForm" class="kryo-safety-form">
+      <input type="text" id="kryoSafetyName" name="name" autocomplete="name" placeholder="Full name" required>
+      <input type="email" id="kryoSafetyEmail" name="email" autocomplete="email" placeholder="Email address" required>
+      <label class="kryo-safety-check"><input type="checkbox" id="kryoSafetyRead" required><span>I have read and understand the KRYO safety notice, and I accept responsibility for using KRYO safely.</span></label>
+      <button type="submit" id="kryoSafetySubmit">I have read safety</button>
+      <p id="kryoSafetyError" class="kryo-safety-error" role="alert"></p>
+    </form>
+    <p class="kryo-safety-foot">We record your name, email, timestamp, page, and acknowledgement version for safety compliance.</p>
+  </div>
+</div>
+<style id="kryo-safety-ack-css-v1">
+.kryo-safety-modal{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:22px;background:radial-gradient(circle at 50% 0%,rgba(127,216,255,.18),transparent 35%),rgba(3,6,10,.88);backdrop-filter:blur(18px);color:#f7fbff;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.kryo-safety-card{width:min(760px,100%);max-height:min(94vh,1040px);overflow:auto;border:1px solid rgba(255,255,255,.14);border-radius:30px;background:linear-gradient(180deg,#0f1720,#070b10);box-shadow:0 40px 120px rgba(0,0,0,.62);padding:30px}.kryo-safety-brand{display:flex;align-items:end;justify-content:space-between;gap:20px;margin-bottom:24px}.kryo-safety-brand span{font-size:12px;font-weight:850;letter-spacing:.12em}.kryo-safety-brand strong{font-size:26px;font-weight:300;letter-spacing:.24em}.kryo-safety-kicker{margin:0 0 12px;color:#7fd8ff;font-size:12px;font-weight:850;letter-spacing:.16em;text-transform:uppercase}.kryo-safety-card h2{margin:0;color:#f7fbff!important;font-size:clamp(30px,4.6vw,48px);line-height:.96;letter-spacing:-.055em}.kryo-safety-copy{margin:14px 0 16px;color:#c7d3dd;font-size:16px;line-height:1.55}.kryo-safety-list{display:grid;gap:8px;margin:0 0 16px;padding:16px;border-radius:20px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.1)}.kryo-safety-list p{margin:0;color:#b7c4cf;font-size:13px;line-height:1.42}.kryo-safety-list strong{color:#f7fbff}.kryo-safety-form{display:grid;gap:12px}.kryo-safety-form input[type="text"],.kryo-safety-form input[type="email"]{width:100%;min-height:52px;border-radius:14px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.07);color:#f7fbff;padding:0 15px;font-size:15px}.kryo-safety-form input::placeholder{color:#84919d}.kryo-safety-check{display:flex;gap:12px;align-items:flex-start;color:#dbe7ef;font-size:14px;line-height:1.45}.kryo-safety-check input{margin-top:3px;accent-color:#7fd8ff;flex:0 0 auto}.kryo-safety-form button{min-height:54px;border:0;border-radius:999px;background:#f7fbff;color:#070b10;font-weight:900;font-size:15px;cursor:pointer}.kryo-safety-form button[disabled]{opacity:.62;cursor:wait}.kryo-safety-error{min-height:18px;margin:0;color:#ffb4b4;font-size:13px}.kryo-safety-foot{margin:12px 0 0;color:#7f8c98;font-size:12px;line-height:1.4}@media(max-width:640px){.kryo-safety-card{padding:24px;border-radius:24px}.kryo-safety-brand{margin-bottom:22px;align-items:start;flex-direction:column}.kryo-safety-brand strong{font-size:22px}}
+</style>
+<script id="kryo-safety-ack-js-v1">
+(function(){
+  if(window.__kryoSafetyAckInit) return; window.__kryoSafetyAckInit=true;
+  var version='kryo_safety_ack_v1_2026-07-08';
+  var key='kryoSafetyAcknowledgement:'+version;
+  var modal=document.getElementById('kryo-safety-ack-modal-v1');
+  var form=document.getElementById('kryoSafetyForm');
+  var err=document.getElementById('kryoSafetyError');
+  var btn=document.getElementById('kryoSafetySubmit');
+  if(!modal||!form) return;
+  function hide(){ modal.style.display='none'; document.documentElement.style.overflow=''; document.body.style.overflow=''; }
+  function show(){ modal.style.display='flex'; document.documentElement.style.overflow='hidden'; document.body.style.overflow='hidden'; setTimeout(function(){var n=document.getElementById('kryoSafetyName'); if(n) n.focus();},120); }
+  try { if(localStorage.getItem(key)){ hide(); return; } } catch(e) {}
+  show();
+  form.addEventListener('submit', function(ev){
+    ev.preventDefault();
+    if(err) err.textContent='';
+    var name=(document.getElementById('kryoSafetyName')||{}).value||'';
+    var email=(document.getElementById('kryoSafetyEmail')||{}).value||'';
+    var read=!!(document.getElementById('kryoSafetyRead')||{}).checked;
+    name=name.trim(); email=email.trim().toLowerCase();
+    if(name.length<3 || !/.+@.+\..+/.test(email) || !read){ if(err) err.textContent='Enter your full name, valid email, and tick the safety acknowledgement.'; return; }
+    if(btn){ btn.disabled=true; btn.textContent='Saving acknowledgement...'; }
+    var payload={source:'kryo_safety_acknowledgement',email:email,responses:{full_name:name,email:email,acknowledged:true,acknowledgement_text:'I have read and understand the KRYO safety notice, and I accept responsibility for using KRYO safely.',acknowledgement_version:version,acknowledged_at:new Date().toISOString(),page_path:location.pathname,page_url:location.href,user_agent:navigator.userAgent,timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||null}};
+    fetch('https://everest-calendar.vercel.app/api/marketing/survey',{method:'POST',body:JSON.stringify(payload)})
+      .then(function(r){ if(!r.ok) throw new Error('save_failed'); return r.json(); })
+      .then(function(){ try{localStorage.setItem(key,JSON.stringify({name:name,email:email,ts:new Date().toISOString()}));}catch(e){} hide(); })
+      .catch(function(){ if(err) err.textContent='Could not save the acknowledgement. Please check your connection and try again.'; if(btn){btn.disabled=false;btn.textContent='I have read safety';} });
+  });
+})();
+</script>
+{% endif %}
+
+</body>
+</html>
