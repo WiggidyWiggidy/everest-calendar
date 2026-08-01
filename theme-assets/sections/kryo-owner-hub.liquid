@@ -144,7 +144,64 @@
     </div>
   </section>
 
+
+  {%- comment -%} ---------- SAFETY ACKNOWLEDGEMENT (§22-23) ----------
+    Never blocks the Hub, Help or Safety. Triggers only on "Start setup".
+    Record is stored locally now; server-side persistence is a separate,
+    approved step (05_SAFETY §5 requires versioned server-side records).
+  {%- endcomment -%}
+  {%- if section.settings.gate_enabled -%}
+  <div class="kryo-gate" data-kryo-gate hidden>
+    <div class="kryo-gate__panel" role="dialog" aria-modal="true" aria-labelledby="kryo-gate-h">
+      <h2 class="kryo-owner__h2" id="kryo-gate-h">{{ section.settings.gate_heading }}</h2>
+      <div class="kryo-owner__note kryo-owner__note--critical">{{ section.settings.gate_lead }}</div>
+      <p class="kryo-owner__body">{{ section.settings.gate_body }}</p>
+      <p><a href="{{ section.settings.safety_url }}" class="kryo-gate__link">{{ section.settings.gate_link }}</a></p>
+
+      <form data-kryo-gate-form novalidate>
+        <label class="kryo-gate__f"><span>{{ section.settings.f_name }}</span><input type="text" name="name" required autocomplete="name"></label>
+        <label class="kryo-gate__f"><span>{{ section.settings.f_email }}</span><input type="email" name="email" required autocomplete="email"></label>
+        <div class="kryo-gate__row">
+          <label class="kryo-gate__f"><span>{{ section.settings.f_model }}</span><input type="text" name="model" autocomplete="off"></label>
+          <label class="kryo-gate__f"><span>{{ section.settings.f_serial }}</span><input type="text" name="serial" autocomplete="off"></label>
+        </div>
+        <label class="kryo-gate__check"><input type="checkbox" name="accept" required><span>{{ section.settings.gate_accept }}</span></label>
+        <label class="kryo-gate__check"><input type="checkbox" name="marketing"><span>{{ section.settings.gate_marketing }}</span></label>
+        <p class="kryo-gate__err" data-kryo-gate-err hidden></p>
+        <div class="kryo-owner__btn-row" style="margin-top:20px">
+          <button type="submit" class="kryo-owner__btn kryo-owner__btn--primary">{{ section.settings.gate_cta }}</button>
+          <button type="button" class="kryo-owner__btn kryo-owner__btn--secondary" data-kryo-gate-close>{{ section.settings.gate_cancel }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {%- endif -%}
 </div>
+
+{% style %}
+  .kryo-gate { position:fixed; inset:0; z-index:9999; display:flex; align-items:flex-end;
+    justify-content:center; background:rgba(23,26,28,.55); }
+  .kryo-gate[hidden] { display:none; }
+  .kryo-gate__panel { background:#fff; width:100%; max-height:92vh; overflow-y:auto;
+    padding:24px 24px calc(24px + env(safe-area-inset-bottom));
+    border-radius:var(--kryo-radius-xl) var(--kryo-radius-xl) 0 0; }
+  .kryo-gate__link { color:var(--kryo-blue); font-weight:600; }
+  .kryo-gate__f { display:block; margin:0 0 14px; }
+  .kryo-gate__f span { display:block; font:600 13px/1 var(--kryo-font-body); color:var(--kryo-text-secondary); margin-bottom:6px; }
+  .kryo-gate__f input { width:100%; min-height:48px; padding:12px 14px; font-size:16px;
+    border:1px solid var(--kryo-border-strong); border-radius:var(--kryo-radius-md);
+    font-family:var(--kryo-font-body); background:#fff; color:var(--kryo-text); }
+  .kryo-gate__f input:focus-visible { outline:2px solid var(--kryo-blue); outline-offset:1px; }
+  .kryo-gate__check { display:flex; gap:10px; align-items:flex-start; margin:0 0 12px;
+    font-size:14px; line-height:1.5; color:var(--kryo-text-secondary); }
+  .kryo-gate__check input { margin-top:3px; width:18px; height:18px; flex:0 0 auto; }
+  .kryo-gate__err { color:var(--kryo-danger); font-size:14px; font-weight:600; margin:8px 0 0; }
+  @media (min-width:750px) {
+    .kryo-gate { align-items:center; }
+    .kryo-gate__panel { max-width:640px; padding:40px; border-radius:var(--kryo-radius-xl); }
+    .kryo-gate__row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  }
+{% endstyle %}
 
 <script>
 (function () {
@@ -226,6 +283,46 @@
   var heroCta = root.querySelector('[data-kryo-cta="setup"][data-label-resume]');
   if (heroCta && show === 'progress') heroCta.textContent = heroCta.getAttribute('data-label-resume');
 
+
+  // ---- Safety acknowledgement gate (§22-23) ----
+  var gate = document.querySelector('[data-kryo-gate]');
+  var ACC = 'kryo_safety_accepted_v1';
+  function accepted(){ try { return !!localStorage.getItem(ACC); } catch(e){ return false; } }
+  if (gate) {
+    var pending = null;
+    root.addEventListener('click', function (e) {
+      var a = e.target.closest && e.target.closest('[data-kryo-cta="setup"]');
+      if (!a || accepted()) return;
+      e.preventDefault(); pending = a.getAttribute('href') || '/pages/kryo-setup';
+      gate.hidden = false; document.body.style.overflow = 'hidden';
+      var f = gate.querySelector('input[name="name"]'); if (f) f.focus();
+      track('kryo_safety_gate_view', {});
+    }, true);
+    function close(){ gate.hidden = true; document.body.style.overflow = ''; }
+    gate.addEventListener('click', function (e) {
+      if (e.target === gate || e.target.closest('[data-kryo-gate-close]')) close();
+    });
+    document.addEventListener('keydown', function(e){ if(e.key==='Escape' && !gate.hidden) close(); });
+    var form = gate.querySelector('[data-kryo-gate-form]');
+    if (form) form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var err = gate.querySelector('[data-kryo-gate-err]');
+      var d = new FormData(form);
+      var name=(d.get('name')||'').toString().trim(), email=(d.get('email')||'').toString().trim();
+      if (!name || !email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || !d.get('accept')) {
+        if (err) { err.hidden=false; err.textContent = form.getAttribute('data-err') || 'Please complete your name, a valid email and the acknowledgement.'; }
+        return;
+      }
+      if (err) err.hidden = true;
+      try { localStorage.setItem(ACC, JSON.stringify({ accepted_at:new Date().toISOString(),
+        safety_version:'KRYO-SAFETY-2026-08-01', terms_version:'KRYO-UAE-TERMS-2026-08-01',
+        marketing: !!d.get('marketing') })); } catch(ex){}
+      // PII is deliberately NOT sent to the analytics pixel (05_SAFETY §7).
+      track('kryo_safety_accept', { marketing: !!d.get('marketing') });
+      close(); window.location.href = pending || '/pages/kryo-setup';
+    });
+  }
+
   track('kryo_owner_hub_view', { state: show });
 
   root.addEventListener('click', function (e) {
@@ -272,6 +369,21 @@
     { "type": "header", "content": "Owner resources" },
     { "type": "text", "id": "actions_heading", "label": "Heading", "default": "Owner resources" },
 
+    { "type": "header", "content": "Safety acknowledgement" },
+    { "type": "checkbox", "id": "gate_enabled", "label": "Require acknowledgement before setup", "default": true },
+    { "type": "url", "id": "safety_url", "label": "Safety page URL" },
+    { "type": "text", "id": "gate_heading", "label": "Heading", "default": "Before you begin" },
+    { "type": "textarea", "id": "gate_lead", "label": "Warning lead", "default": "Cold exposure can rapidly affect breathing, heart rate and blood pressure." },
+    { "type": "textarea", "id": "gate_body", "label": "Body", "default": "Read the safety information before installing or using KRYO. Start gently, never direct the first flow at your face or chest, and do not use KRYO if a medical condition may make cold exposure unsafe." },
+    { "type": "text", "id": "gate_link", "label": "Safety link", "default": "Read full safety information" },
+    { "type": "text", "id": "f_name", "label": "Name field", "default": "Full name" },
+    { "type": "text", "id": "f_email", "label": "Email field", "default": "Email address" },
+    { "type": "text", "id": "f_model", "label": "Model field", "default": "KRYO model (optional)" },
+    { "type": "text", "id": "f_serial", "label": "Serial field", "default": "Serial number (optional)" },
+    { "type": "textarea", "id": "gate_accept", "label": "Required acknowledgement", "default": "I confirm that I am 18 or older, have read and understood the KRYO safety information and terms, understand that cold exposure carries risks, and agree to install and use KRYO only as instructed. I understand that I should seek medical advice before use if I have a medical condition, am pregnant, take relevant medication or am unsure whether cold exposure is safe for me." },
+    { "type": "textarea", "id": "gate_marketing", "label": "Optional marketing consent", "default": "Send me KRYO care tips, product updates and offers by email." },
+    { "type": "text", "id": "gate_cta", "label": "Accept button", "default": "Accept and begin setup" },
+    { "type": "text", "id": "gate_cancel", "label": "Cancel button", "default": "Not now" },
     { "type": "header", "content": "Support" },
     { "type": "text", "id": "support_eyebrow", "label": "Eyebrow", "default": "KRYO SUPPORT" },
     { "type": "text", "id": "support_heading", "label": "Heading", "default": "Need a hand?" },

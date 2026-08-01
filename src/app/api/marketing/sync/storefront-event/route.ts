@@ -35,6 +35,7 @@ const ALLOWED_EVENTS = new Set([
   'kryo_setup_start', 'kryo_setup_chapter_view', 'kryo_setup_step_view',
   'kryo_setup_step_complete', 'kryo_setup_complete', 'kryo_first_use_complete',
   'kryo_help_issue_select', 'kryo_whatsapp_support_click', 'kryo_safety_view',
+  'kryo_safety_gate_view', 'kryo_safety_accept',
 ]);
 
 function svc() {

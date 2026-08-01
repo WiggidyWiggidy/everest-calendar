@@ -57,7 +57,9 @@
         "whatsapp_url": "https://wa.me/447724709585",
         "hero_image": "shopify://shop_images/kryo-front-view.webp",
         "hero_image_alt": "KRYO installed and ready to use",
-        "total_steps": 24
+        "total_steps": 24,
+        "gate_enabled": true,
+        "safety_url": "/pages/kryo-safety"
       }
     }
   },
