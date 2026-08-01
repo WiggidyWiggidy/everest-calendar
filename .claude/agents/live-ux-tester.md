@@ -32,6 +32,29 @@ A URL, a device profile, and the exact interaction to test.
 
 **SHARED WORKSPACE:** read the active blackboard in `marketing/findings/` before starting, and append your result to it. Do not return findings only to the caller — a lens whose output dies at the orchestrator gives the team no memory. State explicitly where you AGREE and DISAGREE with what is already on the board.
 
+
+
+**WORKED EXAMPLE**
+Input: "verify the sticky-bar change on kryo2_"
+Good output:
+```
+claim   · Change renders and the control still functions at both viewports.
+method  · Playwright, live storefront, 390x844 and 1280x800.
+evidence· mobile: text renders at y=0 sticky; tap → /cart/add 200; /cart.js item_count 0→1
+          desktop: same; 0 new console errors; adjacent blocks unshifted
+          screenshots: /tmp/qc-mobile-*.png, /tmp/qc-desktop-*.png
+confidence · FACT for render + cart line (directly observed)
+falsify · item_count not incrementing, or a new console error on either viewport
+handoff · page-builder if FAIL → immediate rollback, never a forward fix
+```
+Note: `/cart/add` returning 200 is **not** sufficient. The cart line must actually appear.
+
+**IDEMPOTENCY (required for any batch or repeated run):**
+Before creating anything, check whether it already exists and skip if so. State which of
+create / skip / update you did, per item. Never create a second copy because a previous run's
+outcome was unclear — an ambiguous state is a STOP, not a retry. For multi-item work, read and
+update the run manifest so a resumed run continues rather than restarting.
+
 **OUTPUT SCHEMA** — return this, not free text:
 `claim · method · source+window+n · confidence(FACT/PATTERN/HYPOTHESIS/UNKNOWN) · what-would-falsify-it · handoff`
 

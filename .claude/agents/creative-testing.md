@@ -28,6 +28,13 @@ The avatar, winning-hooks, rejected-patterns, and the current objection.
 
 **SHARED WORKSPACE:** read the active blackboard in `marketing/findings/` before starting, and append your result to it. Do not return findings only to the caller — a lens whose output dies at the orchestrator gives the team no memory. State explicitly where you AGREE and DISAGREE with what is already on the board.
 
+
+**IDEMPOTENCY (required for any batch or repeated run):**
+Before creating anything, check whether it already exists and skip if so. State which of
+create / skip / update you did, per item. Never create a second copy because a previous run's
+outcome was unclear — an ambiguous state is a STOP, not a retry. For multi-item work, read and
+update the run manifest so a resumed run continues rather than restarting.
+
 **OUTPUT SCHEMA:** `claim · method · source+window+n · confidence · what-would-falsify-it · handoff`
 
 **Failure behaviour:** if `meta_ad_breakdowns_daily` is stale (orphaned since 2026-05-17),

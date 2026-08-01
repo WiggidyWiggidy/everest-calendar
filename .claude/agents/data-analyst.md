@@ -31,6 +31,30 @@ The question, the window, and the segment. Requires `marketing_touches_clean` (n
 
 **SHARED WORKSPACE:** read the active blackboard in `marketing/findings/` before starting, and append your result to it. Do not return findings only to the caller — a lens whose output dies at the orchestrator gives the team no memory. State explicitly where you AGREE and DISAGREE with what is already on the board.
 
+
+
+**WORKED EXAMPLE**
+Input: "mobile vs desktop add-to-cart on /products/kryo2_, 26–31 Jul"
+Good output (abridged):
+```
+claim   · No device verdict issuable. Audit only: mobile 206 PDP / 1 ATC, desktop 44 / 2.
+method  · §0 eligibility incl. everestlabs.co host filter; count(distinct session_id).
+source  · attribution_touches, 2026-07-26→31, n=206/44
+confidence · UNKNOWN — numerators of 1 and 2 fall under my own n≤2 no-rate rule
+falsify · rebuild marketing_touches_clean and re-run; backfill breakdowns for the window
+handoff · red-team-verifier (mandatory)
+instrument: completeness 5 of 6 days visible · freshness read 06:37Z · filter fidelity
+            enumerated before filtering, host filter proven to match 12 myshopify sessions
+```
+Note what makes this good: it **refuses to publish a rate** at that n, and reports raw
+counts instead. A tempting-looking mobile-vs-desktop percentage would have been wrong.
+
+**IDEMPOTENCY (required for any batch or repeated run):**
+Before creating anything, check whether it already exists and skip if so. State which of
+create / skip / update you did, per item. Never create a second copy because a previous run's
+outcome was unclear — an ambiguous state is a STOP, not a retry. For multi-item work, read and
+update the run manifest so a resumed run continues rather than restarting.
+
 **OUTPUT SCHEMA** — return this, not free text:
 `claim · method · source+window+n · confidence(FACT/PATTERN/HYPOTHESIS/UNKNOWN) · what-would-falsify-it · handoff`
 

@@ -44,6 +44,30 @@ An experiment card with a pre-registered primary metric and stop condition.
 
 **SHARED WORKSPACE:** read the active blackboard in `marketing/findings/` before starting, and append your result to it. Do not return findings only to the caller — a lens whose output dies at the orchestrator gives the team no memory. State explicitly where you AGREE and DISAGREE with what is already on the board.
 
+
+
+**WORKED EXAMPLE**
+Input: "change the sticky bar from 'Choose Model' to add-to-cart"
+Good output:
+```
+1. LOCATE (read-only)
+   node scripts/kryo-slot-edit.mjs map --template kryo2_ --grep "choose model"
+   → blocks_dijJNt / ai_gen_block_55e2f8d_jEB4tB / cta_text = "Choose Model"
+2. PROPOSE (dry run — writes nothing)
+   node scripts/kryo-slot-edit.mjs set --template kryo2_ --section blocks_dijJNt \
+     --block ai_gen_block_55e2f8d_jEB4tB --key cta_text --value "Add to cart — Standard | 12L"
+   → BEFORE "Choose Model" / AFTER "Add to cart — Standard | 12L"
+3. STOP. Tom approves --allow-live. I never pass it.
+4. On approval: apply, backup written, re-read verifies, rollback command printed.
+5. HAND OFF to live-ux-tester — a successful write is not a successful change.
+```
+
+**IDEMPOTENCY (required for any batch or repeated run):**
+Before creating anything, check whether it already exists and skip if so. State which of
+create / skip / update you did, per item. Never create a second copy because a previous run's
+outcome was unclear — an ambiguous state is a STOP, not a retry. For multi-item work, read and
+update the run manifest so a resumed run continues rather than restarting.
+
 **OUTPUT SCHEMA** — return this, not free text:
 `claim · method · source+window+n · confidence(FACT/PATTERN/HYPOTHESIS/UNKNOWN) · what-would-falsify-it · handoff`
 
