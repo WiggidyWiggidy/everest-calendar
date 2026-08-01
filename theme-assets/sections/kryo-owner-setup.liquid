@@ -17,9 +17,12 @@
   <div class="kryo-setup__topbar">
     <div class="kryo-owner__container">
       <div class="kryo-setup__topbar__row">
-        <p class="kryo-owner__progress__label" data-kryo-chapter-label>SETUP</p>
+        <a class="kryo-setup__exit" href="{{ section.settings.hub_url }}" aria-label="Back to owner hub">
+          <span aria-hidden="true">&#8592;</span> {{ section.settings.exit_label }}
+        </a>
         <p class="kryo-setup__stepcount" data-kryo-stepcount></p>
       </div>
+      <p class="kryo-owner__progress__label" data-kryo-chapter-label style="margin-top:6px">SETUP</p>
       <div class="kryo-owner__progress"><div class="kryo-owner__progress__bar" data-kryo-bar style="width:0%"></div></div>
       <nav class="kryo-setup__chips" data-kryo-chips aria-label="Setup chapters">
         {%- for name in chapter_names -%}
@@ -119,6 +122,9 @@
   .kryo-setup__topbar { position: sticky; top: 0; z-index: 20; background: rgba(255,255,255,.97);
     backdrop-filter: saturate(180%) blur(8px); border-bottom: 1px solid var(--kryo-border); padding: 10px 0 0; }
   .kryo-setup__topbar__row { display:flex; justify-content:space-between; align-items:baseline; }
+  .kryo-setup__exit { display:inline-flex; align-items:center; gap:6px; text-decoration:none;
+    font:600 13px/1 var(--kryo-font-body); color:var(--kryo-text-secondary); padding:4px 0; }
+  .kryo-setup__exit:hover { color:var(--kryo-text); }
   .kryo-setup__stepcount { font-size:12px; font-weight:600; color:var(--kryo-text-tertiary); margin:0; letter-spacing:.04em; }
   .kryo-setup__topbar .kryo-owner__progress { margin:8px 0 0; }
   .kryo-setup__chips { display:flex; gap:6px; overflow-x:auto; padding:10px 0; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
@@ -306,6 +312,7 @@
     { "type": "url", "id": "hub_url", "label": "Owner hub URL" },
     { "type": "text", "id": "why_label", "label": "Why-this-matters label", "default": "Why this matters" },
     { "type": "text", "id": "back_label", "label": "Back button", "default": "Back" },
+    { "type": "text", "id": "exit_label", "label": "Exit link", "default": "Owner hub" },
     { "type": "text", "id": "next_label", "label": "Next button", "default": "Next" },
     { "type": "header", "content": "Support" },
     { "type": "url", "id": "whatsapp_url", "label": "WhatsApp URL" },

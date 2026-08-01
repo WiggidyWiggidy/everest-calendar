@@ -196,7 +196,8 @@
   var show = 'new';
   if (p) {
     if (p.setupComplete) show = 'complete';
-    else if (p.currentChapter) show = 'progress';
+    // Only claim "in progress" once real progress exists — merely opening step 1 is not progress.
+    else if ((parseInt(p.completedSteps, 10) || 0) > 0 || (parseInt(p.currentStep, 10) || 0) > 0) show = 'progress';
   }
 
   var card = root.querySelector('[data-kryo-progress-card]');
