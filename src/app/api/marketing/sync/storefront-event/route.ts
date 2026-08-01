@@ -29,6 +29,12 @@ const ALLOWED_EVENTS = new Set([
   'installation_faq_open', 'hose_connection_faq_open', 'delivery_faq_open',
   'returns_faq_open', 'comparison_section_view', 'reviews_section_view',
   'offer_section_view', 'guarantee_section_view',
+  // KRYO Owner Experience (spec §51). Owner events ONLY — these never touch
+  // ecommerce conversion events, and are not forwarded to Meta CAPI.
+  'kryo_owner_hub_view', 'kryo_owner_action_click',
+  'kryo_setup_start', 'kryo_setup_chapter_view', 'kryo_setup_step_view',
+  'kryo_setup_step_complete', 'kryo_setup_complete', 'kryo_first_use_complete',
+  'kryo_help_issue_select', 'kryo_whatsapp_support_click', 'kryo_safety_view',
 ]);
 
 function svc() {

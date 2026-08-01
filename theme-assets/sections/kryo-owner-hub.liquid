@@ -1,0 +1,294 @@
+{%- comment -%}
+  KRYO Owner Hub — /pages/kryo-resources
+  Spec: "KRYO Owner Experience Build Specification" §21–§26
+
+  Function is navigation, confidence and progress. NOT documentation (§21).
+  Every string is a schema setting so Everest Labs can edit copy without
+  touching Liquid (§54). Design tokens stay in CSS and are NOT exposed (§55).
+
+  Progress state reads localStorage `kryo_setup_progress_v1` (§52).
+  Analytics: kryo_owner_hub_view, kryo_setup_start, kryo_whatsapp_support_click (§51).
+{%- endcomment -%}
+
+{{ 'kryo-owner.css' | asset_url | stylesheet_tag }}
+
+<div class="kryo-owner" data-kryo-owner-hub data-chapters="{{ section.settings.total_chapters }}">
+
+  {%- comment -%} ---------- SECTION 1: HERO (§21) ---------- {%- endcomment -%}
+  <section class="kryo-owner__hero">
+    <div class="kryo-owner__container">
+      <div class="kryo-owner__hero__inner">
+        <div class="kryo-owner__hero__copy">
+          {%- if section.settings.eyebrow != blank -%}
+            <p class="kryo-owner__eyebrow">{{ section.settings.eyebrow }}</p>
+          {%- endif -%}
+          <h1 class="kryo-owner__h1">{{ section.settings.heading }}</h1>
+          {%- if section.settings.body != blank -%}
+            <p class="kryo-owner__body kryo-owner__body--lead">{{ section.settings.body }}</p>
+          {%- endif -%}
+
+          <div class="kryo-owner__btn-row">
+            <a href="{{ section.settings.setup_url }}"
+               class="kryo-owner__btn kryo-owner__btn--primary"
+               data-kryo-cta="setup"
+               data-label-new="{{ section.settings.cta_primary_new }}"
+               data-label-resume="{{ section.settings.cta_primary_resume }}">
+              {{ section.settings.cta_primary_new }}
+            </a>
+            {%- if section.settings.cta_secondary != blank -%}
+              <a href="{{ section.settings.support_url }}"
+                 class="kryo-owner__btn kryo-owner__btn--secondary"
+                 data-kryo-cta="support">
+                {{ section.settings.cta_secondary }}
+              </a>
+            {%- endif -%}
+          </div>
+        </div>
+
+        <div class="kryo-owner__hero__visual">
+          {%- if section.settings.hero_image != blank -%}
+            {{ section.settings.hero_image | image_url: width: 1200 | image_tag:
+                 loading: 'eager', alt: section.settings.hero_image_alt | default: section.settings.heading }}
+          {%- else -%}
+            {%- comment -%} Intentional placeholder, same footprint as the real asset (§57) {%- endcomment -%}
+            <div class="kryo-owner__placeholder">
+              <strong>IMAGE REQUIRED</strong>
+              <span>OWNER HUB / HERO</span>
+              <span>Completed KRYO installation</span>
+              <span>Asset ID: KRYO-HUB-01</span>
+            </div>
+          {%- endif -%}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {%- comment -%} ---------- SECTION 2: PROGRESS CARD (§24) ---------- {%- endcomment -%}
+  <section class="kryo-owner__section kryo-owner__section--tight kryo-owner__section--surface">
+    <div class="kryo-owner__container">
+      <div class="kryo-owner__card kryo-owner__card--surface" data-kryo-progress-card>
+
+        {%- comment -%} New customer — default state, shown before JS runs {%- endcomment -%}
+        <div data-kryo-state="new">
+          <h2 class="kryo-owner__h2">{{ section.settings.progress_new_heading }}</h2>
+          <p class="kryo-owner__body">{{ section.settings.progress_new_body }}</p>
+          {%- if section.settings.progress_new_support != blank -%}
+            <p class="kryo-owner__progress__label">{{ section.settings.progress_new_support }}</p>
+          {%- endif -%}
+          <div class="kryo-owner__btn-row" style="margin-top:20px">
+            <a href="{{ section.settings.setup_url }}" class="kryo-owner__btn kryo-owner__btn--primary" data-kryo-cta="setup">
+              {{ section.settings.cta_primary_new }}
+            </a>
+          </div>
+        </div>
+
+        {%- comment -%} In progress {%- endcomment -%}
+        <div data-kryo-state="progress" class="kryo-owner__hide">
+          <h2 class="kryo-owner__h2">{{ section.settings.progress_resume_heading }}</h2>
+          <p class="kryo-owner__progress__label" data-kryo-progress-text></p>
+          <div class="kryo-owner__progress"><div class="kryo-owner__progress__bar" data-kryo-progress-bar style="width:0%"></div></div>
+          <div class="kryo-owner__btn-row" style="margin-top:20px">
+            <a href="{{ section.settings.setup_url }}" class="kryo-owner__btn kryo-owner__btn--primary" data-kryo-cta="setup">
+              {{ section.settings.cta_primary_resume }}
+            </a>
+          </div>
+        </div>
+
+        {%- comment -%} Complete — no confetti, no gamification (§24) {%- endcomment -%}
+        <div data-kryo-state="complete" class="kryo-owner__hide">
+          <h2 class="kryo-owner__h2">{{ section.settings.progress_done_heading }}</h2>
+          <div class="kryo-owner__btn-row" style="margin-top:20px">
+            <a href="{{ section.settings.setup_url }}" class="kryo-owner__btn kryo-owner__btn--secondary" data-kryo-cta="setup">
+              {{ section.settings.cta_review }}
+            </a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  {%- comment -%} ---------- SECTION 3: QUICK ACTIONS (§25) ---------- {%- endcomment -%}
+  <section class="kryo-owner__section">
+    <div class="kryo-owner__container">
+      <h2 class="kryo-owner__h2">{{ section.settings.actions_heading }}</h2>
+      <div class="kryo-owner__grid kryo-owner__grid--3" style="margin-top:24px">
+        {%- for block in section.blocks -%}
+          {%- if block.type == 'action' -%}
+            <a href="{{ block.settings.url }}" class="kryo-owner__card" data-kryo-cta="action" data-kryo-action="{{ block.settings.title | handleize }}" {{ block.shopify_attributes }}>
+              <p class="kryo-owner__card__title">{{ block.settings.title }}</p>
+              <p class="kryo-owner__card__desc">{{ block.settings.description }}</p>
+            </a>
+          {%- endif -%}
+        {%- endfor -%}
+      </div>
+    </div>
+  </section>
+
+  {%- comment -%} ---------- SECTION 4: SUPPORT (§26) ---------- {%- endcomment -%}
+  <section class="kryo-owner__section kryo-owner__section--ink">
+    <div class="kryo-owner__container kryo-owner__reading">
+      {%- if section.settings.support_eyebrow != blank -%}
+        <p class="kryo-owner__eyebrow">{{ section.settings.support_eyebrow }}</p>
+      {%- endif -%}
+      <h2 class="kryo-owner__h2">{{ section.settings.support_heading }}</h2>
+      <p class="kryo-owner__body">{{ section.settings.support_body }}</p>
+      <div class="kryo-owner__btn-row" style="margin-top:24px">
+        <a href="{{ section.settings.whatsapp_url }}"
+           class="kryo-owner__btn kryo-owner__btn--invert"
+           data-kryo-cta="whatsapp" rel="noopener" target="_blank">
+          {{ section.settings.support_cta }}
+        </a>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(function () {
+  var root = document.querySelector('[data-kryo-owner-hub]');
+  if (!root) return;
+
+  var EL_API = 'https://everest-calendar.vercel.app/api/marketing/sync/storefront-event';
+  var KEY = 'kryo_setup_progress_v1';   // spec §52
+
+  // Reuse the theme's session id where the attribution pixel has set one.
+  function sessionId() {
+    try {
+      var raw = localStorage.getItem('el_session') || localStorage.getItem('everest_session');
+      if (raw) { var o = JSON.parse(raw); return o.id || o.session_id || null; }
+    } catch (e) {}
+    return null;
+  }
+
+  // Owner events only. Never touches ecommerce conversion events (§51).
+  function track(eventType, props) {
+    try {
+      var payload = JSON.stringify({
+        event_type: eventType,
+        session_id: sessionId(),
+        anonymous_id: localStorage.getItem('el_anonymous_id') || null,
+        page_path: location.pathname,
+        page_url: location.href,
+        ts: new Date().toISOString(),
+        event_properties: props || {}
+      });
+      // sendBeacon survives the navigation these CTAs cause.
+      var blob = new Blob([payload], { type: 'text/plain;charset=UTF-8' });
+      if (navigator.sendBeacon && navigator.sendBeacon(EL_API, blob)) return;
+      fetch(EL_API, { method: 'POST', body: payload, keepalive: true });
+    } catch (e) {}
+  }
+
+  function readProgress() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (!raw) return null;
+      var p = JSON.parse(raw);
+      return (p && typeof p === 'object') ? p : null;
+    } catch (e) { return null; }   // corrupt state -> treat as new, never throw
+  }
+
+  var total = parseInt(root.getAttribute('data-chapters'), 10) || 5;
+  var p = readProgress();
+  var show = 'new';
+  if (p) {
+    if (p.setupComplete) show = 'complete';
+    else if (p.currentChapter) show = 'progress';
+  }
+
+  var card = root.querySelector('[data-kryo-progress-card]');
+  if (card) {
+    ['new', 'progress', 'complete'].forEach(function (s) {
+      var el = card.querySelector('[data-kryo-state="' + s + '"]');
+      if (el) el.classList.toggle('kryo-owner__hide', s !== show);
+    });
+  }
+
+  if (show === 'progress' && p) {
+    var ch = Math.min(Math.max(parseInt(p.currentChapter, 10) || 1, 1), total);
+    var txt = root.querySelector('[data-kryo-progress-text]');
+    var bar = root.querySelector('[data-kryo-progress-bar]');
+    if (txt) txt.textContent = 'Chapter ' + ch + ' of ' + total;
+    if (bar) bar.style.width = Math.round(((ch - 1) / total) * 100) + '%';
+  }
+
+  // Hero CTA label follows progress: "Start setup" -> "Continue setup" (§21)
+  var heroCta = root.querySelector('[data-kryo-cta="setup"][data-label-resume]');
+  if (heroCta && show === 'progress') heroCta.textContent = heroCta.getAttribute('data-label-resume');
+
+  track('kryo_owner_hub_view', { state: show });
+
+  root.addEventListener('click', function (e) {
+    var a = e.target.closest ? e.target.closest('[data-kryo-cta]') : null;
+    if (!a) return;
+    var kind = a.getAttribute('data-kryo-cta');
+    if (kind === 'setup')          track('kryo_setup_start', { state: show });
+    else if (kind === 'whatsapp')  track('kryo_whatsapp_support_click', { surface: 'owner_hub' });
+    else if (kind === 'action')    track('kryo_owner_action_click', { action: a.getAttribute('data-kryo-action') });
+  }, true);
+})();
+</script>
+
+{% schema %}
+{
+  "name": "KRYO Owner Hub",
+  "tag": "section",
+  "settings": [
+    { "type": "header", "content": "Hero" },
+    { "type": "text", "id": "eyebrow", "label": "Eyebrow", "default": "KRYO OWNER GUIDE" },
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Everything you need to get KRYO running." },
+    { "type": "textarea", "id": "body", "label": "Body", "default": "Set up your system, learn how to use it and keep support one tap away." },
+    { "type": "image_picker", "id": "hero_image", "label": "Hero image (completed KRYO installation)" },
+    { "type": "text", "id": "hero_image_alt", "label": "Hero image alt text" },
+
+    { "type": "header", "content": "Buttons" },
+    { "type": "text", "id": "cta_primary_new", "label": "Primary — new customer", "default": "Start setup" },
+    { "type": "text", "id": "cta_primary_resume", "label": "Primary — setup in progress", "default": "Continue setup" },
+    { "type": "text", "id": "cta_secondary", "label": "Secondary", "default": "Get support" },
+    { "type": "text", "id": "cta_review", "label": "Setup complete", "default": "Review setup" },
+    { "type": "url", "id": "setup_url", "label": "Setup page URL", "info": "Set to /pages/kryo-setup once page 2 is live." },
+    { "type": "url", "id": "support_url", "label": "Support / help URL" },
+
+    { "type": "header", "content": "Progress card" },
+    { "type": "range", "id": "total_chapters", "label": "Total chapters", "min": 1, "max": 10, "step": 1, "default": 5 },
+    { "type": "text", "id": "progress_new_heading", "label": "New — heading", "default": "Set up your KRYO" },
+    { "type": "textarea", "id": "progress_new_body", "label": "New — body", "default": "Follow the guided installation from unboxing to first use." },
+    { "type": "text", "id": "progress_new_support", "label": "New — supporting line", "info": "Optional. Leave blank if the timing is not confirmed." },
+    { "type": "text", "id": "progress_resume_heading", "label": "In progress — heading", "default": "Continue setup" },
+    { "type": "text", "id": "progress_done_heading", "label": "Complete — heading", "default": "Setup complete" },
+
+    { "type": "header", "content": "Owner resources" },
+    { "type": "text", "id": "actions_heading", "label": "Heading", "default": "Owner resources" },
+
+    { "type": "header", "content": "Support" },
+    { "type": "text", "id": "support_eyebrow", "label": "Eyebrow", "default": "KRYO SUPPORT" },
+    { "type": "text", "id": "support_heading", "label": "Heading", "default": "Need a hand?" },
+    { "type": "textarea", "id": "support_body", "label": "Body", "default": "Message the KRYO team and tell us where you're stuck." },
+    { "type": "text", "id": "support_cta", "label": "Button", "default": "WhatsApp support" },
+    { "type": "url", "id": "whatsapp_url", "label": "WhatsApp URL" }
+  ],
+  "blocks": [
+    {
+      "type": "action",
+      "name": "Resource card",
+      "settings": [
+        { "type": "text", "id": "title", "label": "Title" },
+        { "type": "textarea", "id": "description", "label": "Description" },
+        { "type": "url", "id": "url", "label": "Link" }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "KRYO Owner Hub",
+      "blocks": [
+        { "type": "action" },
+        { "type": "action" },
+        { "type": "action" }
+      ]
+    }
+  ]
+}
+{% endschema %}

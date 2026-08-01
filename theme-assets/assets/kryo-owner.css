@@ -1,0 +1,216 @@
+/* ==========================================================================
+   KRYO Owner Experience — design tokens + components
+   Spec: "KRYO Owner Experience Build Specification" §3–§9, §47
+   --------------------------------------------------------------------------
+   Everything is scoped under .kryo-owner so it CANNOT leak into the PDP,
+   cart or checkout. This is the theme's first stylesheet — every existing
+   kryo-* section hardcodes values inside {% style %} blocks.
+
+   Do NOT add fonts here. The theme already loads what we need (§4).
+   Do NOT expose these as Shopify settings (§55) — design consistency degrades.
+   ========================================================================== */
+
+.kryo-owner {
+  /* Core palette — charcoal, white, off-white, Everest blue (§3) */
+  --kryo-ink: #171A1C;
+  --kryo-blue: #047ACA;
+  --kryo-white: #FFFFFF;
+  --kryo-surface: #F8F8F8;
+
+  --kryo-text: #171A1C;
+  --kryo-text-secondary: rgba(23, 26, 28, 0.68);
+  --kryo-text-tertiary: rgba(23, 26, 28, 0.50);
+
+  --kryo-border: rgba(23, 26, 28, 0.12);
+  --kryo-border-strong: rgba(23, 26, 28, 0.20);
+
+  /* Functional only — correct / caution / critical. Never decorative (§3) */
+  --kryo-success: #067647;
+  --kryo-success-bg: #ECFDF3;
+  --kryo-warning: #B54708;
+  --kryo-warning-bg: #FFFAEB;
+  --kryo-danger: #B42318;
+  --kryo-danger-bg: #FEF3F2;
+
+  --kryo-radius-sm: 8px;
+  --kryo-radius-md: 12px;
+  --kryo-radius-lg: 16px;
+  --kryo-radius-xl: 24px;
+
+  --kryo-container: 1240px;
+  --kryo-reading-width: 720px;
+  --kryo-guide-width: 920px;
+
+  --kryo-font-heading: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --kryo-font-body: Inter, "Helvetica Neue", Arial, sans-serif;
+
+  color: var(--kryo-text);
+  font-family: var(--kryo-font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Reset only within our scope — never touch theme globals */
+.kryo-owner *,
+.kryo-owner *::before,
+.kryo-owner *::after { box-sizing: border-box; }
+
+/* --------------------------------------------------------------------------
+   Containers
+   -------------------------------------------------------------------------- */
+.kryo-owner__container { width: 100%; max-width: var(--kryo-container); margin: 0 auto; padding: 0 24px; }
+.kryo-owner__reading   { max-width: var(--kryo-reading-width); }
+.kryo-owner__guide     { max-width: var(--kryo-guide-width); }
+
+/* --------------------------------------------------------------------------
+   Typography scale (§5)
+   -------------------------------------------------------------------------- */
+.kryo-owner__eyebrow {
+  font-family: var(--kryo-font-body);
+  font-size: 12px; font-weight: 700; line-height: 1.2;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--kryo-text-secondary); margin: 0 0 16px;
+}
+
+.kryo-owner h1, .kryo-owner__h1 {
+  font-family: var(--kryo-font-heading);
+  font-size: 36px; line-height: 1.05; font-weight: 700;
+  letter-spacing: -0.02em; color: var(--kryo-text); margin: 0 0 16px;
+}
+
+.kryo-owner h2, .kryo-owner__h2 {
+  font-family: var(--kryo-font-heading);
+  font-size: 28px; line-height: 1.1; font-weight: 700;
+  letter-spacing: -0.02em; color: var(--kryo-text); margin: 0 0 16px;
+}
+
+.kryo-owner h3, .kryo-owner__h3 {
+  font-family: var(--kryo-font-heading);
+  font-size: 20px; line-height: 1.2; font-weight: 700;
+  letter-spacing: -0.01em; margin: 0 0 8px;
+}
+
+.kryo-owner p, .kryo-owner__body {
+  font-size: 16px; line-height: 1.55; color: var(--kryo-text-secondary); margin: 0 0 16px;
+}
+.kryo-owner__body--lead { font-size: 18px; line-height: 1.5; }
+
+@media (min-width: 990px) {
+  .kryo-owner__eyebrow { font-size: 12px; }
+  .kryo-owner h1, .kryo-owner__h1 { font-size: 52px; line-height: 1.02; letter-spacing: -0.025em; }
+  .kryo-owner h2, .kryo-owner__h2 { font-size: 40px; line-height: 1.08; }
+  .kryo-owner h3, .kryo-owner__h3 { font-size: 22px; }
+  .kryo-owner p, .kryo-owner__body { font-size: 17px; }
+}
+
+/* --------------------------------------------------------------------------
+   Buttons — pill, no gradients, no glow (§3)
+   -------------------------------------------------------------------------- */
+.kryo-owner__btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 52px; padding: 14px 28px;
+  font-family: var(--kryo-font-body); font-size: 16px; font-weight: 600; line-height: 1;
+  border-radius: 999px; border: 1px solid transparent;
+  text-decoration: none; cursor: pointer;
+  transition: background-color .18s ease, color .18s ease, border-color .18s ease;
+}
+.kryo-owner__btn--primary { background: var(--kryo-ink); color: var(--kryo-white); }
+.kryo-owner__btn--primary:hover { background: #000; color: var(--kryo-white); }
+
+.kryo-owner__btn--secondary { background: transparent; color: var(--kryo-text); border-color: var(--kryo-border-strong); }
+.kryo-owner__btn--secondary:hover { border-color: var(--kryo-ink); }
+
+/* On the charcoal support block the primary inverts */
+.kryo-owner__btn--invert { background: var(--kryo-white); color: var(--kryo-ink); }
+.kryo-owner__btn--invert:hover { background: #F0F0F0; color: var(--kryo-ink); }
+
+.kryo-owner__btn:focus-visible { outline: 2px solid var(--kryo-blue); outline-offset: 3px; }
+
+@media (max-width: 749px) {
+  .kryo-owner__btn { width: 100%; } /* thumb-reachable during setup (§50) */
+  .kryo-owner__btn-row { display: flex; flex-direction: column; gap: 12px; }
+}
+@media (min-width: 750px) {
+  .kryo-owner__btn-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+}
+
+/* --------------------------------------------------------------------------
+   Cards
+   -------------------------------------------------------------------------- */
+.kryo-owner__card {
+  background: var(--kryo-white);
+  border: 1px solid var(--kryo-border);
+  border-radius: var(--kryo-radius-lg);
+  padding: 24px;
+  display: block; text-decoration: none; color: inherit;
+  transition: border-color .18s ease, transform .18s ease;
+}
+.kryo-owner a.kryo-owner__card:hover { border-color: var(--kryo-border-strong); }
+.kryo-owner__card--surface { background: var(--kryo-surface); border-color: transparent; }
+.kryo-owner__card__title { font-family: var(--kryo-font-heading); font-weight: 700; font-size: 18px; margin: 0 0 6px; color: var(--kryo-text); }
+.kryo-owner__card__desc  { font-size: 15px; line-height: 1.5; color: var(--kryo-text-secondary); margin: 0; }
+
+/* Grid: 3 columns → 2+1 → 1 (§25) */
+.kryo-owner__grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
+@media (min-width: 750px) and (max-width: 989px) { .kryo-owner__grid--3 { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 990px) { .kryo-owner__grid--3 { grid-template-columns: repeat(3, 1fr); } .kryo-owner__grid { gap: 20px; } }
+
+/* --------------------------------------------------------------------------
+   Progress (§24, §30) — thin bar, never gamified
+   -------------------------------------------------------------------------- */
+.kryo-owner__progress { width: 100%; height: 4px; background: var(--kryo-border); border-radius: 999px; overflow: hidden; margin: 16px 0; }
+.kryo-owner__progress__bar { height: 100%; background: var(--kryo-blue); border-radius: 999px; transition: width .3s ease; }
+.kryo-owner__progress__label { font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--kryo-text-tertiary); margin: 0; }
+
+/* --------------------------------------------------------------------------
+   Warning components (§47) — information / caution / critical
+   -------------------------------------------------------------------------- */
+.kryo-owner__note { border-left: 3px solid; border-radius: var(--kryo-radius-sm); padding: 16px 18px; margin: 0 0 16px; font-size: 15px; line-height: 1.5; }
+.kryo-owner__note--info     { border-color: var(--kryo-blue);    background: rgba(4,122,202,0.06); color: var(--kryo-text); }
+.kryo-owner__note--caution  { border-color: var(--kryo-warning); background: var(--kryo-warning-bg); color: #7A3E06; }
+.kryo-owner__note--critical { border-color: var(--kryo-danger);  background: var(--kryo-danger-bg);  color: #7A1C13; }
+.kryo-owner__note__title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; font-size: 12px; margin: 0 0 6px; }
+
+/* --------------------------------------------------------------------------
+   Sections — padding per §24/§25/§26
+   -------------------------------------------------------------------------- */
+.kryo-owner__section { padding: 56px 0; }
+.kryo-owner__section--tight { padding: 40px 0; }
+.kryo-owner__section--surface { background: var(--kryo-surface); }
+.kryo-owner__section--ink { background: var(--kryo-ink); color: var(--kryo-white); }
+.kryo-owner__section--ink h2,
+.kryo-owner__section--ink .kryo-owner__h2 { color: var(--kryo-white); }
+.kryo-owner__section--ink p { color: rgba(255,255,255,0.72); }
+.kryo-owner__section--ink .kryo-owner__eyebrow { color: rgba(255,255,255,0.60); }
+
+@media (min-width: 990px) {
+  .kryo-owner__section { padding: 96px 0; }
+  .kryo-owner__section--tight { padding: 64px 0; }
+  .kryo-owner__section--ink { padding: 80px 0; }
+}
+
+/* --------------------------------------------------------------------------
+   Hero (§21) — 55/45 desktop, copy-first on mobile
+   -------------------------------------------------------------------------- */
+.kryo-owner__hero { background: var(--kryo-white); padding: 40px 0 48px; }
+.kryo-owner__hero__inner { display: grid; grid-template-columns: 1fr; gap: 32px; align-items: center; }
+.kryo-owner__hero__visual img { width: 100%; height: auto; display: block; border-radius: var(--kryo-radius-lg); }
+
+@media (min-width: 990px) {
+  .kryo-owner__hero { padding: 72px 0; }
+  .kryo-owner__hero__inner { grid-template-columns: 55fr 45fr; gap: 56px; min-height: 520px; }
+}
+
+/* Placeholder for assets that do not exist yet (§57) — never a generic AI image */
+.kryo-owner__placeholder {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+  min-height: 260px; padding: 24px; gap: 4px;
+  background: var(--kryo-surface); border: 1px dashed var(--kryo-border-strong);
+  border-radius: var(--kryo-radius-lg);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+  color: var(--kryo-text-tertiary); letter-spacing: 0.04em; text-transform: uppercase;
+}
+.kryo-owner__placeholder strong { color: var(--kryo-text-secondary); font-size: 13px; }
+
+/* Utilities */
+.kryo-owner__hide { display: none !important; }
+@media (prefers-reduced-motion: reduce) { .kryo-owner * { transition: none !important; } }

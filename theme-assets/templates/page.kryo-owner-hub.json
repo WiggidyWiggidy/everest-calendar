@@ -1,0 +1,58 @@
+{
+  "sections": {
+    "owner_hub": {
+      "type": "kryo-owner-hub",
+      "blocks": {
+        "action_using": {
+          "type": "action",
+          "settings": {
+            "title": "Using KRYO",
+            "description": "Temperature, body position and flow.",
+            "url": "/pages/kryo-setup"
+          }
+        },
+        "action_help": {
+          "type": "action",
+          "settings": {
+            "title": "Help & care",
+            "description": "Troubleshooting, refilling and maintenance.",
+            "url": "/pages/kryo-help"
+          }
+        },
+        "action_safety": {
+          "type": "action",
+          "settings": {
+            "title": "Safety",
+            "description": "Important cold-exposure and electrical guidance.",
+            "url": "/pages/kryo-safety"
+          }
+        }
+      },
+      "block_order": ["action_using", "action_help", "action_safety"],
+      "settings": {
+        "eyebrow": "KRYO OWNER GUIDE",
+        "heading": "Everything you need to get KRYO running.",
+        "body": "Set up your system, learn how to use it and keep support one tap away.",
+        "cta_primary_new": "Start setup",
+        "cta_primary_resume": "Continue setup",
+        "cta_secondary": "Get support",
+        "cta_review": "Review setup",
+        "setup_url": "/pages/kryo-setup",
+        "support_url": "/pages/kryo-help",
+        "total_chapters": 5,
+        "progress_new_heading": "Set up your KRYO",
+        "progress_new_body": "Follow the guided installation from unboxing to first use.",
+        "progress_new_support": "",
+        "progress_resume_heading": "Continue setup",
+        "progress_done_heading": "Setup complete",
+        "actions_heading": "Owner resources",
+        "support_eyebrow": "KRYO SUPPORT",
+        "support_heading": "Need a hand?",
+        "support_body": "Message the KRYO team and tell us where you're stuck.",
+        "support_cta": "WhatsApp support",
+        "whatsapp_url": "https://wa.me/447724709585"
+      }
+    }
+  },
+  "order": ["owner_hub"]
+}
