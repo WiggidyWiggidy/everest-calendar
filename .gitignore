@@ -57,3 +57,8 @@ $CODEX_HOME/
 # Dead routes: import @/lib/marketing/* modules that do not exist in any branch.
 # Previously hidden by an unanchored "reports/" pattern. Excluded until the libs exist.
 /src/app/api/marketing/reports/
+
+# Playwright specs: @playwright/test is not a dependency in package.json on this
+# branch, so committing these breaks the Vercel type-check. Re-add together with the dep.
+/tests/
+/playwright.config.ts
