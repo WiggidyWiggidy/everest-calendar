@@ -151,7 +151,8 @@
   .kryo-setup:not([data-js]) .kryo-setup__step:first-of-type { display:block; }
   .kryo-setup:not([data-js]) [data-kryo-complete] { display:none; }
   .kryo-setup__visual { margin:0 0 22px; }
-  .kryo-setup__img { width:100%; height:auto; display:block; border-radius:var(--kryo-radius-lg); }
+  .kryo-setup__img { width:100%; height:auto; display:block; border-radius:var(--kryo-radius-lg);
+    max-height:46vh; object-fit:contain; background:var(--kryo-surface); }
   .kryo-setup__instr p { margin:0 0 12px; }
   .kryo-setup__actions { margin:0 0 18px; }
   .kryo-setup__actions ol { margin:0; padding-left:22px; }
@@ -186,6 +187,11 @@
     .kryo-setup__rail__item[data-state="done"] .kryo-setup__rail__n { background:var(--kryo-success); color:#fff; font-size:0; }
     .kryo-setup__rail__item[data-state="done"] .kryo-setup__rail__n::after { content:'✓'; font-size:13px; }
     .kryo-setup__step { padding:40px 0 160px; }
+    /* Cap the visual so the instruction stays visible without scrolling (§58:
+       "at a glance, can the customer understand the physical action?"). A square
+       product shot would otherwise render ~820px tall and push the copy off-screen. */
+    .kryo-setup__img { max-height:52vh; }
+    .kryo-owner__placeholder { max-height:52vh; }
     .kryo-setup__controls { justify-content:flex-end; padding:16px 32px; }
     .kryo-setup__controls .kryo-owner__btn { flex:0 0 auto; min-width:150px; }
     .kryo-setup__support { right:32px; bottom:96px; }
