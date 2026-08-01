@@ -1,3 +1,22 @@
+> ## ⚠️ SUPERSEDED IN PART — read this first (added 2026-07-31, later same day)
+>
+> Two facts on this board were later **disproved by Tom**, and one open fork was closed:
+>
+> 1. **"old page kryo2 — 6 completed checkouts" is FALSE.** `shopify_funnel_daily.checkouts_completed`
+>    double-counts cart upsells. True customer counts: Feb 1 · Mar 1 · May 0 · Jun 2 · Jul 1 = **5 total**.
+>    Every old-vs-new page comparison built on "6 checkouts" is invalid.
+> 2. **The ads were dark 28 of 61 days** (Jun 15–Jul 2, Jul 17–25) — deliberately, while Tom finalised
+>    the product. The "July collapse" was downtime, not conversion decay. Orders track live days at
+>    ~1 per 14 live days in both comparable windows.
+> 3. **Attribution is settled:** Meta is the only channel; all 5 customers came from ads.
+> 4. **H2 vs H5 is largely moot at this sample size.** The business runs ~1 order/month on ~A$113/wk.
+>    The binding constraint is volume, not page layout. See `../../audit/b2c-growth-system-activation-2026-07-31/`
+>    (`CORRECTION-2-real-order-counts.md`, `uptime-and-winner-ad-finding.md`, `scale-to-200aud-per-day.md`).
+>
+> **What on this board still stands (direct measurements, unaffected):**
+> H1 REFUTED (cart works — 200 + real line); H5 CONFIRMED as a defect (buy control at 97% depth);
+> `fbq` present but `facebook.com/tr` aborting; Clarity pixel failing; Chatway 422; `/products/kryo2` is 404.
+
 # Blackboard — kryo2_ add-to-cart failure (live investigation)
 
 Driven by `../agents/conversion-diagnosis-loop.md`. Updated 2026-07-31 after the
