@@ -7,7 +7,7 @@
           "type": "section",
           "settings": {
             "title": "Cold-shock response",
-            "body": "",
+            "body": "<p>Cold water may trigger gasping, rapid breathing, increased heart rate and increased blood pressure. Sudden exposure can place stress on the heart and may cause panic, dizziness, loss of breathing control or fainting.</p>",
             "always_open": true
           }
         },
@@ -15,7 +15,7 @@
           "type": "section",
           "settings": {
             "title": "Who should seek medical advice",
-            "body": "",
+            "body": "<p>Do not use KRYO without approval from a qualified healthcare professional if you are pregnant or have any known, suspected or previous:</p><ul><li>Cardiovascular disease</li><li>Heart attack</li><li>Stroke or transient ischaemic attack</li><li>Heart rhythm disorder</li><li>Uncontrolled high blood pressure</li><li>Peripheral vascular disease</li><li>Poor circulation</li><li>Raynaud\u2019s phenomenon</li><li>Diabetes with neuropathy, reduced sensation or circulation complications</li><li>Peripheral neuropathy</li><li>Cold urticaria</li><li>Cold allergy or severe cold sensitivity</li><li>Cold agglutinin disease, cryoglobulinaemia or another cold-reactive blood disorder</li><li>Cold-induced asthma</li><li>Serious respiratory condition</li><li>History of fainting, blackouts or seizures</li><li>Condition affecting temperature sensation or judgement</li><li>Medical condition or medication that may alter the response to cold</li></ul><p><em>A condition not listed is not automatically safe. Seek advice if you are unsure.</em></p>",
             "always_open": true
           }
         },
@@ -23,23 +23,23 @@
           "type": "section",
           "settings": {
             "title": "When not to use KRYO",
-            "body": "",
+            "body": "<ul><li>If you are under 18</li><li>If you have an open wound, active skin infection, significant rash or damaged skin in the exposure area</li><li>If you are unwell, feverish, dizzy, dehydrated or unusually fatigued</li><li>After alcohol or recreational drug use</li><li>While using medication that impairs judgement</li><li>Alone during early sessions if you do not yet know your response to intense cold</li><li>While performing breath holds, hyperventilation or extreme breathwork</li><li>If the product, PSU, cable, plug, hose, fittings or rail appear damaged</li><li>Where the PSU, outlet or cable connection may sit in water</li><li>If the rail is loose</li><li>If the reservoir is empty or frozen</li></ul>",
             "always_open": true
           }
         },
         "section_04": {
           "type": "section",
           "settings": {
-            "title": "Stop signs",
-            "body": "",
+            "title": "Stop immediately if",
+            "body": "<p>Stop the flow and move to a safe, warm environment if you experience:</p><ul><li>Chest pain, pressure or tightness</li><li>Severe shortness of breath</li><li>Dizziness, faintness or loss of consciousness</li><li>Confusion</li><li>Loss of coordination</li><li>Severe weakness</li><li>Persistent numbness</li><li>Blue or unusually pale skin</li><li>Uncontrolled or prolonged shivering</li><li>Racing, irregular or unusually slow heartbeat</li><li>Panic</li><li>Inability to control breathing</li><li>Any unusual or concerning symptom</li></ul><p><strong>Seek urgent medical care for severe or persistent symptoms.</strong></p>",
             "always_open": true
           }
         },
         "section_05": {
           "type": "section",
           "settings": {
-            "title": "First-flow positioning",
-            "body": "<p>Stand with your back toward the Halo. Let the first water reach the tops of your shoulders and upper back before slowly rotating.</p><p><strong>Do not direct the first cold flow at your face or chest.</strong></p>",
+            "title": "First-flow position",
+            "body": "<p>Never begin with your face or chest directly under the Halo.</p><p>Start with your back to the Halo and water landing over the upper shoulders. Begin at a warmer temperature and lower flow. Rotate slowly only after breathing is controlled.</p>",
             "always_open": true
           }
         },
@@ -47,7 +47,7 @@
           "type": "section",
           "settings": {
             "title": "Temperature safety",
-            "body": "<p>Start around 15\u00b0C. Never set KRYO below 1\u00b0C. Never allow the reservoir to freeze.</p>",
+            "body": "<ul><li>Recommended first setting: approximately 15\u00b0C.</li><li>Never select below 1\u00b0C.</li><li>Never allow the reservoir to freeze.</li><li>Do not use temperature or duration as a competition.</li><li>End before control, coordination or normal breathing deteriorates.</li></ul>",
             "always_open": true
           }
         },
@@ -55,7 +55,7 @@
           "type": "section",
           "settings": {
             "title": "Breathing",
-            "body": "<p>Breathe normally.</p>",
+            "body": "<p>Breathe normally. Do not perform breath holds, hyperventilation or extreme breathwork while using KRYO.</p>",
             "always_open": true
           }
         },
@@ -63,7 +63,7 @@
           "type": "section",
           "settings": {
             "title": "Electrical safety",
-            "body": "<p>Power path: UAE outlet \u2192 PSU \u2192 24V DC \u2192 KRYO. Keep the PSU and mains connections outside the splash zone. Do not handle mains connections with wet hands.</p>",
+            "body": "<ul><li>UAE wall supply is nominally 230V AC, 50 Hz.</li><li>Use only the supplied PSU and plug.</li><li>Verify the PSU rating label matches the local supply.</li><li>Keep the PSU, wall plug, outlet and cable connections dry.</li><li>Keep mains components outside the splash zone.</li><li>Do not touch plugs or connections with wet hands.</li><li>Do not operate in standing water.</li><li>Do not use a damaged cord, plug or PSU.</li><li>Do not use an unapproved extension lead.</li><li>Do not open, modify or repair KRYO.</li><li>Disconnect from mains before approved maintenance or storage.</li><li>Pull the plug, not the cable.</li></ul>",
             "always_open": true
           }
         },
@@ -71,7 +71,7 @@
           "type": "section",
           "settings": {
             "title": "Filling and pump safety",
-            "body": "<p>Never start KRYO dry. If you hear a harsh dry-running sound, switch KRYO off immediately and add more water.</p>",
+            "body": "<ul><li>Add the approved minimum priming volume before switching on.</li><li>Never run the pumps dry.</li><li>Never overfill.</li><li>Keep water below the marked safe level.</li><li>Use only clean water and approved ice.</li><li>Do not add salt, chemicals, oils or cleaning substances unless Everest Labs approves them.</li><li>Do not operate with a blocked or kinked hose.</li><li>Stop if water reaches the PSU or wall outlet.</li></ul>",
             "always_open": true
           }
         },
@@ -79,7 +79,7 @@
           "type": "section",
           "settings": {
             "title": "Installation safety",
-            "body": "",
+            "body": "<ul><li>Install on a stable, level surface.</li><li>Keep the rear air outlet clear.</li><li>Confirm hose, cable and refill reach before attaching the rail.</li><li>Install the rail only on an approved smooth surface.</li><li>Follow the approved surface preparation and adhesive cure time.</li><li>Inspect the rail before use.</li><li>Do not use the Halo if the rail is loose.</li><li>Keep water direction away from KRYO\u2019s display and power side where possible.</li></ul>",
             "always_open": false
           }
         },
@@ -87,7 +87,7 @@
           "type": "section",
           "settings": {
             "title": "Product/medical disclaimer",
-            "body": "",
+            "body": "<p>KRYO is a consumer wellness product. It is not a medical device and is not intended to diagnose, treat, cure or prevent any disease or medical condition. Information provided by Everest Labs is general product information and is not a substitute for medical advice.</p>",
             "always_open": false
           }
         }
@@ -110,10 +110,10 @@
         "narrow": true,
         "eyebrow": "KRYO SAFETY",
         "heading": "Important safety information.",
-        "body": "Read this before installing or using KRYO. Start gradually and follow the setup and first-use instructions provided.",
+        "body": "Cold exposure causes an immediate physiological stress response and may rapidly increase breathing, heart rate and blood pressure. Do not install or use KRYO until you have read this page. Begin at a warmer temperature and lower flow. Never direct the first flow at your face or chest. Never use KRYO while intoxicated, unwell or unable to respond normally.",
         "still_stuck_label": "WhatsApp KRYO support",
         "whatsapp_url": "https://wa.me/447724709585",
-        "support_heading": "Need a hand?",
+        "support_heading": "Questions about safety?",
         "support_body": "Message the KRYO team.",
         "support_cta": "WhatsApp support",
         "hub_url": "/pages/kryo-resources",

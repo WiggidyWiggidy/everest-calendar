@@ -1,148 +1,188 @@
 {%- comment -%}
   KRYO Setup + First Use — /pages/kryo-setup
-  Spec: §27-§38, §52, §54, §57
+  Spec: Build §27-§38, §52, §54, §57 · Content Population Instruction
 
-  ONE configurable section containing setup_step blocks (§27-28). Not a page per step.
-  Each physical action is one screen/state (§31). Progress is "Chapter N of 5", never
-  "Step 1 of 20" (§29-30). Body copy lives in block settings so future product revisions
-  need no code (§54).
-
-  Steps advance client-side; each step is a state, not a page load, so the customer keeps
-  their place while holding a phone mid-installation.
+  v2 — adds chapter navigation. The customer can jump back to any chapter and see how far
+  through they are, which the linear Back/Next build did not allow.
+  Desktop: persistent left chapter rail (§31, 25-30%). Mobile: tappable chapter strip.
 {%- endcomment -%}
 
 {{ 'kryo-owner.css' | asset_url | stylesheet_tag }}
 
 {%- assign chapter_names = section.settings.chapter_names | split: ',' -%}
 
-<div class="kryo-owner kryo-setup" data-kryo-setup
-     data-total-chapters="{{ chapter_names.size }}"
-     data-hub-url="{{ section.settings.hub_url }}">
+<div class="kryo-owner kryo-setup" data-kryo-setup data-total="{{ chapter_names.size }}">
 
-  {%- comment -%} ---- Progress header (§30) — sticky, thin bar, no numbered circles ---- {%- endcomment -%}
+  {%- comment -%} ---- Chapter strip: progress + navigation (§30) ---- {%- endcomment -%}
   <div class="kryo-setup__topbar">
     <div class="kryo-owner__container">
-      <p class="kryo-owner__progress__label" data-kryo-chapter-label>SETUP</p>
+      <div class="kryo-setup__topbar__row">
+        <p class="kryo-owner__progress__label" data-kryo-chapter-label>SETUP</p>
+        <p class="kryo-setup__stepcount" data-kryo-stepcount></p>
+      </div>
       <div class="kryo-owner__progress"><div class="kryo-owner__progress__bar" data-kryo-bar style="width:0%"></div></div>
+      <nav class="kryo-setup__chips" data-kryo-chips aria-label="Setup chapters">
+        {%- for name in chapter_names -%}
+          <button type="button" class="kryo-setup__chip" data-kryo-chip="{{ forloop.index }}">
+            <span class="kryo-setup__chip__n">{{ forloop.index }}</span>{{ name | strip }}
+          </button>
+        {%- endfor -%}
+      </nav>
     </div>
   </div>
 
-  <div class="kryo-owner__container kryo-owner__guide">
+  <div class="kryo-owner__container kryo-setup__layout">
 
-    {%- comment -%} ---- Steps ---- {%- endcomment -%}
-    {%- for block in section.blocks -%}
-      {%- if block.type == 'setup_step' and block.settings.enabled -%}
-        <section class="kryo-setup__step" data-kryo-step data-chapter="{{ block.settings.chapter }}" {{ block.shopify_attributes }}>
+    {%- comment -%} ---- Desktop chapter rail (§31) ---- {%- endcomment -%}
+    <aside class="kryo-setup__rail" aria-label="Chapters">
+      <ol class="kryo-setup__rail__list">
+        {%- for name in chapter_names -%}
+          <li><button type="button" class="kryo-setup__rail__item" data-kryo-chip="{{ forloop.index }}">
+            <span class="kryo-setup__rail__n">{{ forloop.index }}</span>
+            <span class="kryo-setup__rail__t">{{ name | strip }}</span>
+            <span class="kryo-setup__rail__c" data-kryo-rail-count="{{ forloop.index }}"></span>
+          </button></li>
+        {%- endfor -%}
+      </ol>
+    </aside>
 
-          <p class="kryo-owner__eyebrow" data-kryo-step-eyebrow>{{ block.settings.chapter_label }}</p>
-          <h1 class="kryo-owner__h1">{{ block.settings.title }}</h1>
+    <div class="kryo-setup__main kryo-owner__guide">
+      {%- for block in section.blocks -%}
+        {%- if block.type == 'setup_step' and block.settings.enabled -%}
+          <section class="kryo-setup__step" data-kryo-step data-chapter="{{ block.settings.chapter }}" {{ block.shopify_attributes }}>
+            <p class="kryo-owner__eyebrow">{{ block.settings.chapter_label }}</p>
+            <h1 class="kryo-owner__h1">{{ block.settings.title }}</h1>
 
-          <div class="kryo-setup__visual">
-            {%- if block.settings.image != blank -%}
-              {{ block.settings.image | image_url: width: 1200 | image_tag:
-                   loading: 'lazy', alt: block.settings.title, class: 'kryo-setup__img' }}
-            {%- else -%}
-              {%- comment -%} Intentional placeholder at the eventual footprint (§57).
-                              Never substitute a generic AI hardware image. {%- endcomment -%}
-              <div class="kryo-owner__placeholder">
-                <strong>IMAGE REQUIRED</strong>
-                <span>SETUP / CHAPTER {{ block.settings.chapter }}</span>
-                <span>{{ block.settings.title }}</span>
-                <span>Asset ID: {{ block.settings.asset_id | default: 'KRYO-SETUP' }}</span>
+            <div class="kryo-setup__visual">
+              {%- if block.settings.image != blank -%}
+                {{ block.settings.image | image_url: width: 1200 | image_tag: loading: 'lazy', alt: block.settings.title, class: 'kryo-setup__img' }}
+              {%- else -%}
+                <div class="kryo-owner__placeholder">
+                  <strong>IMAGE REQUIRED</strong>
+                  <span>SETUP / CHAPTER {{ block.settings.chapter }}</span>
+                  <span>{{ block.settings.title }}</span>
+                  <span>Asset ID: {{ block.settings.asset_id | default: 'KRYO-SETUP' }}</span>
+                </div>
+              {%- endif -%}
+            </div>
+
+            {%- if block.settings.instruction != blank -%}
+              <div class="kryo-owner__body kryo-owner__body--lead kryo-setup__instr">{{ block.settings.instruction }}</div>
+            {%- endif -%}
+
+            {%- if block.settings.actions != blank -%}
+              <div class="kryo-setup__actions">{{ block.settings.actions }}</div>
+            {%- endif -%}
+
+            {%- if block.settings.warning != blank -%}
+              <div class="kryo-owner__note kryo-owner__note--{{ block.settings.warning_level }}">
+                {%- if block.settings.warning_title != blank -%}<p class="kryo-owner__note__title">{{ block.settings.warning_title }}</p>{%- endif -%}
+                {{ block.settings.warning }}
               </div>
             {%- endif -%}
-          </div>
 
-          {%- if block.settings.instruction != blank -%}
-            <p class="kryo-owner__body kryo-owner__body--lead">{{ block.settings.instruction }}</p>
-          {%- else -%}
-            {%- comment -%} Copy not yet supplied. Spec: expose or hide, never guess. {%- endcomment -%}
-            <div class="kryo-owner__note kryo-owner__note--info">
-              <p class="kryo-owner__note__title">COPY REQUIRED</p>
-              Instruction text for “{{ block.settings.title }}” is not yet supplied.
-              Add it in the theme editor — this block is ready.
-            </div>
-          {%- endif -%}
+            {%- if block.settings.tip != blank -%}
+              <div class="kryo-owner__note kryo-owner__note--info">{{ block.settings.tip }}</div>
+            {%- endif -%}
 
-          {%- if block.settings.warning != blank -%}
-            <div class="kryo-owner__note kryo-owner__note--{{ block.settings.warning_level }}">
-              {%- if block.settings.warning_title != blank -%}
-                <p class="kryo-owner__note__title">{{ block.settings.warning_title }}</p>
-              {%- endif -%}
-              {{ block.settings.warning }}
-            </div>
-          {%- endif -%}
+            {%- if block.settings.why != blank -%}
+              <details class="kryo-setup__why"><summary>{{ section.settings.why_label }}</summary>
+                <div class="kryo-owner__body">{{ block.settings.why }}</div></details>
+            {%- endif -%}
+          </section>
+        {%- endif -%}
+      {%- endfor -%}
 
-          {%- if block.settings.tip != blank -%}
-            <div class="kryo-owner__note kryo-owner__note--info">{{ block.settings.tip }}</div>
-          {%- endif -%}
-
-          {%- comment -%} Technical detail belongs here, not in the instruction (§33) {%- endcomment -%}
-          {%- if block.settings.why != blank -%}
-            <details class="kryo-setup__why">
-              <summary>{{ section.settings.why_label }}</summary>
-              <p class="kryo-owner__body">{{ block.settings.why }}</p>
-            </details>
-          {%- endif -%}
-        </section>
-      {%- endif -%}
-    {%- endfor -%}
-
-    {%- comment -%} ---- Completion (§36) — no confetti ---- {%- endcomment -%}
-    <section class="kryo-setup__step" data-kryo-complete>
-      <p class="kryo-owner__eyebrow">SETUP COMPLETE</p>
-      <h1 class="kryo-owner__h1">{{ section.settings.complete_heading }}</h1>
-      <p class="kryo-owner__body kryo-owner__body--lead">{{ section.settings.complete_body }}</p>
-      <div class="kryo-owner__btn-row" style="margin-top:24px">
-        <a href="{{ section.settings.hub_url }}" class="kryo-owner__btn kryo-owner__btn--primary">{{ section.settings.complete_cta }}</a>
-        <a href="#" class="kryo-owner__btn kryo-owner__btn--secondary" data-kryo-review>{{ section.settings.complete_cta_secondary }}</a>
-      </div>
-    </section>
-
+      <section class="kryo-setup__step" data-kryo-complete>
+        <p class="kryo-owner__eyebrow">SETUP COMPLETE</p>
+        <h1 class="kryo-owner__h1">{{ section.settings.complete_heading }}</h1>
+        <p class="kryo-owner__body kryo-owner__body--lead">{{ section.settings.complete_body }}</p>
+        <div class="kryo-owner__btn-row" style="margin-top:24px">
+          <a href="{{ section.settings.hub_url }}" class="kryo-owner__btn kryo-owner__btn--primary">{{ section.settings.complete_cta }}</a>
+          <button type="button" class="kryo-owner__btn kryo-owner__btn--secondary" data-kryo-review>{{ section.settings.complete_cta_secondary }}</button>
+        </div>
+      </section>
+    </div>
   </div>
 
-  {%- comment -%} ---- Sticky Back/Next (§34). Next gets the emphasis. ---- {%- endcomment -%}
   <div class="kryo-setup__controls" data-kryo-controls>
     <button type="button" class="kryo-owner__btn kryo-owner__btn--secondary" data-kryo-back>{{ section.settings.back_label }}</button>
     <button type="button" class="kryo-owner__btn kryo-owner__btn--primary" data-kryo-next>{{ section.settings.next_label }}</button>
   </div>
 
-  {%- comment -%} ---- Compact persistent support (§35) ---- {%- endcomment -%}
   {%- if section.settings.whatsapp_url != blank -%}
-    <a href="{{ section.settings.whatsapp_url }}" class="kryo-setup__support" data-kryo-support rel="noopener" target="_blank">
-      {{ section.settings.support_label }}
-    </a>
+    <a href="{{ section.settings.whatsapp_url }}" class="kryo-setup__support" data-kryo-support rel="noopener" target="_blank">{{ section.settings.support_label }}</a>
   {%- endif -%}
 </div>
 
 {% style %}
-  .kryo-setup__topbar { position: sticky; top: 0; z-index: 20; background: rgba(255,255,255,0.96);
-    backdrop-filter: saturate(180%) blur(8px); border-bottom: 1px solid var(--kryo-border); padding: 12px 0 10px; }
-  .kryo-setup__topbar .kryo-owner__progress { margin: 8px 0 0; }
-  .kryo-setup__step { display: none; padding: 32px 0 140px; }
-  .kryo-setup__step[data-active] { display: block; }
-  .kryo-setup__visual { margin: 0 0 24px; }
-  .kryo-setup__img { width: 100%; height: auto; display: block; border-radius: var(--kryo-radius-lg); }
-  .kryo-setup__why { margin: 20px 0 0; border-top: 1px solid var(--kryo-border); padding-top: 16px; }
-  .kryo-setup__why summary { cursor: pointer; font-weight: 600; font-size: 15px; color: var(--kryo-text); }
-  .kryo-setup__why p { margin-top: 12px; }
-  /* Sticky controls — 72px + safe area (§34). WhatsApp must never overlap (§34). */
-  .kryo-setup__controls { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
-    display: flex; gap: 12px; align-items: center;
-    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-    background: var(--kryo-white); border-top: 1px solid var(--kryo-border); }
-  .kryo-setup__controls .kryo-owner__btn { flex: 1; min-height: 48px; width: auto; }
-  .kryo-setup__controls [data-kryo-next] { flex: 2; }
-  .kryo-setup__support { position: fixed; right: 16px; z-index: 29;
-    bottom: calc(84px + env(safe-area-inset-bottom));
-    display: inline-flex; align-items: center; padding: 10px 16px;
-    background: var(--kryo-ink); color: var(--kryo-white); text-decoration: none;
-    border-radius: 999px; font-size: 14px; font-weight: 600; }
-  @media (min-width: 990px) {
-    .kryo-setup__step { padding: 48px 0 160px; }
-    .kryo-setup__controls { justify-content: flex-end; padding: 16px 32px; }
-    .kryo-setup__controls .kryo-owner__btn { flex: 0 0 auto; min-width: 160px; }
-    .kryo-setup__support { right: 32px; bottom: 96px; }
+  .kryo-setup__topbar { position: sticky; top: 0; z-index: 20; background: rgba(255,255,255,.97);
+    backdrop-filter: saturate(180%) blur(8px); border-bottom: 1px solid var(--kryo-border); padding: 10px 0 0; }
+  .kryo-setup__topbar__row { display:flex; justify-content:space-between; align-items:baseline; }
+  .kryo-setup__stepcount { font-size:12px; font-weight:600; color:var(--kryo-text-tertiary); margin:0; letter-spacing:.04em; }
+  .kryo-setup__topbar .kryo-owner__progress { margin:8px 0 0; }
+  .kryo-setup__chips { display:flex; gap:6px; overflow-x:auto; padding:10px 0; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+  .kryo-setup__chips::-webkit-scrollbar{display:none}
+  .kryo-setup__chip { flex:0 0 auto; display:inline-flex; align-items:center; gap:6px;
+    padding:7px 12px; border-radius:999px; border:1px solid var(--kryo-border);
+    background:var(--kryo-white); color:var(--kryo-text-secondary);
+    font:600 13px/1 var(--kryo-font-body); cursor:pointer; white-space:nowrap; }
+  .kryo-setup__chip__n { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px;
+    border-radius:999px; background:var(--kryo-border); color:var(--kryo-text); font-size:11px; }
+  .kryo-setup__chip[data-state="current"] { background:var(--kryo-ink); color:#fff; border-color:var(--kryo-ink); }
+  .kryo-setup__chip[data-state="current"] .kryo-setup__chip__n { background:rgba(255,255,255,.25); color:#fff; }
+  .kryo-setup__chip[data-state="done"] { border-color:var(--kryo-success); color:var(--kryo-success); }
+  .kryo-setup__chip[data-state="done"] .kryo-setup__chip__n { background:var(--kryo-success); color:#fff; }
+  .kryo-setup__chip[data-state="done"] .kryo-setup__chip__n::after { content:'✓'; }
+  .kryo-setup__chip[data-state="done"] .kryo-setup__chip__n { font-size:0; }
+  .kryo-setup__chip[data-state="done"] .kryo-setup__chip__n::after { font-size:11px; }
+
+  .kryo-setup__rail { display:none; }
+  .kryo-setup__step { display:none; padding:28px 0 150px; }
+  .kryo-setup__step[data-active] { display:block; }
+  /* Fallback: if JS fails or is blocked, show the first step rather than a blank page.
+     JS adds [data-js] to the root on init, which disables this rule. */
+  .kryo-setup:not([data-js]) .kryo-setup__step:first-of-type { display:block; }
+  .kryo-setup:not([data-js]) [data-kryo-complete] { display:none; }
+  .kryo-setup__visual { margin:0 0 22px; }
+  .kryo-setup__img { width:100%; height:auto; display:block; border-radius:var(--kryo-radius-lg); }
+  .kryo-setup__instr p { margin:0 0 12px; }
+  .kryo-setup__actions { margin:0 0 18px; }
+  .kryo-setup__actions ol { margin:0; padding-left:22px; }
+  .kryo-setup__actions li { margin-bottom:10px; font-size:16px; line-height:1.5; color:var(--kryo-text); }
+  .kryo-setup__why { margin:20px 0 0; border-top:1px solid var(--kryo-border); padding-top:16px; }
+  .kryo-setup__why summary { cursor:pointer; font-weight:600; font-size:15px; }
+  .kryo-setup__controls { position:fixed; left:0; right:0; bottom:0; z-index:30; display:flex; gap:12px;
+    padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+    background:var(--kryo-white); border-top:1px solid var(--kryo-border); }
+  .kryo-setup__controls .kryo-owner__btn { flex:1; min-height:48px; width:auto; }
+  .kryo-setup__controls [data-kryo-next] { flex:2; }
+  .kryo-setup__controls [data-kryo-back][disabled] { opacity:.35; pointer-events:none; }
+  .kryo-setup__support { position:fixed; right:16px; z-index:29; bottom:calc(84px + env(safe-area-inset-bottom));
+    display:inline-flex; padding:9px 15px; background:var(--kryo-ink); color:#fff; text-decoration:none;
+    border-radius:999px; font-size:13px; font-weight:600; }
+
+  @media (min-width:990px) {
+    .kryo-setup__chips { display:none; }
+    .kryo-setup__layout { display:grid; grid-template-columns:28fr 72fr; gap:48px; align-items:start; }
+    .kryo-setup__rail { display:block; position:sticky; top:120px; padding:32px 0; }
+    .kryo-setup__rail__list { list-style:none; margin:0; padding:0; }
+    .kryo-setup__rail__item { display:flex; align-items:center; gap:12px; width:100%; text-align:left;
+      padding:12px 14px; margin-bottom:4px; border:0; background:transparent; border-radius:var(--kryo-radius-md);
+      cursor:pointer; font:600 15px/1.3 var(--kryo-font-body); color:var(--kryo-text-secondary); }
+    .kryo-setup__rail__item:hover { background:var(--kryo-surface); }
+    .kryo-setup__rail__n { flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center;
+      width:26px; height:26px; border-radius:999px; background:var(--kryo-border); color:var(--kryo-text); font-size:12px; }
+    .kryo-setup__rail__t { flex:1; }
+    .kryo-setup__rail__c { font-size:12px; font-weight:600; color:var(--kryo-text-tertiary); }
+    .kryo-setup__rail__item[data-state="current"] { background:var(--kryo-surface); color:var(--kryo-text); }
+    .kryo-setup__rail__item[data-state="current"] .kryo-setup__rail__n { background:var(--kryo-ink); color:#fff; }
+    .kryo-setup__rail__item[data-state="done"] .kryo-setup__rail__n { background:var(--kryo-success); color:#fff; font-size:0; }
+    .kryo-setup__rail__item[data-state="done"] .kryo-setup__rail__n::after { content:'✓'; font-size:13px; }
+    .kryo-setup__step { padding:40px 0 160px; }
+    .kryo-setup__controls { justify-content:flex-end; padding:16px 32px; }
+    .kryo-setup__controls .kryo-owner__btn { flex:0 0 auto; min-width:150px; }
+    .kryo-setup__support { right:32px; bottom:96px; }
   }
 {% endstyle %}
 
@@ -150,81 +190,89 @@
 (function () {
   var root = document.querySelector('[data-kryo-setup]');
   if (!root) return;
+  root.setAttribute('data-js','');   // disables the no-JS fallback rule
+  var EL_API='https://everest-calendar.vercel.app/api/marketing/sync/storefront-event', KEY='kryo_setup_progress_v1';
+  var steps=[].slice.call(root.querySelectorAll('[data-kryo-step]'));
+  var done=root.querySelector('[data-kryo-complete]');
+  var total=parseInt(root.getAttribute('data-total'),10)||5;
+  if(!steps.length) return;
 
-  var EL_API = 'https://everest-calendar.vercel.app/api/marketing/sync/storefront-event';
-  var KEY = 'kryo_setup_progress_v1';                       // §52
-  var steps = Array.prototype.slice.call(root.querySelectorAll('[data-kryo-step]'));
-  var done = root.querySelector('[data-kryo-complete]');
-  var total = parseInt(root.getAttribute('data-total-chapters'), 10) || 5;
-  if (!steps.length) return;
+  var chapterOf=steps.map(function(s){return parseInt(s.getAttribute('data-chapter'),10)||1;});
+  var firstOf={}; chapterOf.forEach(function(c,n){ if(firstOf[c]===undefined) firstOf[c]=n; });
+  var countOf={}; chapterOf.forEach(function(c){ countOf[c]=(countOf[c]||0)+1; });
 
-  function sid(){ try { var r=localStorage.getItem('el_session')||localStorage.getItem('everest_session');
-    if(r){var o=JSON.parse(r);return o.id||o.session_id||null;} } catch(e){} return null; }
+  function sid(){try{var r=localStorage.getItem('el_session')||localStorage.getItem('everest_session');
+    if(r){var o=JSON.parse(r);return o.id||o.session_id||null;}}catch(e){}return null;}
+  function track(t,p){try{var b=JSON.stringify({event_type:t,session_id:sid(),
+    anonymous_id:localStorage.getItem('el_anonymous_id')||null,page_path:location.pathname,
+    page_url:location.href,ts:new Date().toISOString(),event_properties:p||{}});
+    var bl=new Blob([b],{type:'text/plain;charset=UTF-8'});
+    if(navigator.sendBeacon&&navigator.sendBeacon(EL_API,bl))return;
+    fetch(EL_API,{method:'POST',body:b,keepalive:true});}catch(e){}}
+  function read(){try{var r=localStorage.getItem(KEY);return r?JSON.parse(r):null;}catch(e){return null;}}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify({
+    currentChapter:showingDone?total:chapterOf[i], currentStep:i,
+    completedSteps:furthest, setupComplete:showingDone}));}catch(e){}}
 
-  function track(t, p){ try {
-    var b=JSON.stringify({event_type:t,session_id:sid(),
-      anonymous_id:localStorage.getItem('el_anonymous_id')||null,
-      page_path:location.pathname,page_url:location.href,
-      ts:new Date().toISOString(),event_properties:p||{}});
-    var blob=new Blob([b],{type:'text/plain;charset=UTF-8'});
-    if(navigator.sendBeacon&&navigator.sendBeacon(EL_API,blob))return;
-    fetch(EL_API,{method:'POST',body:b,keepalive:true});
-  } catch(e){} }
+  var i=0, furthest=0, showingDone=false, s0=read();
+  if(s0){ if(s0.setupComplete){showingDone=true; furthest=steps.length;}
+    else { i=Math.min(Math.max(parseInt(s0.currentStep,10)||0,0),steps.length-1);
+           furthest=Math.min(Math.max(parseInt(s0.completedSteps,10)||i,i),steps.length); } }
 
-  function read(){ try { var r=localStorage.getItem(KEY); return r?JSON.parse(r):null; } catch(e){ return null; } }
-  function write(o){ try { localStorage.setItem(KEY, JSON.stringify(o)); } catch(e){} }
+  function render(){
+    steps.forEach(function(s,n){ if(n===i&&!showingDone) s.setAttribute('data-active',''); else s.removeAttribute('data-active'); });
+    if(done){ showingDone?done.setAttribute('data-active',''):done.removeAttribute('data-active'); }
+    var ctrl=root.querySelector('[data-kryo-controls]'); if(ctrl) ctrl.style.display=showingDone?'none':'';
 
-  var i = 0, showingDone = false;
-  var saved = read();
-  if (saved) {
-    if (saved.setupComplete) { showingDone = true; }
-    else if (typeof saved.currentStep === 'number') { i = Math.min(Math.max(saved.currentStep,0), steps.length-1); }
+    var ch=showingDone?total:chapterOf[i];
+    var lbl=root.querySelector('[data-kryo-chapter-label]');
+    var cnt=root.querySelector('[data-kryo-stepcount]');
+    var bar=root.querySelector('[data-kryo-bar]');
+    if(lbl) lbl.textContent = showingDone?'SETUP · COMPLETE':'SETUP · CHAPTER '+ch+' OF '+total;
+    if(cnt){ if(showingDone){cnt.textContent='';}
+      else { var within=i-firstOf[ch]+1; cnt.textContent='Step '+within+' of '+countOf[ch]; } }
+    if(bar) bar.style.width = showingDone?'100%':Math.round(((i+1)/steps.length)*100)+'%';
+
+    // chapter state: done / current / upcoming — visible in both chip strip and desktop rail
+    [].forEach.call(root.querySelectorAll('[data-kryo-chip]'), function(el){
+      var c=parseInt(el.getAttribute('data-kryo-chip'),10);
+      var last=firstOf[c]+countOf[c]-1;
+      el.setAttribute('data-state', (showingDone||furthest>last)?'done':(c===ch?'current':'todo'));
+    });
+    [].forEach.call(root.querySelectorAll('[data-kryo-rail-count]'), function(el){
+      var c=parseInt(el.getAttribute('data-kryo-rail-count'),10);
+      var completedIn=Math.max(0,Math.min(furthest-firstOf[c],countOf[c]));
+      el.textContent = completedIn+'/'+countOf[c];
+    });
+
+    var back=root.querySelector('[data-kryo-back]');
+    if(back) back.disabled=(i===0&&!showingDone);
+    var cur=root.querySelector('.kryo-setup__chip[data-state="current"]');
+    if(cur&&cur.scrollIntoView) cur.scrollIntoView({inline:'center',block:'nearest'});
+    window.scrollTo({top:0,behavior:'auto'});
+    save();
+    if(!showingDone) track('kryo_setup_step_view',{chapter:ch,step:i});
   }
 
-  function render() {
-    steps.forEach(function(s,n){ if(n===i && !showingDone) s.setAttribute('data-active',''); else s.removeAttribute('data-active'); });
-    if (done) { if (showingDone) done.setAttribute('data-active',''); else done.removeAttribute('data-active'); }
+  function go(n){ showingDone=false; i=Math.min(Math.max(n,0),steps.length-1);
+    if(i>furthest) furthest=i; render(); }
 
-    var controls = root.querySelector('[data-kryo-controls]');
-    if (controls) controls.style.display = showingDone ? 'none' : '';
-
-    var ch = showingDone ? total : parseInt(steps[i].getAttribute('data-chapter'),10) || 1;
-    var label = root.querySelector('[data-kryo-chapter-label]');
-    var bar = root.querySelector('[data-kryo-bar]');
-    if (label) label.textContent = showingDone ? 'SETUP · COMPLETE' : 'SETUP · CHAPTER ' + ch + ' OF ' + total;
-    if (bar) bar.style.width = showingDone ? '100%' : Math.round(((i+1)/steps.length)*100) + '%';
-
-    var back = root.querySelector('[data-kryo-back]');
-    if (back) back.disabled = (i === 0);
-
-    window.scrollTo({ top: 0, behavior: 'auto' });   // each step is a fresh screen (§31)
-
-    if (!showingDone) {
-      write({ currentChapter: ch, currentStep: i, completedSteps: i, setupComplete: false });
-      track('kryo_setup_step_view', { chapter: ch, step: i });
-    }
-  }
-
-  root.addEventListener('click', function (e) {
-    var t = e.target;
-    if (t.closest('[data-kryo-next]')) {
-      var ch = parseInt(steps[i].getAttribute('data-chapter'),10) || 1;
-      track('kryo_setup_step_complete', { chapter: ch, step: i });
-      if (i < steps.length - 1) { i++; render(); }
-      else { showingDone = true; write({ currentChapter: total, currentStep: i, completedSteps: steps.length, setupComplete: true });
-             track('kryo_setup_complete', { steps: steps.length }); render(); }
-    } else if (t.closest('[data-kryo-back]')) {
-      if (showingDone) { showingDone = false; render(); }
-      else if (i > 0) { i--; render(); }
-    } else if (t.closest('[data-kryo-review]')) {
-      e.preventDefault(); showingDone = false; i = 0; render();
-    } else if (t.closest('[data-kryo-support]')) {
-      var c = showingDone ? total : (parseInt(steps[i].getAttribute('data-chapter'),10) || 1);
-      track('kryo_whatsapp_support_click', { surface: 'setup', chapter: c, step: i });
-    }
+  root.addEventListener('click',function(e){
+    var chip=e.target.closest?e.target.closest('[data-kryo-chip]'):null;
+    if(chip){ var c=parseInt(chip.getAttribute('data-kryo-chip'),10);
+      track('kryo_setup_chapter_view',{chapter:c,via:'nav'}); go(firstOf[c]); return; }
+    if(e.target.closest('[data-kryo-next]')){
+      track('kryo_setup_step_complete',{chapter:chapterOf[i],step:i});
+      if(i<steps.length-1){ if(i+1>furthest) furthest=i+1; go(i+1); }
+      else { furthest=steps.length; showingDone=true; save();
+             track('kryo_setup_complete',{steps:steps.length}); render(); } return; }
+    if(e.target.closest('[data-kryo-back]')){ if(showingDone){showingDone=false;render();} else if(i>0) go(i-1); return; }
+    if(e.target.closest('[data-kryo-review]')){ go(0); return; }
+    if(e.target.closest('[data-kryo-support]')){
+      track('kryo_whatsapp_support_click',{surface:'setup',chapter:showingDone?total:chapterOf[i],step:i}); }
   });
 
-  track('kryo_setup_chapter_view', { resumed: !!saved });
+  track('kryo_setup_chapter_view',{resumed:!!s0,via:'load'});
   render();
 })();
 </script>
@@ -245,7 +293,7 @@
     { "type": "text", "id": "support_label", "label": "Support button", "default": "Get help" },
     { "type": "header", "content": "Completion" },
     { "type": "text", "id": "complete_heading", "label": "Heading", "default": "You're ready." },
-    { "type": "textarea", "id": "complete_body", "label": "Body", "default": "Your KRYO is installed and you know how to start safely." },
+    { "type": "textarea", "id": "complete_body", "label": "Body" },
     { "type": "text", "id": "complete_cta", "label": "Primary button", "default": "Back to owner hub" },
     { "type": "text", "id": "complete_cta_secondary", "label": "Secondary button", "default": "Review first use" }
   ],
@@ -258,17 +306,18 @@
         { "type": "range", "id": "chapter", "label": "Chapter", "min": 1, "max": 5, "step": 1, "default": 1 },
         { "type": "text", "id": "chapter_label", "label": "Chapter label" },
         { "type": "text", "id": "title", "label": "Step title" },
-        { "type": "textarea", "id": "instruction", "label": "Instruction", "info": "40-100 words. Answer 'what do I do now?' first. Leave blank until approved copy exists." },
+        { "type": "richtext", "id": "instruction", "label": "Instruction", "info": "40-100 words. Answer 'what do I do now?' first." },
+        { "type": "richtext", "id": "actions", "label": "Numbered actions" },
         { "type": "image_picker", "id": "image", "label": "Image" },
         { "type": "image_picker", "id": "mobile_image", "label": "Mobile image (optional)" },
-        { "type": "text", "id": "asset_id", "label": "Asset ID", "info": "Shown in the placeholder so the photographer knows which shot this is." },
-        { "type": "textarea", "id": "tip", "label": "Tip" },
+        { "type": "text", "id": "asset_id", "label": "Asset ID" },
+        { "type": "richtext", "id": "tip", "label": "Tip" },
         { "type": "select", "id": "warning_level", "label": "Warning level",
           "options": [ {"value":"info","label":"Information"}, {"value":"caution","label":"Caution"}, {"value":"critical","label":"Critical"} ],
           "default": "caution" },
         { "type": "text", "id": "warning_title", "label": "Warning title" },
-        { "type": "textarea", "id": "warning", "label": "Warning" },
-        { "type": "textarea", "id": "why", "label": "Why this matters", "info": "Technical detail beyond ~140 words belongs here, not in the instruction." }
+        { "type": "richtext", "id": "warning", "label": "Warning" },
+        { "type": "richtext", "id": "why", "label": "Why this matters" }
       ]
     }
   ]

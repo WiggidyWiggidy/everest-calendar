@@ -6,80 +6,80 @@
         "issue_01": {
           "type": "issue",
           "settings": {
-            "title": "KRYO won't turn on",
-            "checks": "",
-            "warning_level": "caution",
-            "warning": ""
+            "title": "KRYO will not turn on",
+            "checks": "<ul><li>The UAE wall outlet is on.</li><li>The plug is fully inserted.</li><li>The mains lead is connected to the PSU.</li><li>The 24V DC lead is connected to the PSU.</li><li>The PSU and cable are not visibly damaged.</li></ul>",
+            "warning_level": "critical",
+            "warning": "Do not open KRYO or the PSU. Contact WhatsApp support if power does not return."
           }
         },
         "issue_02": {
           "type": "issue",
           "settings": {
             "title": "No water from the Halo",
-            "checks": "",
+            "checks": "<ul><li>The reservoir contains water.</li><li>KRYO\u2019s water-flow control is on.</li><li>The Halo flow adjuster is open.</li><li>The hose is not kinked.</li><li>The hose connections are secure.</li></ul>",
             "warning_level": "caution",
-            "warning": ""
+            "warning": "If the pump runs but no water reaches the Halo, switch it off and contact support."
           }
         },
         "issue_03": {
           "type": "issue",
           "settings": {
-            "title": "A fitting is leaking",
-            "checks": "",
+            "title": "A connection is leaking",
+            "checks": "<ol><li>Turn the water flow off.</li><li>Check that the connection is straight.</li><li>Unscrew the fitting.</li><li>Confirm the rubber seal is present, flat and undamaged.</li><li>Reconnect by hand.</li><li>Test at low flow.</li></ol>",
             "warning_level": "caution",
-            "warning": ""
+            "warning": "Do not overtighten. Replace a damaged seal."
           }
         },
         "issue_04": {
           "type": "issue",
           "settings": {
-            "title": "KRYO isn't cooling",
-            "checks": "",
+            "title": "KRYO is not cooling",
+            "checks": "<ul><li>KRYO is powered.</li><li>The setpoint is below the current water temperature.</li><li>The rear air gap is clear.</li><li>The room is not blocking ventilation.</li><li>The reservoir is not overfilled.</li><li>Enough time has been allowed.</li></ul>",
             "warning_level": "caution",
-            "warning": ""
+            "warning": "Contact support if the display shows an error or the water temperature does not decrease."
           }
         },
         "issue_05": {
           "type": "issue",
           "settings": {
-            "title": "Pump sounds unusual",
-            "checks": "",
-            "warning_level": "caution",
-            "warning": "Do not open or repair the KRYO housing."
+            "title": "The pump sounds unusual",
+            "checks": "<p>A moderate pump sound while the Halo is flowing is normal. The water sound may mask much of it.</p><ul><li>A harsh dry-running sound</li><li>Grinding</li><li>Repeated knocking</li><li>A sudden major change in sound</li><li>A pump sound with no water flow</li></ul>",
+            "warning_level": "critical",
+            "warning": "Switch KRYO off and contact support if you hear any of the above. Do not open KRYO to investigate."
           }
         },
         "issue_06": {
           "type": "issue",
           "settings": {
             "title": "Ice has formed",
-            "checks": "",
-            "warning_level": "caution",
-            "warning": "Do not open or repair the KRYO housing."
+            "checks": "<p>Stop using KRYO.</p>",
+            "warning_level": "critical",
+            "warning": "Do not force the pump to run. Do not strike or chip ice inside the reservoir. Allow it to thaw naturally and contact Everest Labs before restarting."
           }
         },
         "issue_07": {
           "type": "issue",
           "settings": {
-            "title": "Cleaning & care",
-            "checks": "",
-            "warning_level": "caution",
-            "warning": ""
+            "title": "Internal circulation is loud at startup",
+            "checks": "<p>Switch KRYO off immediately and check that the reservoir contains enough water.</p>",
+            "warning_level": "critical",
+            "warning": "The internal pump must not run dry."
           }
         },
         "issue_08": {
           "type": "issue",
           "settings": {
-            "title": "Replacement parts",
-            "checks": "",
+            "title": "Cleaning & care",
+            "checks": "<ul><li>Keep the exterior clean with a soft damp cloth.</li><li>Do not spray cleaning liquid directly onto the display, button, vents or power connections.</li><li>Do not use abrasive pads.</li><li>Keep hair, fibres and debris away from openings.</li><li>Inspect hose seals regularly.</li><li>Inspect the rail and adhesive regularly.</li><li>Replace water immediately if it appears cloudy, develops an odour or contains visible debris.</li><li>Drain and dry the system before a long period of non-use.</li></ul>",
             "warning_level": "caution",
-            "warning": "Do not open or repair the KRYO housing."
+            "warning": "Use only care products and cleaning methods approved by Everest Labs. The water-change interval, drain process and approved cleaning solution follow the current KRYO care page."
           }
         },
         "issue_09": {
           "type": "issue",
           "settings": {
-            "title": "Warranty",
-            "checks": "",
+            "title": "After each session",
+            "checks": "<ol><li>Close the Halo flow adjuster.</li><li>Switch off the water-flow control.</li><li>Check the remaining water level.</li><li>Top up with clean water when required.</li><li>Wipe visible splashes from the top, display and power side.</li><li>Check the floor is dry around the PSU and cables.</li><li>Inspect hose connections for drips.</li><li>Leave the rear ventilation area clear.</li></ol>",
             "warning_level": "caution",
             "warning": ""
           }
@@ -87,8 +87,26 @@
         "issue_10": {
           "type": "issue",
           "settings": {
+            "title": "Storage",
+            "checks": "<ol><li>Disconnect KRYO from mains power with dry hands.</li><li>Drain the reservoir using the approved procedure.</li><li>Drain the hose and Halo.</li><li>Dry all accessible surfaces.</li><li>Store the PSU and cables in a dry place.</li><li>Protect the fill opening from dust.</li><li>Do not store KRYO where water may freeze.</li><li>Do not place heavy objects on the hose, Halo or rail.</li></ol>",
+            "warning_level": "caution",
+            "warning": "Contact Everest Labs if KRYO will be stored for an extended period or moved internationally."
+          }
+        },
+        "issue_11": {
+          "type": "issue",
+          "settings": {
+            "title": "Replacement parts & warranty",
+            "checks": "<p>Contact Everest Labs through WhatsApp support for replacement seals, hoses and parts.</p>",
+            "warning_level": "critical",
+            "warning": "Do not disassemble KRYO or attempt an electrical repair."
+          }
+        },
+        "issue_12": {
+          "type": "issue",
+          "settings": {
             "title": "Something else",
-            "checks": "",
+            "checks": "<p>Choose the WhatsApp button on any owner-guide page. The guide will include your current step in the message.</p><p>For faster support, provide:</p><ul><li>Your name</li><li>Order number</li><li>KRYO model</li><li>Serial number</li><li>A clear photo or short video</li></ul>",
             "warning_level": "caution",
             "warning": ""
           }
@@ -104,7 +122,9 @@
         "issue_07",
         "issue_08",
         "issue_09",
-        "issue_10"
+        "issue_10",
+        "issue_11",
+        "issue_12"
       ],
       "settings": {
         "surface": "help",
