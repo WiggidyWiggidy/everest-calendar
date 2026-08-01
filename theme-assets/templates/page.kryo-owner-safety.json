@@ -30,7 +30,7 @@
         "section_04": {
           "type": "section",
           "settings": {
-            "title": "Stop immediately if\u2026",
+            "title": "Stop signs",
             "body": "",
             "always_open": true
           }
@@ -38,36 +38,44 @@
         "section_05": {
           "type": "section",
           "settings": {
-            "title": "First-flow position",
-            "body": "",
-            "always_open": false
+            "title": "First-flow positioning",
+            "body": "<p>Stand with your back toward the Halo. Let the first water reach the tops of your shoulders and upper back before slowly rotating.</p><p><strong>Do not direct the first cold flow at your face or chest.</strong></p>",
+            "always_open": true
           }
         },
         "section_06": {
           "type": "section",
           "settings": {
             "title": "Temperature safety",
-            "body": "",
-            "always_open": false
+            "body": "<p>Start around 15\u00b0C. Never set KRYO below 1\u00b0C. Never allow the reservoir to freeze.</p>",
+            "always_open": true
           }
         },
         "section_07": {
           "type": "section",
           "settings": {
-            "title": "Electrical safety",
-            "body": "",
-            "always_open": false
+            "title": "Breathing",
+            "body": "<p>Breathe normally.</p>",
+            "always_open": true
           }
         },
         "section_08": {
           "type": "section",
           "settings": {
-            "title": "Filling and pump safety",
-            "body": "",
-            "always_open": false
+            "title": "Electrical safety",
+            "body": "<p>Power path: UAE outlet \u2192 PSU \u2192 24V DC \u2192 KRYO. Keep the PSU and mains connections outside the splash zone. Do not handle mains connections with wet hands.</p>",
+            "always_open": true
           }
         },
         "section_09": {
+          "type": "section",
+          "settings": {
+            "title": "Filling and pump safety",
+            "body": "<p>Never start KRYO dry. If you hear a harsh dry-running sound, switch KRYO off immediately and add more water.</p>",
+            "always_open": true
+          }
+        },
+        "section_10": {
           "type": "section",
           "settings": {
             "title": "Installation safety",
@@ -75,10 +83,10 @@
             "always_open": false
           }
         },
-        "section_10": {
+        "section_11": {
           "type": "section",
           "settings": {
-            "title": "Medical/product disclaimer",
+            "title": "Product/medical disclaimer",
             "body": "",
             "always_open": false
           }
@@ -94,15 +102,16 @@
         "section_07",
         "section_08",
         "section_09",
-        "section_10"
+        "section_10",
+        "section_11"
       ],
       "settings": {
         "surface": "safety",
         "narrow": true,
         "eyebrow": "KRYO SAFETY",
         "heading": "Important safety information.",
-        "body": "",
-        "still_stuck_label": "Still not fixed? Message us",
+        "body": "Read this before installing or using KRYO. Start gradually and follow the setup and first-use instructions provided.",
+        "still_stuck_label": "WhatsApp KRYO support",
         "whatsapp_url": "https://wa.me/447724709585",
         "support_heading": "Need a hand?",
         "support_body": "Message the KRYO team.",

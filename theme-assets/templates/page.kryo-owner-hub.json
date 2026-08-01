@@ -23,7 +23,7 @@
           "type": "action",
           "settings": {
             "title": "Safety",
-            "description": "Important cold-exposure and electrical guidance.",
+            "description": "Important cold-exposure and electrical safety information.",
             "url": "/pages/kryo-safety"
           }
         }
@@ -45,7 +45,7 @@
         "support_url": "/pages/kryo-help",
         "total_chapters": 5,
         "progress_new_heading": "Set up your KRYO",
-        "progress_new_body": "Follow the guided installation from unboxing to first use.",
+        "progress_new_body": "Follow the guided installation from unboxing to your first session.",
         "progress_new_support": "",
         "progress_resume_heading": "Continue setup",
         "progress_done_heading": "Setup complete",

@@ -24,7 +24,7 @@
         "issue_03": {
           "type": "issue",
           "settings": {
-            "title": "Water is leaking",
+            "title": "A fitting is leaking",
             "checks": "",
             "warning_level": "caution",
             "warning": ""
@@ -45,7 +45,7 @@
             "title": "Pump sounds unusual",
             "checks": "",
             "warning_level": "caution",
-            "warning": ""
+            "warning": "Do not open or repair the KRYO housing."
           }
         },
         "issue_06": {
@@ -54,7 +54,7 @@
             "title": "Ice has formed",
             "checks": "",
             "warning_level": "caution",
-            "warning": ""
+            "warning": "Do not open or repair the KRYO housing."
           }
         },
         "issue_07": {
@@ -72,7 +72,7 @@
             "title": "Replacement parts",
             "checks": "",
             "warning_level": "caution",
-            "warning": ""
+            "warning": "Do not open or repair the KRYO housing."
           }
         },
         "issue_09": {
@@ -112,7 +112,7 @@
         "eyebrow": "KRYO HELP",
         "heading": "What is happening?",
         "body": "Choose the closest issue and we'll walk you through the quickest checks.",
-        "still_stuck_label": "Still not fixed? Message us",
+        "still_stuck_label": "Still not fixed? WhatsApp KRYO support",
         "whatsapp_url": "https://wa.me/447724709585",
         "support_heading": "Need a hand?",
         "support_body": "Message the KRYO team and tell us where you're stuck.",
