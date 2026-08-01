@@ -23,6 +23,14 @@ incl. the mandatory `everestlabs.co` host filter), and `.claude/rules/evidence-s
 
 You may not declare a hypothesis CONFIRMED. Corroboration is the orchestrator's job.
 
+
+**INPUTS (required — refuse to run without these):**
+The question, the window, and the segment. Requires `marketing_touches_clean` (never raw `attribution_touches`).
+
+**HANDS OFF TO:** red-team-verifier (always), then performance-economics if the finding is commercial
+
+**SHARED WORKSPACE:** read the active blackboard in `marketing/findings/` before starting, and append your result to it. Do not return findings only to the caller — a lens whose output dies at the orchestrator gives the team no memory. State explicitly where you AGREE and DISAGREE with what is already on the board.
+
 **OUTPUT SCHEMA** — return this, not free text:
 `claim · method · source+window+n · confidence(FACT/PATTERN/HYPOTHESIS/UNKNOWN) · what-would-falsify-it · handoff`
 

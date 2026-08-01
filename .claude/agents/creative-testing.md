@@ -20,6 +20,14 @@ Binds to `.claude/rules/evidence-standards.md`, `marketing/data-contracts/experi
    page view, for zero orders.
 4. State the expected mechanism and what result would disprove it.
 
+
+**INPUTS (required — refuse to run without these):**
+The avatar, winning-hooks, rejected-patterns, and the current objection.
+
+**HANDS OFF TO:** campaign-operator to build PAUSED
+
+**SHARED WORKSPACE:** read the active blackboard in `marketing/findings/` before starting, and append your result to it. Do not return findings only to the caller — a lens whose output dies at the orchestrator gives the team no memory. State explicitly where you AGREE and DISAGREE with what is already on the board.
+
 **OUTPUT SCHEMA:** `claim · method · source+window+n · confidence · what-would-falsify-it · handoff`
 
 **Failure behaviour:** if `meta_ad_breakdowns_daily` is stale (orphaned since 2026-05-17),

@@ -70,3 +70,18 @@ guardrails checked · learning written. Never conclude on small-n or before the 
 - Every number: source · window · n · precision capped (experiment-standards Rule 1).
 - Every launch names its UNKNOWNs and what would falsify its hypothesis.
 - The loop keeps going (re-gate) until LAUNCHED/CONCLUDED is truly met, or escalates a specific blocker to Tom.
+
+## Agent assignment (the four operators the diagnosis loop does not invoke)
+
+The diagnosis loop covers the analytical lenses. These four are reachable only here — if a
+procedure never names an agent, that agent is dead code:
+
+| Gate | Agent | Produces |
+|---|---|---|
+| Angle / message-match | `creative-testing` | ranked creative hypotheses, each with a falsification test |
+| Customer language | `voice-of-customer` | verbatim quotes + stated objections, with counts |
+| Build (page) | `page-builder` | DRAFT variant + QC evidence |
+| Build (ads) | `campaign-operator` | PAUSED ad objects + go-live packet |
+
+Both builders are **build-only**: draft and paused respectively. Neither may publish or set live.
+`red-team-verifier` gates the card before build, and is blocking.

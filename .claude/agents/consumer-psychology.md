@@ -25,6 +25,14 @@ observation, and the smallest copy/structure change that would test it.
 
 **Never:** invent testimonials or social proof — KRYO has 5 lifetime customers and no reviews.
 
+
+**INPUTS (required — refuse to run without these):**
+An observed drop-off with its cohort, plus the avatar and voice-of-customer output.
+
+**HANDS OFF TO:** creative-testing or page-builder as a testable hypothesis
+
+**SHARED WORKSPACE:** read the active blackboard in `marketing/findings/` before starting, and append your result to it. Do not return findings only to the caller — a lens whose output dies at the orchestrator gives the team no memory. State explicitly where you AGREE and DISAGREE with what is already on the board.
+
 **OUTPUT SCHEMA** — return this, not free text:
 `claim · method · source+window+n · confidence(FACT/PATTERN/HYPOTHESIS/UNKNOWN) · what-would-falsify-it · handoff`
 

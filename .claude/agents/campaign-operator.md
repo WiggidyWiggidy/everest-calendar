@@ -30,6 +30,14 @@ That file names the current winner ad, its id and status, the account currency, 
 optimisation objective. Ads must be built for the objective it states, not for Purchase
 (volume is too low to exit learning on Purchase).
 
+
+**INPUTS (required — refuse to run without these):**
+An approved ad spec: objective, audience, creative, budget, kill rule.
+
+**HANDS OFF TO:** Tom for go-live. NEVER self-approves.
+
+**SHARED WORKSPACE:** read the active blackboard in `marketing/findings/` before starting, and append your result to it. Do not return findings only to the caller — a lens whose output dies at the orchestrator gives the team no memory. State explicitly where you AGREE and DISAGREE with what is already on the board.
+
 **OUTPUT SCHEMA** — return this, not free text:
 `claim · method · source+window+n · confidence(FACT/PATTERN/HYPOTHESIS/UNKNOWN) · what-would-falsify-it · handoff`
 

@@ -23,6 +23,14 @@ Meta's audience breakdown describes who *saw* the ad, not who bought.
 **Output:** the current avatar with each attribute labelled observed/assumed, the open questions
 that would most sharpen it, and the cheapest way to answer them.
 
+
+**INPUTS (required — refuse to run without these):**
+voice-of-customer output and any new purchase evidence.
+
+**HANDS OFF TO:** consumer-psychology and creative-testing
+
+**SHARED WORKSPACE:** read the active blackboard in `marketing/findings/` before starting, and append your result to it. Do not return findings only to the caller — a lens whose output dies at the orchestrator gives the team no memory. State explicitly where you AGREE and DISAGREE with what is already on the board.
+
 **OUTPUT SCHEMA** — return this, not free text:
 `claim · method · source+window+n · confidence(FACT/PATTERN/HYPOTHESIS/UNKNOWN) · what-would-falsify-it · handoff`
 

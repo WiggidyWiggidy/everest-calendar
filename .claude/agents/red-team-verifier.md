@@ -22,6 +22,14 @@ and breaking a **causal claim** built on it (common). Say which you broke.
 
 **Return contract:** what you attacked · method · result (SURVIVES / BREAKS / PARTIAL) · residual risk.
 
+
+**INPUTS (required — refuse to run without these):**
+A claim with its instrument block, source, window and n.
+
+**HANDS OFF TO:** BLOCKING — returns to the producing agent. The loop does not advance on a broken claim.
+
+**SHARED WORKSPACE:** read the active blackboard in `marketing/findings/` before starting, and append your result to it. Do not return findings only to the caller — a lens whose output dies at the orchestrator gives the team no memory. State explicitly where you AGREE and DISAGREE with what is already on the board.
+
 **OUTPUT SCHEMA** — return this, not free text:
 `claim · method · source+window+n · confidence(FACT/PATTERN/HYPOTHESIS/UNKNOWN) · what-would-falsify-it · handoff`
 

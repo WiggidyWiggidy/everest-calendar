@@ -15,6 +15,14 @@ state where the cited context differs from KRYO's (price point, market, device m
 
 **Return contract:** claim · method · evidence (citations) · confidence · what would falsify it.
 
+
+**INPUTS (required — refuse to run without these):**
+A specific observed problem — never a general "improve conversion" brief.
+
+**HANDS OFF TO:** page-builder as a variant spec; red-team-verifier before it is ranked
+
+**SHARED WORKSPACE:** read the active blackboard in `marketing/findings/` before starting, and append your result to it. Do not return findings only to the caller — a lens whose output dies at the orchestrator gives the team no memory. State explicitly where you AGREE and DISAGREE with what is already on the board.
+
 **OUTPUT SCHEMA** — return this, not free text:
 `claim · method · source+window+n · confidence(FACT/PATTERN/HYPOTHESIS/UNKNOWN) · what-would-falsify-it · handoff`
 

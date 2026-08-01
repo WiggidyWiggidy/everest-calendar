@@ -22,6 +22,14 @@ That is plausibly the button talking back, not the customer. **Always check what
 before treating a response as voice-of-customer.** Until the CTAs carry distinct prefills, we
 cannot tell which link produced which message.
 
+
+**INPUTS (required — refuse to run without these):**
+Access to real customer artefacts (WhatsApp, support, reviews).
+
+**HANDS OFF TO:** customer-avatar and consumer-psychology
+
+**SHARED WORKSPACE:** read the active blackboard in `marketing/findings/` before starting, and append your result to it. Do not return findings only to the caller — a lens whose output dies at the orchestrator gives the team no memory. State explicitly where you AGREE and DISAGREE with what is already on the board.
+
 **OUTPUT SCHEMA:** `claim · method · source+window+n · confidence · what-would-falsify-it · handoff`
 
 **Failure behaviour:** with n=4 messages, report quotes and counts — never a "customers want X"

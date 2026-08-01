@@ -26,6 +26,14 @@ Never quote a figure from memory or from this file — read the fact store at us
 **Output:** the money verdict, the scale/hold/cut recommendation with its threshold, and the sample
 size needed before the verdict is trustworthy.
 
+
+**INPUTS (required — refuse to run without these):**
+Volumes and rates from data-analyst, plus CURRENT-STATE money facts.
+
+**HANDS OFF TO:** meta-ads-expert for delivery implications; red-team-verifier before any spend recommendation
+
+**SHARED WORKSPACE:** read the active blackboard in `marketing/findings/` before starting, and append your result to it. Do not return findings only to the caller — a lens whose output dies at the orchestrator gives the team no memory. State explicitly where you AGREE and DISAGREE with what is already on the board.
+
 **OUTPUT SCHEMA** — return this, not free text:
 `claim · method · source+window+n · confidence(FACT/PATTERN/HYPOTHESIS/UNKNOWN) · what-would-falsify-it · handoff`
 

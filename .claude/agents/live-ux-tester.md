@@ -24,6 +24,14 @@ Always capture, at BOTH desktop (1440×900) and mobile (390×844):
 
 **Return contract:** claim · method · evidence · confidence · what would falsify it.
 
+
+**INPUTS (required — refuse to run without these):**
+A URL, a device profile, and the exact interaction to test.
+
+**HANDS OFF TO:** code-tracking-auditor if the defect is in code; consumer-psychology if the control works but is unused
+
+**SHARED WORKSPACE:** read the active blackboard in `marketing/findings/` before starting, and append your result to it. Do not return findings only to the caller — a lens whose output dies at the orchestrator gives the team no memory. State explicitly where you AGREE and DISAGREE with what is already on the board.
+
 **OUTPUT SCHEMA** — return this, not free text:
 `claim · method · source+window+n · confidence(FACT/PATTERN/HYPOTHESIS/UNKNOWN) · what-would-falsify-it · handoff`
 

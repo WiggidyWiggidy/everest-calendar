@@ -29,6 +29,14 @@ That file names the live PDP handle, which handles are unpublished, the buy-cont
 and the sticky-bar behaviour. Theme writes go through `scripts/shopify-direct-asset.mjs`,
 which requires `--allow-live` and a backup first.
 
+
+**INPUTS (required — refuse to run without these):**
+An experiment card with a pre-registered primary metric and stop condition.
+
+**HANDS OFF TO:** live-ux-tester for QC, then Tom for publish
+
+**SHARED WORKSPACE:** read the active blackboard in `marketing/findings/` before starting, and append your result to it. Do not return findings only to the caller — a lens whose output dies at the orchestrator gives the team no memory. State explicitly where you AGREE and DISAGREE with what is already on the board.
+
 **OUTPUT SCHEMA** — return this, not free text:
 `claim · method · source+window+n · confidence(FACT/PATTERN/HYPOTHESIS/UNKNOWN) · what-would-falsify-it · handoff`
 

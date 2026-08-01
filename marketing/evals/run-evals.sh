@@ -9,6 +9,9 @@ must_pass(){ d="$1"; shift; if $V "$@" 2>&1 | grep -q '"ok": true'; then echo " 
 
 echo "== fact-location lint: no business figures in rules/agents =="
 if node marketing/evals/lint-facts.mjs > /dev/null 2>&1; then echo "  ok  lint clean"; pass=$((pass+1)); else echo "  FAIL: figures found in rules/agents (run: node marketing/evals/lint-facts.mjs)"; fail=$((fail+1)); fi
+echo "== team wiring: agents have inputs, handoffs, shared state, and a caller =="
+if node marketing/evals/lint-team.mjs > /dev/null 2>&1; then echo "  ok  team-wiring clean"; pass=$((pass+1)); else echo "  FAIL: agents not wired (run: node marketing/evals/lint-team.mjs)"; fail=$((fail+1)); fi
+echo
 echo "== belief revision: no conclusion rests on a superseded or overdue fact =="
 if node marketing/evals/check-dependencies.mjs > /dev/null 2>&1; then echo "  ok  belief-revision clean"; pass=$((pass+1)); else echo "  FAIL: stale conclusions (run: node marketing/evals/check-dependencies.mjs)"; fail=$((fail+1)); fi
 echo

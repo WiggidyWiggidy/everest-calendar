@@ -53,3 +53,32 @@ The system improves by editing itself, governed by `learning-loop.md` and measur
 Honesty over output ("I don't know" is a valid, good answer). Confidence capped by n. Confirm facts,
 don't infer. Reconcile disagreeing sources; never flip silently. Autonomy split: reversible/no-spend
 autonomous; spend/live prepared for Tom. No self-certification.
+
+## Arbitration — who wins when lenses disagree
+
+Without this, "multi-agent" degrades to *whichever output was read last*. That is precisely what
+happened on 2026-07-31: each new agent result overwrote the previous framing rather than being
+reconciled with it.
+
+**Precedence, highest first:**
+1. **Direct measurement of the live system** (live browser, source-system API, live SQL) beats any
+   inference, aggregate, or model. On 2026-07-31 direct measurement was right every time it was used;
+   inference from aggregates and memory was wrong repeatedly.
+2. **Source system beats derived store.** Shopify admin beats `shopify_funnel_daily`. The DB aggregate
+   is a copy and may double-count, truncate, or lag.
+3. **A human's account beats a query result until the instrument is validated.** The owner has context
+   the API does not. Test the instrument before disputing the human.
+4. **Larger n beats smaller n** — but only within the same instrument class. A big sample from a
+   broken instrument beats nothing.
+
+**red-team-verifier is BLOCKING, not advisory.** If it breaks a claim, the claim does not ship and
+the loop returns to the producing agent. A lens may not pass its own work
+(`producer ≠ challenger`).
+
+**Unresolved conflict escalates. It never averages.** If two lenses disagree and precedence does not
+settle it, the disagreement itself is the finding: record both positions on the blackboard with their
+instruments, state what evidence would separate them, and escalate to Tom. **Do not split the
+difference — an averaged answer is one nobody measured.**
+
+**Silence is not agreement.** A lens that was not run has not concurred. The orchestrator states
+which lenses ran and which did not.
