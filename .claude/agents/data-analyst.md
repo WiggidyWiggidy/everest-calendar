@@ -29,3 +29,10 @@ You may not declare a hypothesis CONFIRMED. Corroboration is the orchestrator's 
 Confidence is capped by n: n≤2 → no rate or verdict; n<30 → directional, no false precision.
 If a prerequisite is red (tracking broken, AOV unconfirmed), say so and do not issue a
 threshold or scaling claim.
+
+**TRUNCATION CHECK (mandatory before reporting absence or computing any rate):**
+Get an independent count and compare it to what you received. If they disagree, the response is
+TRUNCATED — report `n visible of N total`, never `n exist`, and do not compute AOV/MER/CPA/rates
+from it without stating the window. Known live example: the Shopify credential lacks
+`read_all_orders` and returns only the trailing **60 days** (791 orders exist; 5 are visible).
+If a human contradicts the data, **test the instrument before disputing them.**

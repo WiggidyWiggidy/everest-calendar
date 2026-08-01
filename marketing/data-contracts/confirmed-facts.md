@@ -35,3 +35,15 @@ Legend: ✅ CONFIRMED · ❓ UNKNOWN / NEEDS CONFIRMATION · ⚠️ ASSUMED (unv
 - Before diagnosing, the agent lists which of these it needs and their status.
 - Any ❓ that is decision-critical → **STOP and ask Tom**; record the answer here (with date).
 - Never promote ⚠️ to ✅ without an explicit confirmation.
+
+## KRYO sales record — CONFIRMED 2026-07-31
+| Fact | Status | Value |
+|---|---|---|
+| KRYO unit sales, lifetime | ✅ CONFIRMED (Tom + API) | **5** — Feb A$1,500 · Mar A$4,600 · Jun A$1,540.92 · Jun A$1,541.81 · Jul A$1,566.09 |
+| Total KRYO revenue | ✅ | **A$10,748.82** |
+| KRYO AOV | ✅ | **A$2,149.76** |
+| MER (revenue / A$1,023.83 spend) | ✅ | **10.50x** |
+| CPA per KRYO unit | ✅ | **≈A$205** (n=5, directional) |
+| Small orders A$213.99 / A$114.99 | ✅ CONFIRMED (Tom) | **Replacement parts. EXCLUDE from acquisition maths.** |
+| Feb/Mar sales visible via API? | ✅ | **No** — 60-day scope limit. Tom-attested. |
+| Account + shop currency | ✅ | **AUD** |

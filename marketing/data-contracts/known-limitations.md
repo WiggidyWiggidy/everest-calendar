@@ -42,3 +42,15 @@ highest reliable grain today.
 `meta_ad_breakdowns_daily` stale since 2026-05-17 (sync route deleted, recoverable).
 `meta_asset_performance_daily` stale since 2026-03-02 (no refresh path).
 GA4 and GSC stale since mid-June (Google auth failure).
+
+## 9. Shopify API sees only the last 60 days (CRITICAL)
+The Shopify credential lacks the `read_all_orders` scope. Measured 2026-07-31:
+`orders/count.json?status=any` = **791**; `orders.json` returns **5**; earliest visible order
+2026-06-02 — **exactly 60 days** before that date.
+
+**786 of 791 orders are invisible to this key.** Any revenue, AOV, MER or CPA computed from this API
+outside a 60-day window is wrong. Historical figures must come from the Shopify admin UI, or the app
+must be granted `read_all_orders` (requires Shopify approval).
+
+This defect caused a published finding to state MER 4.86x (below the acceptable floor) when the true
+figure is 10.50x — it hid 2 of 5 KRYO sales.

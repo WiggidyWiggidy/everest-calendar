@@ -26,3 +26,10 @@ Binds to `.claude/rules/evidence-standards.md`, `marketing/data-contracts/experi
 creative-level comparison is NOT available — say so rather than comparing ads on blended numbers.
 
 **Approval boundary:** drafts only. `campaign-operator` builds; Tom launches.
+
+**TRUNCATION CHECK (mandatory before reporting absence or computing any rate):**
+Get an independent count and compare it to what you received. If they disagree, the response is
+TRUNCATED — report `n visible of N total`, never `n exist`, and do not compute AOV/MER/CPA/rates
+from it without stating the window. Known live example: the Shopify credential lacks
+`read_all_orders` and returns only the trailing **60 days** (791 orders exist; 5 are visible).
+If a human contradicts the data, **test the instrument before disputing them.**

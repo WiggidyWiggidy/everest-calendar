@@ -1,72 +1,76 @@
-# Real orders, AOV and MER — ground truth from Shopify admin
+# Real KRYO sales, AOV and MER
 
-**Date:** 2026-07-31 · **Source:** Shopify Admin REST `/orders.json?status=any`, created_at ≥ 2026-01-01
-**Method:** client-credentials OAuth; excluded `cancelled_at` and `test` orders (0 of each present)
-**n = 5 orders.** Everything below is directional; no rate quoted to false precision.
+**Date:** 2026-07-31 · **n = 5 KRYO unit sales** · **Currency: AUD** (shop currency confirmed)
+**Sources:** Shopify Admin API (Jun–Jul, API-visible) + Tom (Feb–Mar, API-blind — see limitation)
 
-## FACT — the orders
+## ⚠️ Critical source limitation — read before using any Shopify order query
 
-| Order | Date | Total (AUD) | Line items | Type |
-|---|---|---:|---:|---|
-| #1787 | 2026-06-02 | 213.99 | 1 | accessory |
-| #1788 | 2026-06-07 | 1,540.92 | 2 | **KRYO unit** |
-| #1789 | 2026-06-07 | 114.99 | 1 | accessory |
-| #1790 | 2026-06-14 | 1,541.81 | 2 | **KRYO unit** |
-| #1791 | 2026-07-06 | 1,566.09 | 2 | **KRYO unit** |
+**The Shopify API credential can only see the last 60 days of orders.**
 
-- **Total revenue: A$4,977.80** · **5 orders** · **currency AUD** (confirms the account currency)
-- **Blended AOV: A$995.56**
-- **KRYO-unit AOV: A$1,549.61** (n=3)
-- Two orders are accessory-only (A$328.98 combined) and should not be credited to KRYO unit ads.
+| Evidence | Value |
+|---|---|
+| `orders/count.json?status=any` | **791** |
+| `orders.json?status=any` returns | **5** |
+| Earliest visible order | 2026-06-02 |
+| Today | 2026-08-01 |
+| Gap | **exactly 60 days** |
 
-## FACT — MER (real revenue ÷ total ad spend)
+This is Shopify's `read_orders` scope behaviour: without the `read_all_orders` scope (which requires
+Shopify approval), an app sees only the trailing 60 days. **786 of 791 orders are invisible to this key.**
 
-| Basis | Revenue | Spend | MER |
-|---|---:|---:|---:|
-| All-time | A$4,977.80 | A$1,023.83 | **4.86x** |
-| KRYO units only | A$4,648.82 | A$1,023.83 | **4.54x** |
-| Jun–Jul window only | A$4,977.80 | A$532.53 | 9.35x |
+**Any historical revenue, AOV, MER or CPA computed from this API is wrong unless the window is
+inside 60 days.** Request `read_all_orders`, or read history from the Shopify admin UI.
 
-**All-time MER is 4.86x — BELOW Tom's stated 5.0x floor.**
-The 9.35x figure is flattering because it excludes the Feb/May spend that produced zero orders.
-**Use the all-time figure. Excluding unproductive spend is how a channel looks profitable while
-losing money.**
+## FACT — KRYO unit sales
 
-## FACT — CPA
-- Per order (n=5): **≈A$205**
-- Per KRYO unit (n=3): **≈A$341** — against target <A$100 and break-even A$400.
-  Unit CPA is uncomfortably close to break-even.
+| Date | Amount (AUD) | Source |
+|---|---:|---|
+| Feb 2026 | 1,500.00 | Tom (API-blind) |
+| Mar 2026 | 4,600.00 | Tom (API-blind) |
+| 2026-06-07 | 1,540.92 | Shopify API `#1788` |
+| 2026-06-14 | 1,541.81 | Shopify API `#1790` |
+| 2026-07-06 | 1,566.09 | Shopify API `#1791` |
+| **Total** | **10,748.82** | **n=5** |
 
-## Corrections this forces — three prior claims were wrong
+**Excluded — replacement parts, not advertising-driven** (Tom): `#1787` A$213.99, `#1789` A$114.99.
+Small-value orders must not be counted as acquisition; they distort AOV and CPA downward.
 
-| Prior claim | Source | Reality |
+## FACT — economics
+
+| Metric | Value | vs target |
+|---|---:|---|
+| KRYO AOV | **A$2,149.76** | — |
+| Meta spend (all-time) | A$1,023.83 | — |
+| **MER** (real revenue ÷ total spend) | **10.50x** | **above the 5.0x floor** |
+| CPA per KRYO unit | **≈A$205** | target <A$100 · break-even A$400 |
+
+Tom's original "~$10k in sales, healthy ROAS" was **correct**. The business is comfortably
+profitable on ads at ~10.5x MER, with CPA roughly half of break-even.
+
+## Corrections — what I got wrong and why
+
+| My claim | Reality | Cause |
 |---|---|---|
-| "~$10k in sales" | Tom, verbal | **A$4,977.80** — actual revenue is ~half |
-| "AOV = A$2,000" | **I invented this** | **A$995.56 blended / A$1,549.61 per unit** — my figure was ~2x too high |
-| "9.8x ROAS" | derived from the invented AOV | **MER 4.86x** — below the acceptable floor |
-| "Order in February and one in March" | Tom, verbal | **No orders before 2026-06-02 exist in Shopify.** The query covered from 2026-01-01. |
-| "June was only 2 orders" | Tom, verbal | **June had 4 orders** (2 units + 2 accessories) |
+| "Revenue A$4,977.80" | **A$10,748.82** | API returned only 60 days; I treated the response as complete |
+| "MER 4.86x, below the floor" | **10.50x, well above** | same |
+| "No orders exist before 2026-06-02" | **They exist; the key cannot see them** | I asserted absence from a truncated response |
+| "Tom's Feb/Mar recollection is contradicted" | **Tom was right** | I sided with an API over the owner without checking the API's limits |
+| "AOV A$2,000" (earlier, invented) | A$2,149.76 | coincidentally close — but it was still fabricated, not derived |
 
-The Feb/Mar recollection and the June count are both contradicted by the source system.
-Worth Tom confirming whether orders exist in another channel/store that this API key cannot see —
-otherwise the record stands at 5 orders, all June–July.
-
-## What this changes
-1. **The business is at roughly break-even on ads, not comfortably profitable.** MER 4.86x against a
-   5.0x floor. Every earlier scaling recommendation assumed ~9.8x and is void.
-2. **Unit CPA ≈A$341 vs break-even A$400** leaves ~15% headroom, not the 2.25x I last stated
-   (which itself replaced an even worse 4.5–6.7x). **Do not scale on the current numbers.**
-3. **Margin is still UNKNOWN.** Break-even CPA A$400 was given by Tom; with AOV now known at
-   A$1,549.61/unit, that implies ~26% contribution margin — but Tom should confirm rather than
-   have it inferred.
+**The process failure, not the arithmetic one:** `evidence-standards.md` requires that when sources
+disagree, *the gap is the finding* and must be investigated before concluding. Tom's account and the
+API disagreed. I resolved it by declaring the owner wrong instead of testing the instrument. The
+check that would have caught it — comparing `orders/count.json` (791) against the returned array (5) —
+took one extra request.
 
 ## UNKNOWN
-- COGS / true contribution margin (Tom).
-- Whether any pre-June orders exist outside this Shopify store.
-- Attribution per order — no order carries a UTM or ad id in this pull; `shopify_orders` is empty,
-  so no order can yet be tied to a specific ad.
+- COGS / contribution margin (Tom). With AOV now A$2,149.76 and break-even CPA A$400, implied
+  contribution is ~19% — **Tom should confirm rather than have it inferred.**
+- Per-order attribution: no order carries a UTM or ad id; `shopify_orders` is empty. No sale can yet
+  be tied to a specific ad.
+- Whether the Feb/Mar sales were Meta-driven. Tom states Meta is the only channel; not independently verified.
 
 ## Confidence
-**FACT** for order count, revenue, AOV and MER — read directly from the source system.
-**Directional only** for any rate derived from n=5. No verdict on ad-level performance is possible
-until orders carry attribution.
+**FACT** for the three June–July orders (direct from source).
+**FACT, Tom-attested** for Feb/Mar amounts — not independently verifiable until `read_all_orders`.
+n=5 → **directional only**. No ad-level verdict is possible.
