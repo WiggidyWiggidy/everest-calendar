@@ -1,3 +1,19 @@
+---
+depends-on: [money.checkouts_as_sales, constraint.mobile_atc]
+---
+
+> ## ⛔ SUPERSEDED — DO NOT USE
+> Flagged automatically by `marketing/evals/check-dependencies.mjs`, not by hand. This file was
+> missed during the manual correction pass on 2026-07-31 and sat asserting two disproven facts.
+>
+> - `money.checkouts_as_sales` — "6 completed checkouts = 6 real sales" was upsell double-counting.
+>   True KRYO unit sales: 5.
+> - `constraint.mobile_atc` — "the dominant loss is mobile add-to-cart" is superseded; the binding
+>   constraint is **volume**, and the figures behind the ATC claim came from a query missing three
+>   of four canonical exclusions.
+>
+> Current facts: `marketing/data-contracts/CURRENT-STATE.md`.
+
 # 2026-07-31 — kryo2_ add-to-cart funnel break (protocol-compliant diagnosis)
 
 Ran under `diagnostic-protocol.md`. Sources bound per `source-of-truth.md`. Sample caps applied.

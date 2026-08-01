@@ -1,3 +1,7 @@
+---
+depends-on: [site.buy_control_position, site.tracking_capi, constraint.binding]
+---
+
 # KRYO — the intent leak, and the path to a healthy add-to-cart rate
 
 Window: kryo2_ live, 2026-07-26 → 07-31. 250 eligible mobile+desktop PDP sessions.

@@ -12,6 +12,41 @@ Enforced by `marketing/evals/lint-facts.mjs`. Adding a figure to a rule or agent
 **Every row carries: value · n · source · as-of · confidence.**
 No row may be added without all five. If a fact is unknown, it is listed as UNKNOWN — never omitted.
 
+
+## Fact keys (stable identifiers — findings reference these)
+
+Every fact below has a key. Conclusions declare `depends-on: [key, ...]` in their frontmatter.
+When a fact is superseded, `marketing/evals/check-dependencies.mjs` flags every dependent
+conclusion automatically. Belief revision must propagate — on 2026-07-31 a fact was disproven,
+three dependent findings were flagged **by hand**, and a fourth was missed and left asserting it.
+
+| Key | Fact | Review by |
+|---|---|---|
+| `money.sales_lifetime` | KRYO unit sales, lifetime | 2026-08-31 |
+| `money.revenue_lifetime` | KRYO revenue, lifetime | 2026-08-31 |
+| `money.aov` | KRYO AOV | 2026-08-31 |
+| `money.spend_lifetime` | Meta spend, lifetime | 2026-08-14 |
+| `money.mer` | MER | 2026-08-14 |
+| `money.cpa` | CPA per KRYO unit | 2026-08-14 |
+| `money.cogs` | COGS / margin — **UNKNOWN** | — |
+| `delivery.uptime` | Live delivery days | 2026-08-14 |
+| `delivery.cost_per_lpv` | Cost per landing page view | 2026-08-14 |
+| `delivery.winner_ad` | Winner ad id + status | 2026-08-07 |
+| `site.live_pdp` | Live PDP handle | 2026-08-14 |
+| `site.buy_control_position` | Buy control page depth | 2026-08-14 |
+| `site.tracking_capi` | `facebook.com/tr` / CAPI state | 2026-08-07 |
+| `constraint.binding` | The binding constraint | 2026-08-14 |
+
+## SUPERSEDED facts — anything depending on these is invalid
+
+| Key | Was asserted | Superseded by | Date |
+|---|---|---|---|
+| `money.checkouts_as_sales` | "6 completed checkouts = 6 real sales" | upsell double-counting; true KRYO units = 5 | 2026-07-31 |
+| `money.aov_2000` | "AOV = A$2,000" | fabricated; real A$2,149.76 | 2026-07-31 |
+| `money.mer_486` | "MER 4.86x, below floor" | 60-day API blind spot; real 10.50x | 2026-07-31 |
+| `constraint.mobile_atc` | "dominant loss is mobile add-to-cart" | volume is the binding constraint | 2026-07-31 |
+| `delivery.july_collapse` | "July collapse: spend +64%, orders −80%" | 28 of 61 days were dark | 2026-07-31 |
+
 ---
 
 ## Money — as of 2026-07-31

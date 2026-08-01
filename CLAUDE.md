@@ -28,6 +28,9 @@ Previous version archived at
 3. State what is KNOWN (with source + n) vs UNKNOWN for the task **before acting**.
 
 **CLOSE (end of every marketing task):**
+0. **Declare dependencies.** Every finding carries `depends-on: [fact.key, ...]` in frontmatter,
+   referencing `marketing/data-contracts/CURRENT-STATE.md`. A conclusion that does not declare what
+   it rests on cannot be invalidated when that fact falls — and will quietly keep asserting it.
 1. Write findings to `marketing/findings/` — labelled FACT/PATTERN/HYPOTHESIS/UNKNOWN · source · window · n.
 2. Log prediction vs outcome to `marketing/agents/calibration-log.md`.
 3. POSTMORTEM: if anything was wrong or missing, update the responsible rule/agent/contract **and** add a
@@ -54,7 +57,18 @@ instrument checks was satisfied (completeness · freshness · filter fidelity ·
 ```bash
 node marketing/evals/validate-claim.mjs --claim "..." --instrument "..." --n <int> [--counted --total --fresh --enumerated --grain --label]
 ```
-Exit 0 = publishable. Exit 1 = blocked. This exists because prose rules did not bind: the rule
+Exit 0 = publishable. Exit 1 = blocked.
+
+**Belief revision must propagate.** When a fact is superseded, add it to the SUPERSEDED table in
+`CURRENT-STATE.md` — every dependent conclusion is then flagged automatically by
+`marketing/evals/check-dependencies.mjs`. Correcting the number you happened to notice is not
+correcting the conclusions built on it. On 2026-07-31 a fact fell, three findings were flagged by
+hand, and a fourth was missed and left asserting it for hours.
+
+Full suite (run at session start; green = scaffolding intact):
+```bash
+./marketing/evals/run-evals.sh
+``` This exists because prose rules did not bind: the rule
 "confidence capped by n" was written to disk and violated in the same session. Verified to block
 10 of 10 wrong claims from 2026-07-31 while passing a sound one.
 

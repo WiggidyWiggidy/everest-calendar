@@ -1,3 +1,7 @@
+---
+depends-on: [money.sales_lifetime, money.revenue_lifetime, money.aov, money.spend_lifetime, money.mer, money.cpa]
+---
+
 # Real KRYO sales, AOV and MER
 
 **Date:** 2026-07-31 · **n = 5 KRYO unit sales** · **Currency: AUD** (shop currency confirmed)
