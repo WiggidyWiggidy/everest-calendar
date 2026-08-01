@@ -1,0 +1,128 @@
+{
+  "sections": {
+    "content": {
+      "type": "kryo-owner-content",
+      "blocks": {
+        "issue_01": {
+          "type": "issue",
+          "settings": {
+            "title": "KRYO won't turn on",
+            "checks": "",
+            "warning_level": "caution",
+            "warning": ""
+          }
+        },
+        "issue_02": {
+          "type": "issue",
+          "settings": {
+            "title": "No water from the Halo",
+            "checks": "",
+            "warning_level": "caution",
+            "warning": ""
+          }
+        },
+        "issue_03": {
+          "type": "issue",
+          "settings": {
+            "title": "Water is leaking",
+            "checks": "",
+            "warning_level": "caution",
+            "warning": ""
+          }
+        },
+        "issue_04": {
+          "type": "issue",
+          "settings": {
+            "title": "KRYO isn't cooling",
+            "checks": "",
+            "warning_level": "caution",
+            "warning": ""
+          }
+        },
+        "issue_05": {
+          "type": "issue",
+          "settings": {
+            "title": "Pump sounds unusual",
+            "checks": "",
+            "warning_level": "caution",
+            "warning": ""
+          }
+        },
+        "issue_06": {
+          "type": "issue",
+          "settings": {
+            "title": "Ice has formed",
+            "checks": "",
+            "warning_level": "caution",
+            "warning": ""
+          }
+        },
+        "issue_07": {
+          "type": "issue",
+          "settings": {
+            "title": "Cleaning & care",
+            "checks": "",
+            "warning_level": "caution",
+            "warning": ""
+          }
+        },
+        "issue_08": {
+          "type": "issue",
+          "settings": {
+            "title": "Replacement parts",
+            "checks": "",
+            "warning_level": "caution",
+            "warning": ""
+          }
+        },
+        "issue_09": {
+          "type": "issue",
+          "settings": {
+            "title": "Warranty",
+            "checks": "",
+            "warning_level": "caution",
+            "warning": ""
+          }
+        },
+        "issue_10": {
+          "type": "issue",
+          "settings": {
+            "title": "Something else",
+            "checks": "",
+            "warning_level": "caution",
+            "warning": ""
+          }
+        }
+      },
+      "block_order": [
+        "issue_01",
+        "issue_02",
+        "issue_03",
+        "issue_04",
+        "issue_05",
+        "issue_06",
+        "issue_07",
+        "issue_08",
+        "issue_09",
+        "issue_10"
+      ],
+      "settings": {
+        "surface": "help",
+        "narrow": false,
+        "eyebrow": "KRYO HELP",
+        "heading": "What is happening?",
+        "body": "Choose the closest issue and we'll walk you through the quickest checks.",
+        "still_stuck_label": "Still not fixed? Message us",
+        "whatsapp_url": "https://wa.me/447724709585",
+        "support_heading": "Need a hand?",
+        "support_body": "Message the KRYO team and tell us where you're stuck.",
+        "support_cta": "WhatsApp support",
+        "hub_url": "/pages/kryo-resources",
+        "hub_label": "Back to owner hub"
+      }
+    }
+  },
+  "order": [
+    "content"
+  ]
+}

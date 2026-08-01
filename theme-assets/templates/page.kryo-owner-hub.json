@@ -28,7 +28,11 @@
           }
         }
       },
-      "block_order": ["action_using", "action_help", "action_safety"],
+      "block_order": [
+        "action_using",
+        "action_help",
+        "action_safety"
+      ],
       "settings": {
         "eyebrow": "KRYO OWNER GUIDE",
         "heading": "Everything you need to get KRYO running.",
@@ -50,9 +54,13 @@
         "support_heading": "Need a hand?",
         "support_body": "Message the KRYO team and tell us where you're stuck.",
         "support_cta": "WhatsApp support",
-        "whatsapp_url": "https://wa.me/447724709585"
+        "whatsapp_url": "https://wa.me/447724709585",
+        "hero_image": "shopify://shop_images/kryo-front-view.webp",
+        "hero_image_alt": "KRYO installed and ready to use"
       }
     }
   },
-  "order": ["owner_hub"]
+  "order": [
+    "owner_hub"
+  ]
 }

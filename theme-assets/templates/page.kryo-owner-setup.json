@@ -1,0 +1,505 @@
+{
+  "sections": {
+    "setup": {
+      "type": "kryo-owner-setup",
+      "blocks": {
+        "step_01": {
+          "type": "setup_step",
+          "settings": {
+            "enabled": true,
+            "chapter": 1,
+            "chapter_label": "CHAPTER 1 \u00b7 UNBOX & POSITION",
+            "title": "What's in the box",
+            "instruction": "",
+            "asset_id": "KRYO-SETUP-01",
+            "warning_level": "caution",
+            "warning_title": "",
+            "warning": "",
+            "tip": "",
+            "why": "",
+            "image": "shopify://shop_images/kryo-whats-in-the-box.webp"
+          }
+        },
+        "step_02": {
+          "type": "setup_step",
+          "settings": {
+            "enabled": true,
+            "chapter": 1,
+            "chapter_label": "CHAPTER 1 \u00b7 UNBOX & POSITION",
+            "title": "Position KRYO",
+            "instruction": "",
+            "asset_id": "KRYO-SETUP-02",
+            "warning_level": "caution",
+            "warning_title": "",
+            "warning": "",
+            "tip": "",
+            "why": "",
+            "image": "shopify://shop_images/kryo-side-view.webp"
+          }
+        },
+        "step_03": {
+          "type": "setup_step",
+          "settings": {
+            "enabled": true,
+            "chapter": 1,
+            "chapter_label": "CHAPTER 1 \u00b7 UNBOX & POSITION",
+            "title": "Check hose reach",
+            "instruction": "",
+            "asset_id": "KRYO-SETUP-03",
+            "warning_level": "caution",
+            "warning_title": "",
+            "warning": "",
+            "tip": "",
+            "why": ""
+          }
+        },
+        "step_04": {
+          "type": "setup_step",
+          "settings": {
+            "enabled": true,
+            "chapter": 1,
+            "chapter_label": "CHAPTER 1 \u00b7 UNBOX & POSITION",
+            "title": "Check power reach",
+            "instruction": "",
+            "asset_id": "KRYO-SETUP-04",
+            "warning_level": "caution",
+            "warning_title": "",
+            "warning": "",
+            "tip": "",
+            "why": ""
+          }
+        },
+        "step_05": {
+          "type": "setup_step",
+          "settings": {
+            "enabled": true,
+            "chapter": 1,
+            "chapter_label": "CHAPTER 1 \u00b7 UNBOX & POSITION",
+            "title": "Check refill access",
+            "instruction": "",
+            "asset_id": "KRYO-SETUP-05",
+            "warning_level": "caution",
+            "warning_title": "",
+            "warning": "",
+            "tip": "",
+            "why": ""
+          }
+        },
+        "step_06": {
+          "type": "setup_step",
+          "settings": {
+            "enabled": true,
+            "chapter": 2,
+            "chapter_label": "CHAPTER 2 \u00b7 MOUNT THE HALO",
+            "title": "Assemble rail",
+            "instruction": "",
+            "asset_id": "KRYO-SETUP-06",
+            "warning_level": "caution",
+            "warning_title": "",
+            "warning": "",
+            "tip": "",
+            "why": ""
+          }
+        },
+        "step_07": {
+          "type": "setup_step",
+          "settings": {
+            "enabled": true,
+            "chapter": 2,
+            "chapter_label": "CHAPTER 2 \u00b7 MOUNT THE HALO",
+            "title": "Choose height",
+            "instruction": "",
+            "asset_id": "KRYO-SETUP-07",
+            "warning_level": "caution",
+            "warning_title": "",
+            "warning": "",
+            "tip": "",
+            "why": ""
+          }
+        },
+        "step_08": {
+          "type": "setup_step",
+          "settings": {
+            "enabled": true,
+            "chapter": 2,
+            "chapter_label": "CHAPTER 2 \u00b7 MOUNT THE HALO",
+            "title": "Dry fit",
+            "instruction": "",
+            "asset_id": "KRYO-SETUP-08",
+            "warning_level": "caution",
+            "warning_title": "",
+            "warning": "",
+            "tip": "",
+            "why": ""
+          }
+        },
+        "step_09": {
+          "type": "setup_step",
+          "settings": {
+            "enabled": true,
+            "chapter": 2,
+            "chapter_label": "CHAPTER 2 \u00b7 MOUNT THE HALO",
+            "title": "Prepare wall",
+            "instruction": "",
+            "asset_id": "KRYO-SETUP-09",
+            "warning_level": "caution",
+            "warning_title": "",
+            "warning": "",
+            "tip": "",
+            "why": ""
+          }
+        },
+        "step_10": {
+          "type": "setup_step",
+          "settings": {
+            "enabled": true,
+            "chapter": 2,
+            "chapter_label": "CHAPTER 2 \u00b7 MOUNT THE HALO",
+            "title": "Mount rail",
+            "instruction": "",
+            "asset_id": "KRYO-SETUP-10",
+            "warning_level": "caution",
+            "warning_title": "",
+            "warning": "",
+            "tip": "",
+            "why": ""
+          }
+        },
+        "step_11": {
+          "type": "setup_step",
+          "settings": {
+            "enabled": true,
+            "chapter": 3,
+            "chapter_label": "CHAPTER 3 \u00b7 CONNECT KRYO",
+            "title": "Fit rubber seals",
+            "instruction": "",
+            "asset_id": "KRYO-SETUP-11",
+            "warning_level": "caution",
+            "warning_title": "",
+            "warning": "",
+            "tip": "",
+            "why": ""
+          }
+        },
+        "step_12": {
+          "type": "setup_step",
+          "settings": {
+            "enabled": true,
+            "chapter": 3,
+            "chapter_label": "CHAPTER 3 \u00b7 CONNECT KRYO",
+            "title": "Connect Halo",
+            "instruction": "",
+            "asset_id": "KRYO-SETUP-12",
+            "warning_level": "caution",
+            "warning_title": "",
+            "warning": "",
+            "tip": "",
+            "why": ""
+          }
+        },
+        "step_13": {
+          "type": "setup_step",
+          "settings": {
+            "enabled": true,
+            "chapter": 3,
+            "chapter_label": "CHAPTER 3 \u00b7 CONNECT KRYO",
+            "title": "Connect KRYO hose",
+            "instruction": "",
+            "asset_id": "KRYO-SETUP-13",
+            "warning_level": "caution",
+            "warning_title": "",
+            "warning": "",
+            "tip": "",
+            "why": ""
+          }
+        },
+        "step_14": {
+          "type": "setup_step",
+          "settings": {
+            "enabled": true,
+            "chapter": 3,
+            "chapter_label": "CHAPTER 3 \u00b7 CONNECT KRYO",
+            "title": "Position PSU",
+            "instruction": "",
+            "asset_id": "KRYO-SETUP-14",
+            "warning_level": "caution",
+            "warning_title": "",
+            "warning": "",
+            "tip": "",
+            "why": ""
+          }
+        },
+        "step_15": {
+          "type": "setup_step",
+          "settings": {
+            "enabled": true,
+            "chapter": 3,
+            "chapter_label": "CHAPTER 3 \u00b7 CONNECT KRYO",
+            "title": "Connect 24V power",
+            "instruction": "",
+            "asset_id": "KRYO-SETUP-15",
+            "warning_level": "caution",
+            "warning_title": "",
+            "warning": "",
+            "tip": "",
+            "why": ""
+          }
+        },
+        "step_16": {
+          "type": "setup_step",
+          "settings": {
+            "enabled": true,
+            "chapter": 4,
+            "chapter_label": "CHAPTER 4 \u00b7 FILL & START",
+            "title": "Add priming water",
+            "instruction": "",
+            "asset_id": "KRYO-SETUP-16",
+            "warning_level": "caution",
+            "warning_title": "",
+            "warning": "",
+            "tip": "",
+            "why": ""
+          }
+        },
+        "step_17": {
+          "type": "setup_step",
+          "settings": {
+            "enabled": true,
+            "chapter": 4,
+            "chapter_label": "CHAPTER 4 \u00b7 FILL & START",
+            "title": "Confirm circulation",
+            "instruction": "",
+            "asset_id": "KRYO-SETUP-17",
+            "warning_level": "caution",
+            "warning_title": "",
+            "warning": "",
+            "tip": "",
+            "why": ""
+          }
+        },
+        "step_18": {
+          "type": "setup_step",
+          "settings": {
+            "enabled": true,
+            "chapter": 4,
+            "chapter_label": "CHAPTER 4 \u00b7 FILL & START",
+            "title": "Fill reservoir",
+            "instruction": "",
+            "asset_id": "KRYO-SETUP-18",
+            "warning_level": "caution",
+            "warning_title": "",
+            "warning": "",
+            "tip": "",
+            "why": ""
+          }
+        },
+        "step_19": {
+          "type": "setup_step",
+          "settings": {
+            "enabled": true,
+            "chapter": 4,
+            "chapter_label": "CHAPTER 4 \u00b7 FILL & START",
+            "title": "Check maximum level",
+            "instruction": "",
+            "asset_id": "KRYO-SETUP-19",
+            "warning_level": "caution",
+            "warning_title": "",
+            "warning": "",
+            "tip": "",
+            "why": ""
+          }
+        },
+        "step_20": {
+          "type": "setup_step",
+          "settings": {
+            "enabled": true,
+            "chapter": 4,
+            "chapter_label": "CHAPTER 4 \u00b7 FILL & START",
+            "title": "Fit top plug",
+            "instruction": "",
+            "asset_id": "KRYO-SETUP-20",
+            "warning_level": "caution",
+            "warning_title": "",
+            "warning": "",
+            "tip": "",
+            "why": ""
+          }
+        },
+        "step_21": {
+          "type": "setup_step",
+          "settings": {
+            "enabled": true,
+            "chapter": 4,
+            "chapter_label": "CHAPTER 4 \u00b7 FILL & START",
+            "title": "Set 15\u00b0C",
+            "instruction": "",
+            "asset_id": "KRYO-SETUP-21",
+            "warning_level": "caution",
+            "warning_title": "",
+            "warning": "",
+            "tip": "",
+            "why": ""
+          }
+        },
+        "step_22": {
+          "type": "setup_step",
+          "settings": {
+            "enabled": true,
+            "chapter": 5,
+            "chapter_label": "CHAPTER 5 \u00b7 FIRST SESSION",
+            "title": "Start gently",
+            "instruction": "",
+            "asset_id": "KRYO-SETUP-22",
+            "warning_level": "caution",
+            "warning_title": "",
+            "warning": "",
+            "tip": "",
+            "why": ""
+          }
+        },
+        "step_23": {
+          "type": "setup_step",
+          "settings": {
+            "enabled": true,
+            "chapter": 5,
+            "chapter_label": "CHAPTER 5 \u00b7 FIRST SESSION",
+            "title": "Turn back toward Halo",
+            "instruction": "",
+            "asset_id": "KRYO-SETUP-23",
+            "warning_level": "critical",
+            "warning_title": "DO NOT START FACING THE HALO",
+            "warning": "Begin with your back toward the Halo and let the first flow reach the tops of your shoulders.",
+            "tip": "",
+            "why": ""
+          }
+        },
+        "step_24": {
+          "type": "setup_step",
+          "settings": {
+            "enabled": true,
+            "chapter": 5,
+            "chapter_label": "CHAPTER 5 \u00b7 FIRST SESSION",
+            "title": "Shoulder placement",
+            "instruction": "",
+            "asset_id": "KRYO-SETUP-24",
+            "warning_level": "caution",
+            "warning_title": "",
+            "warning": "",
+            "tip": "",
+            "why": ""
+          }
+        },
+        "step_25": {
+          "type": "setup_step",
+          "settings": {
+            "enabled": true,
+            "chapter": 5,
+            "chapter_label": "CHAPTER 5 \u00b7 FIRST SESSION",
+            "title": "Choose flow",
+            "instruction": "",
+            "asset_id": "KRYO-SETUP-25",
+            "warning_level": "caution",
+            "warning_title": "",
+            "warning": "",
+            "tip": "",
+            "why": ""
+          }
+        },
+        "step_26": {
+          "type": "setup_step",
+          "settings": {
+            "enabled": true,
+            "chapter": 5,
+            "chapter_label": "CHAPTER 5 \u00b7 FIRST SESSION",
+            "title": "Start water",
+            "instruction": "",
+            "asset_id": "KRYO-SETUP-26",
+            "warning_level": "caution",
+            "warning_title": "",
+            "warning": "",
+            "tip": "",
+            "why": ""
+          }
+        },
+        "step_27": {
+          "type": "setup_step",
+          "settings": {
+            "enabled": true,
+            "chapter": 5,
+            "chapter_label": "CHAPTER 5 \u00b7 FIRST SESSION",
+            "title": "Rotate gradually",
+            "instruction": "",
+            "asset_id": "KRYO-SETUP-27",
+            "warning_level": "caution",
+            "warning_title": "",
+            "warning": "",
+            "tip": "",
+            "why": ""
+          }
+        },
+        "step_28": {
+          "type": "setup_step",
+          "settings": {
+            "enabled": true,
+            "chapter": 5,
+            "chapter_label": "CHAPTER 5 \u00b7 FIRST SESSION",
+            "title": "Know when to stop",
+            "instruction": "",
+            "asset_id": "KRYO-SETUP-28",
+            "warning_level": "caution",
+            "warning_title": "",
+            "warning": "",
+            "tip": "",
+            "why": ""
+          }
+        }
+      },
+      "block_order": [
+        "step_01",
+        "step_02",
+        "step_03",
+        "step_04",
+        "step_05",
+        "step_06",
+        "step_07",
+        "step_08",
+        "step_09",
+        "step_10",
+        "step_11",
+        "step_12",
+        "step_13",
+        "step_14",
+        "step_15",
+        "step_16",
+        "step_17",
+        "step_18",
+        "step_19",
+        "step_20",
+        "step_21",
+        "step_22",
+        "step_23",
+        "step_24",
+        "step_25",
+        "step_26",
+        "step_27",
+        "step_28"
+      ],
+      "settings": {
+        "chapter_names": "Unbox & Position,Mount the Halo,Connect KRYO,Fill & Start,First Session",
+        "hub_url": "/pages/kryo-resources",
+        "why_label": "Why this matters",
+        "back_label": "Back",
+        "next_label": "Next",
+        "whatsapp_url": "https://wa.me/447724709585",
+        "support_label": "Get help",
+        "complete_heading": "You're ready.",
+        "complete_body": "Your KRYO is installed and you know how to start safely.",
+        "complete_cta": "Back to owner hub",
+        "complete_cta_secondary": "Review first use"
+      }
+    }
+  },
+  "order": [
+    "setup"
+  ]
+}

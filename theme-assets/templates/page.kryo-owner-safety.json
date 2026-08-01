@@ -1,0 +1,118 @@
+{
+  "sections": {
+    "content": {
+      "type": "kryo-owner-content",
+      "blocks": {
+        "section_01": {
+          "type": "section",
+          "settings": {
+            "title": "Cold-shock response",
+            "body": "",
+            "always_open": true
+          }
+        },
+        "section_02": {
+          "type": "section",
+          "settings": {
+            "title": "Who should seek medical advice",
+            "body": "",
+            "always_open": true
+          }
+        },
+        "section_03": {
+          "type": "section",
+          "settings": {
+            "title": "When not to use KRYO",
+            "body": "",
+            "always_open": true
+          }
+        },
+        "section_04": {
+          "type": "section",
+          "settings": {
+            "title": "Stop immediately if\u2026",
+            "body": "",
+            "always_open": true
+          }
+        },
+        "section_05": {
+          "type": "section",
+          "settings": {
+            "title": "First-flow position",
+            "body": "",
+            "always_open": false
+          }
+        },
+        "section_06": {
+          "type": "section",
+          "settings": {
+            "title": "Temperature safety",
+            "body": "",
+            "always_open": false
+          }
+        },
+        "section_07": {
+          "type": "section",
+          "settings": {
+            "title": "Electrical safety",
+            "body": "",
+            "always_open": false
+          }
+        },
+        "section_08": {
+          "type": "section",
+          "settings": {
+            "title": "Filling and pump safety",
+            "body": "",
+            "always_open": false
+          }
+        },
+        "section_09": {
+          "type": "section",
+          "settings": {
+            "title": "Installation safety",
+            "body": "",
+            "always_open": false
+          }
+        },
+        "section_10": {
+          "type": "section",
+          "settings": {
+            "title": "Medical/product disclaimer",
+            "body": "",
+            "always_open": false
+          }
+        }
+      },
+      "block_order": [
+        "section_01",
+        "section_02",
+        "section_03",
+        "section_04",
+        "section_05",
+        "section_06",
+        "section_07",
+        "section_08",
+        "section_09",
+        "section_10"
+      ],
+      "settings": {
+        "surface": "safety",
+        "narrow": true,
+        "eyebrow": "KRYO SAFETY",
+        "heading": "Important safety information.",
+        "body": "",
+        "still_stuck_label": "Still not fixed? Message us",
+        "whatsapp_url": "https://wa.me/447724709585",
+        "support_heading": "Need a hand?",
+        "support_body": "Message the KRYO team.",
+        "support_cta": "WhatsApp support",
+        "hub_url": "/pages/kryo-resources",
+        "hub_label": "Back to owner hub"
+      }
+    }
+  },
+  "order": [
+    "content"
+  ]
+}

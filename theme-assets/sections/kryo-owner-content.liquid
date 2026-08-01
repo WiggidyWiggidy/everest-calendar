@@ -1,0 +1,205 @@
+{%- comment -%}
+  KRYO Help (/pages/kryo-help) and Safety (/pages/kryo-safety)
+  Spec: §39-§47
+
+  One section serving both pages — they share the same shape (hero + expandable entries).
+  Help is organised around what the customer is EXPERIENCING, not company departments (§39).
+  Safety is the permanent canonical page, narrower reading width, and critical instructions
+  must stay visible rather than hidden in accordions (§46).
+
+  Block types:
+    issue   — Help card. Opens to 3-5 checks + WhatsApp fallback (§42).
+    section — Safety entry. `always_open` keeps critical content visible (§46).
+{%- endcomment -%}
+
+{{ 'kryo-owner.css' | asset_url | stylesheet_tag }}
+
+<div class="kryo-owner kryo-content" data-kryo-content data-surface="{{ section.settings.surface }}">
+
+  <section class="kryo-owner__hero">
+    <div class="kryo-owner__container {% if section.settings.narrow %}kryo-owner__reading{% endif %}">
+      {%- if section.settings.eyebrow != blank -%}
+        <p class="kryo-owner__eyebrow">{{ section.settings.eyebrow }}</p>
+      {%- endif -%}
+      <h1 class="kryo-owner__h1">{{ section.settings.heading }}</h1>
+      {%- if section.settings.body != blank -%}
+        <p class="kryo-owner__body kryo-owner__body--lead">{{ section.settings.body }}</p>
+      {%- endif -%}
+    </div>
+  </section>
+
+  <section class="kryo-owner__section">
+    <div class="kryo-owner__container {% if section.settings.narrow %}kryo-owner__reading{% endif %}">
+
+      {%- assign issues = section.blocks | where: 'type', 'issue' -%}
+      {%- if issues.size > 0 -%}
+        <div class="kryo-owner__grid {% unless section.settings.narrow %}kryo-owner__grid--3{% endunless %}">
+          {%- for block in issues -%}
+            <details class="kryo-owner__card kryo-content__entry" data-kryo-entry data-title="{{ block.settings.title | escape }}" {{ block.shopify_attributes }}>
+              <summary class="kryo-owner__card__title">{{ block.settings.title }}</summary>
+              <div class="kryo-content__answer">
+                {%- if block.settings.checks != blank -%}
+                  {{ block.settings.checks }}
+                {%- else -%}
+                  <div class="kryo-owner__note kryo-owner__note--info">
+                    <p class="kryo-owner__note__title">CONTENT REQUIRED</p>
+                    Checks for “{{ block.settings.title }}” are not yet supplied. Add 3–5 checks in the theme editor.
+                  </div>
+                {%- endif -%}
+                {%- if block.settings.warning != blank -%}
+                  <div class="kryo-owner__note kryo-owner__note--{{ block.settings.warning_level }}">{{ block.settings.warning }}</div>
+                {%- endif -%}
+                {%- if section.settings.whatsapp_url != blank -%}
+                  <a class="kryo-owner__btn kryo-owner__btn--secondary kryo-content__cta"
+                     href="{{ section.settings.whatsapp_url }}" data-kryo-help-cta rel="noopener" target="_blank">
+                    {{ section.settings.still_stuck_label }}
+                  </a>
+                {%- endif -%}
+              </div>
+            </details>
+          {%- endfor -%}
+        </div>
+      {%- endif -%}
+
+      {%- assign entries = section.blocks | where: 'type', 'section' -%}
+      {%- for block in entries -%}
+        {%- if block.settings.always_open -%}
+          {%- comment -%} Critical safety content stays visible — never behind an accordion (§46) {%- endcomment -%}
+          <div class="kryo-content__open" {{ block.shopify_attributes }}>
+            <h2 class="kryo-owner__h2">{{ block.settings.title }}</h2>
+            {%- if block.settings.body != blank -%}
+              <div class="kryo-owner__body">{{ block.settings.body }}</div>
+            {%- else -%}
+              <div class="kryo-owner__note kryo-owner__note--info">
+                <p class="kryo-owner__note__title">CONTENT REQUIRED</p>
+                Safety copy for “{{ block.settings.title }}” must come from approved safety documentation.
+              </div>
+            {%- endif -%}
+          </div>
+        {%- else -%}
+          <details class="kryo-content__entry kryo-content__entry--flat" {{ block.shopify_attributes }}>
+            <summary class="kryo-owner__h3">{{ block.settings.title }}</summary>
+            <div class="kryo-content__answer">
+              {%- if block.settings.body != blank -%}{{ block.settings.body }}
+              {%- else -%}
+                <div class="kryo-owner__note kryo-owner__note--info">
+                  <p class="kryo-owner__note__title">CONTENT REQUIRED</p>
+                  Copy for “{{ block.settings.title }}” is not yet supplied.
+                </div>
+              {%- endif -%}
+            </div>
+          </details>
+        {%- endif -%}
+      {%- endfor -%}
+    </div>
+  </section>
+
+  {%- if section.settings.support_heading != blank -%}
+    <section class="kryo-owner__section kryo-owner__section--ink">
+      <div class="kryo-owner__container kryo-owner__reading">
+        <h2 class="kryo-owner__h2">{{ section.settings.support_heading }}</h2>
+        {%- if section.settings.support_body != blank -%}<p class="kryo-owner__body">{{ section.settings.support_body }}</p>{%- endif -%}
+        <div class="kryo-owner__btn-row" style="margin-top:24px">
+          {%- if section.settings.whatsapp_url != blank -%}
+            <a href="{{ section.settings.whatsapp_url }}" class="kryo-owner__btn kryo-owner__btn--invert" data-kryo-help-cta rel="noopener" target="_blank">{{ section.settings.support_cta }}</a>
+          {%- endif -%}
+          {%- if section.settings.hub_url != blank -%}
+            <a href="{{ section.settings.hub_url }}" class="kryo-owner__btn kryo-owner__btn--secondary" style="border-color:rgba(255,255,255,.3);color:#fff">{{ section.settings.hub_label }}</a>
+          {%- endif -%}
+        </div>
+      </div>
+    </section>
+  {%- endif -%}
+</div>
+
+{% style %}
+  .kryo-content__entry summary { cursor: pointer; list-style: none; }
+  .kryo-content__entry summary::-webkit-details-marker { display: none; }
+  .kryo-content__entry summary::after { content: '+'; float: right; font-weight: 400; color: var(--kryo-text-tertiary); }
+  .kryo-content__entry[open] summary::after { content: '−'; }
+  .kryo-content__answer { margin-top: 14px; font-size: 15px; line-height: 1.6; color: var(--kryo-text-secondary); }
+  .kryo-content__answer ol, .kryo-content__answer ul { margin: 0 0 16px; padding-left: 20px; }
+  .kryo-content__answer li { margin-bottom: 8px; }
+  .kryo-content__cta { margin-top: 8px; }
+  .kryo-content__entry--flat { background: transparent; border: 0; border-bottom: 1px solid var(--kryo-border);
+    border-radius: 0; padding: 20px 0; display: block; }
+  .kryo-content__open { padding: 24px 0; border-bottom: 1px solid var(--kryo-border); }
+  .kryo-content__open:last-child { border-bottom: 0; }
+  @media (min-width: 990px) { .kryo-owner[data-surface="safety"] .kryo-owner__reading { max-width: 760px; } }
+{% endstyle %}
+
+<script>
+(function () {
+  var root = document.querySelector('[data-kryo-content]');
+  if (!root) return;
+  var EL_API = 'https://everest-calendar.vercel.app/api/marketing/sync/storefront-event';
+  var surface = root.getAttribute('data-surface') || 'help';
+  function sid(){ try{var r=localStorage.getItem('el_session')||localStorage.getItem('everest_session');
+    if(r){var o=JSON.parse(r);return o.id||o.session_id||null;}}catch(e){} return null; }
+  function track(t,p){ try{
+    var b=JSON.stringify({event_type:t,session_id:sid(),anonymous_id:localStorage.getItem('el_anonymous_id')||null,
+      page_path:location.pathname,page_url:location.href,ts:new Date().toISOString(),event_properties:p||{}});
+    var blob=new Blob([b],{type:'text/plain;charset=UTF-8'});
+    if(navigator.sendBeacon&&navigator.sendBeacon(EL_API,blob))return;
+    fetch(EL_API,{method:'POST',body:b,keepalive:true});
+  }catch(e){} }
+
+  track(surface === 'safety' ? 'kryo_safety_view' : 'kryo_help_issue_select', { surface: surface, opened: null });
+
+  root.addEventListener('click', function (e) {
+    var d = e.target.closest ? e.target.closest('[data-kryo-entry]') : null;
+    if (d && !d.open) track('kryo_help_issue_select', { surface: surface, issue: d.getAttribute('data-title') });
+    if (e.target.closest && e.target.closest('[data-kryo-help-cta]')) {
+      var open = root.querySelector('[data-kryo-entry][open]');
+      track('kryo_whatsapp_support_click', { surface: surface, issue: open ? open.getAttribute('data-title') : null });
+    }
+  }, true);
+})();
+</script>
+
+{% schema %}
+{
+  "name": "KRYO Owner Content",
+  "tag": "section",
+  "settings": [
+    { "type": "select", "id": "surface", "label": "Surface",
+      "options": [ {"value":"help","label":"Help"}, {"value":"safety","label":"Safety"} ], "default": "help" },
+    { "type": "checkbox", "id": "narrow", "label": "Narrow reading width", "default": false,
+      "info": "On for Safety (long-form reading). Off for Help (card grid)." },
+    { "type": "text", "id": "eyebrow", "label": "Eyebrow" },
+    { "type": "text", "id": "heading", "label": "Heading" },
+    { "type": "textarea", "id": "body", "label": "Intro" },
+    { "type": "text", "id": "still_stuck_label", "label": "Fallback CTA", "default": "Still not fixed? Message us" },
+    { "type": "header", "content": "Support" },
+    { "type": "url", "id": "whatsapp_url", "label": "WhatsApp URL" },
+    { "type": "text", "id": "support_heading", "label": "Support heading" },
+    { "type": "textarea", "id": "support_body", "label": "Support body" },
+    { "type": "text", "id": "support_cta", "label": "Support button", "default": "WhatsApp support" },
+    { "type": "url", "id": "hub_url", "label": "Owner hub URL" },
+    { "type": "text", "id": "hub_label", "label": "Hub button", "default": "Back to owner hub" }
+  ],
+  "blocks": [
+    {
+      "type": "issue",
+      "name": "Help issue",
+      "settings": [
+        { "type": "text", "id": "title", "label": "Issue" },
+        { "type": "richtext", "id": "checks", "label": "Checks", "info": "3-5 checks, in order. Leave blank until approved." },
+        { "type": "select", "id": "warning_level", "label": "Warning level",
+          "options": [ {"value":"info","label":"Information"}, {"value":"caution","label":"Caution"}, {"value":"critical","label":"Critical"} ], "default": "caution" },
+        { "type": "textarea", "id": "warning", "label": "Warning" }
+      ]
+    },
+    {
+      "type": "section",
+      "name": "Content section",
+      "settings": [
+        { "type": "text", "id": "title", "label": "Title" },
+        { "type": "richtext", "id": "body", "label": "Body" },
+        { "type": "checkbox", "id": "always_open", "label": "Always visible (never collapsed)", "default": false,
+          "info": "On for critical safety content — spec forbids hiding it in an accordion." }
+      ]
+    }
+  ]
+}
+{% endschema %}
