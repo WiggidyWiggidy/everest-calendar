@@ -20,9 +20,9 @@ Replace `REQUIRED` values. Keep this compact and factual. Claude reads it only d
 - Selling price: REQUIRED
 - Gross revenue recognised per purchase: REQUIRED
 - Variable cost excluding ads: REQUIRED
-- Break-even CPA: REQUIRED
-- Target CPA: REQUIRED
-- Break-even Meta ROAS: REQUIRED
+- Break-even CPA: **A$400** — confirmed by Tom 2026-07-31. Implies contribution A$400/order at AOV A$2,000 = **20% margin** (COGS ~A$1,600).
+- Target CPA: **under A$100** — confirmed by Tom 2026-07-31 (= ROAS 20x).
+- Break-even Meta ROAS: **5.0x** — confirmed by Tom 2026-07-31. **Minimum acceptable; treat 5x as the floor, not a target.**
 - Target Meta ROAS: REQUIRED
 - Minimum spend before a no-purchase ad can be judged: REQUIRED
 - Minimum purchases before a winner claim: REQUIRED
