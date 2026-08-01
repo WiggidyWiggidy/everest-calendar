@@ -34,6 +34,11 @@ Nothing may be called "the answer" while any dominant-loss hypothesis is OPEN.
 - [ ] Every funnel step quantified from a canonical source (adequate sample) OR explicitly UNKNOWN+why.
 - [ ] Dominant-loss step corroborated by ≥2 independent sources.
 - [ ] The cause of the dominant loss has ≥1 hypothesis promoted to CONFIRMED (its falsification test ran and it survived).
+- [ ] **Demand-side examined (not just mechanics):** economics established (3-mo spend/revenue/ROAS with a
+      reconciled revenue source) AND buying-cycle length known AND consumer-psychology has audited
+      pre-frame/message-match, offer terms (incl. dispatch wait), and objection coverage.
+- [ ] "Low CVR" judged against the RIGHT KPI for the cycle — first-session CVR is invalid if the real
+      buying cycle is multi-day/multi-touch (use assisted/multi-touch conversion instead).
 - [ ] Red-team attempted and FAILED to break the top conclusion.
 - [ ] Top 1–3 changes named, each mapped to the confirmed cause, each with a measurement plan.
 - [ ] No claim violates evidence-standards (sample caps, source contract, no inferred facts).
@@ -52,6 +57,14 @@ Stop and ask *precisely* when:
 Escalation states: what's blocked, why, the exact input needed, and what's ready to run the moment it arrives.
 
 ## Lenses (invoked on demand — see marketing/agents/lenses/)
-data-analyst · code-tracking-auditor · live-ux-tester · cro-researcher · red-team-verifier.
+**Supply-side (does the funnel work?):** data-analyst · code-tracking-auditor · live-ux-tester.
+**Demand-side (why would this buyer say yes, and is it working economically?):**
+consumer-psychology · performance-economics · customer-avatar.
+**Acquisition/scale (bootstrapped):** meta-ads-expert — optimisation event, campaign structure,
+test/kill velocity, and the predictability framework for scaling budget with confidence.
+**Cross-cutting:** cro-researcher · red-team-verifier.
 Each returns: claim + method + evidence + confidence + what would falsify it. The orchestrator, not
 any single lens, owns the blackboard and the stopping decision.
+
+A diagnosis that only ran the supply-side lenses is INCOMPLETE — "the button works / is unreachable"
+never answers "would they buy anyway". Always run at least one demand-side lens before concluding.

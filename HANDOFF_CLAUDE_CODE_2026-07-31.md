@@ -78,6 +78,31 @@ Prioritise by the Phase 3 result:
   `meta-whatsapp` webhook + `kryo_whatsapp_*` tables); send a Lead conversion via CAPI.
 - **meta-breakdowns:** decide restore vs retire (it's orphaned; a downstream skill expects the table).
 
+## Phase 3B — Demand-side loop iteration (run BEFORE finalising Phase 4 priorities)
+The supply-side loop found the buy button is unreachable (H5) but stalled with H2 (demand) unresolved.
+Run the two new demand-side lenses (`marketing/agents/lenses/performance-economics.md`,
+`consumer-psychology.md`) and update the blackboard. Do NOT finalise the fix ranking until this is done —
+it may reorder everything.
+1. **performance-economics:** compute 3-month **spend, revenue, ROAS** by page/period. **Verify Tom's
+   report that ROAS was high despite low CVR — and reconcile the revenue source** (the kryo2_ window had
+   0 Shopify checkouts, so identify where any revenue is booked: old page / WhatsApp-offline / Meta-attributed).
+   Compute **buying-cycle length** (days + touches from first click to purchase) and **return latency/rate**.
+   If the cycle is multi-day/multi-touch, flag that first-session CVR is the WRONG KPI and switch to
+   assisted/multi-touch conversion. Fill the blank economics in `.claude/meta/account-context.md` with Tom
+   (price, COGS, margin, break-even CPA/ROAS) so fixes can be ranked by profit.
+2. **consumer-psychology:** pull the actual **ad creative** that drove kryo2_ traffic
+   (`meta_creative_assets` / ad library) and compare the ad promise to the LP first screen — score the
+   **pre-frame / message-match** (Tom wants this tested). Audit awareness level for cold UAE traffic,
+   the **objection stack** (legit? will it arrive with the **30-day wait** vs old 14? works/fits/safe?
+   support/returns?), and the **value equation** (30-day dispatch = time-delay cost; unknown brand =
+   proof needed). Critique the page's information + imagery for what's missing or alarming.
+3. **red-team** both; update the blackboard hypotheses (add pre-frame, dispatch-wait, education-gap,
+   buying-cycle as testable items) with status + evidence.
+4. **Re-rank Phase 4 fixes by expected profit**, now that demand + economics are known. The sticky-CTA
+   fix stays (independently justified), but pre-frame/message-match, dispatch-terms, and a
+   nurture/retarget step may outrank it. Satisfy the loop's full Definition of Done (incl. the new
+   demand-side + right-KPI boxes) before declaring complete.
+
 ## Phase 5 — Validate before declaring done
 `npm run build`, `npm run typecheck`/`tsc --noEmit`, relevant tests; confirm scripts resolve; markdown
 links valid; the Phase 3 diagnosis passes the `diagnostic-protocol.md` self-check. Report results.
