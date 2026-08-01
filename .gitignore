@@ -34,22 +34,26 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-logs/
-vendored/
-artifacts/
+/logs/
+/vendored/
+/artifacts/
 
 # --- consolidation 2026-07-31: local perms, caches, generated output ---
 .claude/settings.local.json
-reports/
-screenshots/
-tmp/
+/reports/
+/screenshots/
+/tmp/
 .tmp_linktest/
 tmp-*.liquid
 supabase/.temp/
 $CODEX_HOME/
 
 # Playwright test artifacts
-test-results/
-playwright-report/
-blob-report/
+/test-results/
+/playwright-report/
+/blob-report/
 .playwright-mcp/
+
+# Dead routes: import @/lib/marketing/* modules that do not exist in any branch.
+# Previously hidden by an unanchored "reports/" pattern. Excluded until the libs exist.
+/src/app/api/marketing/reports/
