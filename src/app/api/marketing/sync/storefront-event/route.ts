@@ -12,6 +12,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { sendMetaFunnelEvent, metaEventForFunnelType } from '@/lib/marketing/meta-capi';
 
 const EVENT_ALIASES: Record<string, string> = {
   product_viewed: 'product_view',
@@ -117,6 +118,9 @@ export async function POST(request: NextRequest) {
   // ip_country / ip_region — Vercel x-forwarded-* headers carry this
   const ipCountry = request.headers.get('x-vercel-ip-country') || null;
   const ipRegion = request.headers.get('x-vercel-ip-region') || null;
+  // Client IP for Meta CAPI match quality. First hop of x-forwarded-for is the
+  // real client; the rest are proxies. Not persisted to attribution_touches.
+  const clientIp = (request.headers.get('x-forwarded-for') || '').split(',')[0].trim() || null;
   const userAgent = request.headers.get('user-agent') || '';
   const firstTouch = body.first_touch ?? {};
   const currentTouch = body.current_touch ?? {};
@@ -186,7 +190,47 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'insert_failed' }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true }, {
+  // --- Meta Conversions API (server-side) ---------------------------------
+  // Why server-side: the browser pixel's POST to facebook.com/tr was observed
+  // aborting (net::ERR_ABORTED) when the click navigates away, so add-to-cart
+  // events do not reliably reach Meta. A server call cannot be killed by
+  // navigation. Sent AFTER the row is stored so a CAPI outage never costs us
+  // first-party data, and never awaited into the response path.
+  //
+  // Deduplication: eventId reuses the first-party session+type+timestamp key so
+  // Meta collapses this with the browser pixel event if both arrive.
+  let capi: { attempted: boolean; ok: boolean; status: number | null; error?: string } | null = null;
+  const metaEventName = metaEventForFunnelType(eventType);
+
+  // Never send internal QA or bot traffic to Meta — it would poison optimisation.
+  if (metaEventName && !isInternal && !isBot) {
+    const eventId = `${body.session_id}:${eventType}:${body.ts || ''}`;
+    try {
+      capi = await sendMetaFunnelEvent({
+        eventName: metaEventName,
+        eventId,
+        eventSourceUrl: body.page_url || null,
+        fbclid: body.fbclid || null,
+        fbp: body.fbp || null,
+        clientIpAddress: clientIp,
+        clientUserAgent: userAgent || null,
+        value: typeof body.event_value === 'string'
+          ? parseFloat(body.event_value) || null
+          : (body.event_value ?? null),
+        currency: 'AED',
+        contentIds: body.shopify_variant_id ? [String(body.shopify_variant_id)] : undefined,
+      });
+      if (capi.attempted && !capi.ok) {
+        // Log loudly. A silent CAPI failure is how ATC optimisation dies unnoticed.
+        console.error('meta-capi send failed:', metaEventName, capi.status, capi.error);
+      }
+    } catch (e) {
+      console.error('meta-capi threw:', (e as Error)?.message);
+      capi = { attempted: true, ok: false, status: null, error: (e as Error)?.message };
+    }
+  }
+
+  return NextResponse.json({ success: true, capi }, {
     // CORS so the storefront pixel can POST cross-origin
     headers: {
       'Access-Control-Allow-Origin': '*',
