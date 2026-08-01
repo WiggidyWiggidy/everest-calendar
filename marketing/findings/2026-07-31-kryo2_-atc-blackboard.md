@@ -56,13 +56,13 @@ Scroll reach, kryo2_ live window:
 | H2 | data | Cold Meta traffic won't add at AED 3,990 | Fix H5, re-measure | **OPEN** | Cannot exclude — device and traffic-warmth are confounded (182/204 mobile are paid; 41/44 desktop are direct) |
 | H3 | data | Adds happen but untracked | Shopify server-side | **REFUTED** | Shopify checkouts = 0 |
 | H4 | data | Intent diverted to WhatsApp | WA from Meta | **REFUTED (mostly)** | WA from Meta ~0–1 |
-| **H5** | **live-ux** | **Buy control is effectively unreachable — sits at 97% page depth with no sticky CTA** | **Browser geometry + scroll telemetry** | **CONFIRMED as a defect; causal share UNRESOLVED** | Mobile: button at y=11,731 of 12,096 doc (**97%**, **13.9 screens**), **zero** fixed/sticky buy controls. Desktop: y=9,845 of 10,548 (**93.3%**, 10.9 screens). Only 29.7% of mobile paid sessions reach even the 90% marker — and 90% ≠ 97%. |
+| **H5** | **live-ux** | **Buy control is effectively unreachable — sits at 97% page depth with no sticky CTA** | **Browser geometry + scroll telemetry** | **CONFIRMED as a defect; causal share UNRESOLVED** | Mobile: button at y=11,731 of 12,096 doc (**97%**, **13.9 screens**), ~~**zero** fixed/sticky buy controls~~ — **THIS IS WRONG.** A sticky bar exists reading "Choose Model"; the original scan filtered on buy-words and excluded it. Telemetry confirms: `sticky_cta_click` fired in **15 of 206** mobile sessions, continuously 07-26→07-31. H5's central evidence is overturned — mobile users DO click a buy control; the step *after* the click fails. Desktop: y=9,845 of 10,548 (**93.3%**, 10.9 screens). Only 29.7% of mobile paid sessions reach even the 90% marker — and 90% ≠ 97%. |
 
 ## Red-team (verifier lens) — attempted falsification
 
 | Attack | Result |
 |---|---|
-| Small-n / Poisson | **Survives.** Mobile paid 182 PDP, 1 ATC. At desktop-direct's 4.88% rate, expected ≈8.9. P(X≤1 \| λ=8.9) ≈ **0.0014**. The gap is not chance. |
+| Small-n / Poisson | **Survives.** Mobile paid 182 PDP, 1 ATC. At desktop-direct's 4.88% rate, expected ≈8.9. P(X≤1 \| λ=8.9) ≈ 0.0014. ~~The gap is not chance.~~ **SUPERSEDED — see the data-analyst entry below: this borrowed desktop's rate from a 60-day pooled segment as a fixed constant, ignoring its own uncertainty. Correct within-window Fisher exact gives p ≈ 0.081, NOT significant.** |
 | Traffic-mix confound | **BREAKS the strong causal claim.** Device and warmth are near-perfectly confounded. H5 and H2 cannot be separated observationally. |
 | Deep-scrollers should convert if H5 is the whole story | **Partially breaks H5.** Mobile direct: 17/21 reached 90% scroll, **0 ATC**. However n=17 expects only ~0.8 ATC at desktop rate, so 0 is unremarkable — weak evidence, not disproof. And 90% ≠ the 97% button position. |
 | Window (5 days) | Narrow. Directional for cohort splits. |
@@ -101,3 +101,63 @@ The blocking question (H1) is answered: **the cart is not broken.** The remainin
 (H5 reachability vs H2 price/demand) cannot be settled by more analysis at this sample size.
 The cheapest discriminating move is to ship the sticky-CTA fix and re-measure — it is low-risk,
 independently justified, and converts an unresolvable observational question into a clean test.
+
+---
+
+## data-analyst append — 2026-08-01 (window Jul 26–31, kryo2_, device split)
+
+**PREREQUISITE RED — primary deliverable withheld.**
+`marketing_touches_clean` (the source my contract mandates, and which bars raw
+`attribution_touches`) **does not exist** — no table, view or matview, in any schema.
+Verified with a positive control (14 `%touch%` relations found, so the search was not blind).
+`marketing_session_journeys`, cited in `metric-definitions.md` §3 as the basis of the
+"verified reference values", **also does not exist**. §3 is therefore not currently
+reproducible from any named source.
+
+**The paid device split is not answerable at all.** `meta_ad_breakdowns_daily` is the only
+device-grain paid source; it is empty in-window (last row **2026-05-17**, 75 days stale), and
+all 33 of its lifetime ATCs sit inside the KNOWN-BAD Feb–May cart-tracking window.
+`meta_ad_metrics_daily` (canonical paid ATC) has **no 2026-07-31 row** → window is
+**5 of 6 days visible**: spend 61.63, LPV 79, **ATC 1**, purchases 0.
+
+### First-party audit (UNVALIDATED-SOURCE — raw `attribution_touches`, barred as a verdict basis)
+§0 applied incl. mandatory host filter; test fingerprints + myshopify/admin referrers excluded.
+
+| Device | PDP | s50 | s90 | CTA sess | cart_req | **ATC sess** | ATC *events* |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Mobile | 206 | 101 | 71 | 16 | 1 | **1** | 1 |
+| Desktop | 44 | 28 | 23 | 5 | 2 | **2** | **12** |
+| Tablet | 2 | 2 | 2 | 0 | 0 | 0 | 0 |
+
+Desktop fired **12 add_to_cart events across 2 sessions** (6×) — event counts are unusable.
+Host filter is load-bearing: 12 `myshopify.com` preview sessions produced **707 events**, 31%
+of all events on the page.
+
+### AGREE with the board
+- Desktop **44 PDP / 2 ATC** reproduces exactly.
+- The confound is total, and worse than stated: **desktop paid = 1 PDP session**
+  (mobile 184/206 paid; desktop 43/44 non-paid). H5 and H2 are not observationally separable.
+- ATC → checkout = 0. Purchases = 0.
+
+### DISAGREE with the board
+1. **"Survives small-n / Poisson … p ≈ 0.0014" is wrong for this window.** That test fixed
+   desktop's rate as a known constant borrowed from the 60-day pooled segment, ignoring its own
+   uncertainty. The correct within-window test is Fisher exact on 1/206 vs 2/44:
+   P(k=2)=0.07574, P(k=3)=0.00515 → **two-tailed p ≈ 0.081. NOT significant at 0.05.**
+   The 6-day window does **not**, on its own, establish a mobile-vs-desktop gap.
+2. **Mobile PDP is 206, not 204** (minor; likely a window-boundary difference).
+3. **"Zero fixed/sticky buy controls on mobile" is contradicted by telemetry.**
+   `sticky_cta_click` fired in **15 of 206 mobile sessions** (21 events), continuously from
+   Jul 26 13:46 to Jul 31 09:04. Mobile CTA clicks are almost entirely *sticky* (15 sticky vs
+   1 hero); desktop is the reverse (5 hero, 1 sticky). Either a sticky control was present all
+   window and the Playwright run measured a different state, or the event is misnamed.
+   **H5's central evidence needs re-verification before it is acted on.**
+
+### What this reweights
+`cta_to_cart_request_rate` — mobile **1/16 (6%)** vs desktop **2/5 (40%)**. Mobile users *are*
+reaching and clicking a buy control at 7.3% of sessions; what fails is the step *after* the
+click. That points at a **click→cart-request break on mobile (new H6)** rather than pure
+unreachability. Directional only — numerators are 1 and 2.
+
+**No verdict issued. Numerators of 1 and 2 fall under the n≤2 no-rate rule.**
+Handoff: red-team-verifier.

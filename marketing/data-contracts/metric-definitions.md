@@ -135,7 +135,9 @@ Same-template comparison (rules out page/audience confounds):
 
 `cta_to_cart_request_rate`, paid-Meta-mobile vs direct-desktop: **desktop 82% (18/22) vs mobile 3% (1/30)**.
 
-Device totals (all sources, verified via `marketing_session_journeys` logic, 60 d to 2026-07-31):
+Device totals (all sources, 60 d to 2026-07-31). ⚠️ **Computed from `marketing_session_journeys`
+*logic* run inline — the view itself is in `supabase/migrations/_prepared/` and has NEVER BEEN
+APPLIED. These figures are therefore not reproducible from any named source until it is.**
 
 | Device | PDP sessions | Engaged | CTA clicks | Cart requests | Add to cart | ATC rate | cta→cart |
 |---|---:|---:|---:|---:|---:|---:|---:|
