@@ -17,6 +17,9 @@ Previous version archived at
 ## Marketing agent system — MANDATORY boot/close (do not skip)
 
 **BOOT (before any marketing work):**
+0. **Read `marketing/data-contracts/instrument-validation.md` FIRST.** It is the root contract:
+   no reading enters the evidence chain until its instrument is validated. Every wrong output this
+   system has produced came from validating a conclusion drawn from an unvalidated instrument.
 1. Read `marketing/agents/SYSTEM.md`, `.claude/rules/evidence-standards.md`,
    `marketing/data-contracts/{source-of-truth,confirmed-facts,experiment-standards,profitability-and-attribution}.md`,
    `marketing/agents/{conversion-diagnosis-loop,experiment-launch-playbook,learning-loop}.md`.
@@ -43,6 +46,17 @@ Previous version archived at
 
 **Agent output schema** — every agent returns this, not free text:
 `claim · method · source+window+n · confidence · what-would-falsify-it · handoff`
+plus a mandatory **`instrument:`** block — what produced the reading, and how each of the five
+instrument checks was satisfied (completeness · freshness · filter fidelity · grain · sample adequacy).
+**An output with no `instrument:` block is not evidence and must not be published.**
+
+**Before publishing any quantitative or absence claim, run the gate:**
+```bash
+node marketing/evals/validate-claim.mjs --claim "..." --instrument "..." --n <int> [--counted --total --fresh --enumerated --grain --label]
+```
+Exit 0 = publishable. Exit 1 = blocked. This exists because prose rules did not bind: the rule
+"confidence capped by n" was written to disk and violated in the same session. Verified to block
+10 of 10 wrong claims from 2026-07-31 while passing a sound one.
 
 ## Read before any analysis
 

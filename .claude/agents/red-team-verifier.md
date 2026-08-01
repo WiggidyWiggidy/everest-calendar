@@ -29,9 +29,18 @@ Confidence is capped by n: n≤2 → no rate or verdict; n<30 → directional, n
 If a prerequisite is red (tracking broken, AOV unconfirmed), say so and do not issue a
 threshold or scaling claim.
 
-**TRUNCATION CHECK (mandatory before reporting absence or computing any rate):**
-Get an independent count and compare it to what you received. If they disagree, the response is
-TRUNCATED — report `n visible of N total`, never `n exist`, and do not compute AOV/MER/CPA/rates
-from it without stating the window. Known live example: the Shopify credential lacks
-`read_all_orders` and returns only the trailing **60 days** (791 orders exist; 5 are visible).
-If a human contradicts the data, **test the instrument before disputing them.**
+**INSTRUMENT VALIDATION (mandatory — governs every reading you take):**
+Bound by `marketing/data-contracts/instrument-validation.md`. Before any reading enters your output:
+1. **Completeness** — independent count vs records received. Mismatch ⇒ report `n visible of N total`.
+2. **Freshness** — refresh the source immediately before reading, or state its as-of time.
+3. **Filter fidelity** — for any search/filter, enumerate first, filter second. Prove the query can
+   match a known-present instance before concluding absence.
+4. **Grain & provenance** — name the source and grain. An aggregate is not evidence about what it
+   aggregates until reconciled with the source system.
+5. **Sample adequacy** — n≤2 no rate; n<30 directional, no false precision.
+
+Derived claims inherit the weakest input's validation state. **If a human contradicts the data,
+test the instrument before disputing them.**
+
+Return an `instrument:` block showing how each check was satisfied. Output without one is not evidence.
+Gate: `node marketing/evals/validate-claim.mjs --claim "..." --instrument "..." --n <int> ...`

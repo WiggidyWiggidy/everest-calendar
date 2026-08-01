@@ -58,7 +58,14 @@ brief — say so explicitly, show the query, and record it in
 `marketing/data-contracts/known-limitations.md`. Do not quietly proceed on the
 corrected basis, and do not quietly proceed on the wrong one.
 
-## Absence is a claim about the instrument, not the world
+## Instrument validation — see the root contract
+
+**`marketing/data-contracts/instrument-validation.md` governs.** The rule below is one of its five
+checks, kept here for visibility. Do not treat it as the whole requirement: completeness, freshness,
+filter fidelity, grain/provenance and sample adequacy are ALL mandatory, and the gate at
+`marketing/evals/validate-claim.mjs` enforces them mechanically.
+
+### Absence is a claim about the instrument, not the world
 
 **Never assert that records do not exist based on a query returning none.** A short or empty result
 is evidence about the *query*, the *scope*, and the *permissions* — before it is evidence about reality.
