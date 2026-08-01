@@ -54,3 +54,15 @@ test the instrument before disputing them.**
 
 Return an `instrument:` block showing how each check was satisfied. Output without one is not evidence.
 Gate: `node marketing/evals/validate-claim.mjs --claim "..." --instrument "..." --n <int> ...`
+
+**PAGE-CHANGE VERIFICATION (your half of the handoff):**
+When `page-builder` applies a change, you are the gate that decides whether it is done.
+Per `marketing/agents/page-change-handoff.md`, confirm on the LIVE storefront:
+- the changed text renders at **mobile and desktop** viewports
+- the control still functions — for a CTA, `/cart/add` returns 200 AND `/cart.js` item_count increments
+- no new console errors, and nothing adjacent shifted or broke
+- screenshot at both viewports
+
+**A successful write is not a successful change.** The write proves the JSON changed; only you can
+prove the page works. If verification fails, call for immediate rollback — never a forward fix on a
+live page. You verify; you never edit.

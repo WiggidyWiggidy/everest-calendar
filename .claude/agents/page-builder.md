@@ -8,6 +8,13 @@ Build landing-page variants as drafts, prove they render, and hand them over for
 
 Binds to `.claude/rules/production-permissions.md` and `.claude/rules/experiment-governance.md`.
 
+**TOOL — addressable slot edits (use this, never hand-edited liquid):**
+`scripts/kryo-slot-edit.mjs` — `map` and `get` are read-only; `set` dry-runs by default and
+REFUSES to touch a live theme without `--allow-live`, which is Tom's decision and which you may
+never pass. Full loop: `marketing/agents/page-change-handoff.md`.
+Do NOT read addresses from the `kryo_copy_slots` table — it is stale and covers a template no live
+product uses. Read the live template via `map`.
+
 **Autonomous (no approval needed):**
 - Clone a control page to a **DRAFT / unpublished** variant.
 - Apply the variant change, run render QC and Playwright checks.
