@@ -1,56 +1,57 @@
-# KRYO — economic thresholds (the config the dashboard reads)
+# KRYO — economic thresholds
 
-Confirmed by Tom 2026-07-31. **All figures AUD.** Derived from the live-days-only baseline
-(33 live days · A$532.53 · 679 LPV · 47 ATC · 3 orders).
+> ## ⛔ PROVISIONAL — NOT USABLE FOR ANY SPEND DECISION
+> Blocked on two prerequisites (operating law 6):
+> 1. **AOV is UNKNOWN.** `shopify_orders` is empty; `kryo_funnel_daily` has 1 row. True AOV and
+>    order count must come from **Shopify admin**, not this repo.
+> 2. **Tracking is RED.** `facebook.com/tr` aborts, so Meta does not reliably receive AddToCart.
+>    Cost-per-ATC cannot be trusted as an indicator until P1 is green.
+>
+> Until both clear, this file states what Tom confirmed and nothing derived from it.
 
-## Money model
-| Input | Value |
-|---|---|
-| AOV | A$2,000 |
-| Contribution / order | **A$400** (20% margin; COGS ≈ A$1,600) |
-| **Target CPA** | **< A$100** → ROAS 20x |
-| Current CPA | A$177.51 → ROAS 11.3x |
-| **Break-even CPA** | **A$400** → ROAS 5.0x |
-| **Minimum acceptable ROAS** | **5.0x** — floor, not a target |
+## CONFIRMED by Tom, 2026-07-31
+| Input | Value | Status |
+|---|---|---|
+| Target CPA | **< A$100** | ✅ CONFIRMED |
+| Break-even CPA | **A$400** | ✅ CONFIRMED ("we really don't want this") |
+| Minimum acceptable ROAS | **5.0x** | ✅ CONFIRMED — floor, not a target |
+| Account currency | **AUD** | ✅ CONFIRMED live 2026-07-28 |
 
-**Headroom from current CPA to break-even is 2.25x.** Earlier analyses assumed 40–60% margin and
-quoted 4.5–6.7x. That was wrong and is superseded — scaling has materially less room than stated.
+## UNKNOWN — required before any threshold is computable
+| Input | Status | How to confirm |
+|---|---|---|
+| **AOV** | ❓ UNKNOWN | Shopify admin → orders → average order value, all-time |
+| **Order count (lifetime)** | ❓ UNKNOWN | Shopify admin. Tom says 5; the DB cannot corroborate |
+| **COGS / gross margin** | ❓ UNKNOWN | Tom. **Not derivable from break-even CPA without AOV** |
 
-## Leading indicators (dashboard: green / amber / red)
-Derived from the measured **15.7 add-to-carts per order**.
+### Correction — what I got wrong on 2026-07-31
+I asserted **AOV = A$2,000**, and from it derived **contribution A$400/order, 20% margin,
+COGS ≈ A$1,600**, plus a full green/amber/red band table and a revised ramp plan.
 
-| Indicator | Green | Amber | **Red — act** |
+**Tom never stated an AOV.** I divided a rough verbal "~$10k in sales" by an unconfirmed order
+count, in an unconfirmed currency, and wrote the result into config as if it were established.
+Every figure downstream of it — the margin, the COGS, the cost-per-ATC bands, the profit tables,
+the "2.25x headroom" — was unfounded. All of it is withdrawn.
+
+## Observed operating figures — directional only
+Live-delivery days only (28 dark days excluded). **n=3 orders. Do not quote to cent precision.**
+
+| Figure | Value | n | Provenance |
 |---|---|---|---|
-| **Cost per ATC** | ≤ A$6.38 (CPA A$100) | A$6.38–A$15.96 | **> A$25.53** (CPA A$400) |
-| Cost per LPV | ≤ A$0.90 | A$0.90–A$1.50 | **> A$1.50** |
-| Rolling 30-day CPA | ≤ A$100 | A$100–A$250 | **> A$400** |
-| Rolling ROAS | ≥ 20x | 5–20x | **< 5x** |
-| Click → LPV | ≥ 50% | 40–50% | **< 40%** (junk placements) |
+| Spend | A$533 | 33 live days | `meta_ad_metrics_daily` |
+| Landing page views | 679 | 33 live days | `meta_ad_metrics_daily` |
+| Add-to-carts | 47 | 33 live days | `meta_ad_metrics_daily` (Meta-attributed) |
+| Orders | 3 | 33 live days | `shopify_funnel_daily`, upsell-inflated — **suspect** |
+| Cost per LPV | ≈ A$0.78 | n=679 | adequate n; the one figure here worth trusting |
+| Cost per ATC | ≈ A$11 | n=47 | directional; **and ATC tracking is red** |
+| CPA | ≈ A$180 | **n=3** | **directional only — no verdict at n=3** |
 
-Current position: cost/ATC **A$11.33** = amber. Cost/LPV **A$0.784** = green.
+Cost per LPV (≈A$0.78) is the only indicator with adequate n. Everything resting on orders is n=3
+and supports no rate, no verdict, and no threshold.
 
-## Staging and kill rules
-- **Scale** only while rolling cost-per-ATC ≤ A$15.96 (amber ceiling): +20–30% every 3–4 days.
-- **Hold** if cost-per-ATC enters amber and does not recover within 4 days.
-- **Cut** immediately if rolling CPA > A$400 or ROAS < 5x on ≥8 orders of evidence.
-- **Never act on fewer than 5 orders**, or on a single week. At ~1 order/month, a zero-order month
-  has probability 37% and means nothing.
-- **Daily loss cap:** at 20% margin the downside is real. Do not exceed A$200/day until rolling
-  cost-per-ATC has held green for a full 4-week block.
+## What becomes computable once AOV is confirmed
+- contribution per order = AOV − COGS
+- target cost-per-ATC = target CPA ÷ ATC-per-order  *(ATC-per-order is currently 47/3, n=3 — needs volume)*
+- green/amber/red bands, staging rule, daily loss cap
 
-## Why this changes the scaling advice
-At 20% margin the profit curve is much flatter than modelled earlier:
-
-| Spend | CPA flat (A$178) | CPA +50% (A$266) | CPA at break-even (A$399) |
-|---|---|---|---|
-| A$56/day | A$2,106/mo | A$844 | ~A$0 |
-| A$85/day | A$3,196/mo | A$1,281 | ~A$0 |
-| A$130/day | A$4,888/mo | A$1,959 | ~A$0 |
-| A$200/day | A$7,520/mo | A$3,014 | ~A$0 |
-
-A 50% CPA deterioration — entirely plausible on an 8x scale step in a market the size of the UAE —
-**cuts profit by ~60% at every spend level.** The upside is real but the margin for error is thin.
-
-**Revised recommendation:** ramp A$85 → A$130 → A$200/day with a 4-week hold at each step, and gate
-each step on cost-per-ATC staying out of red. Do not jump straight to A$200/day; at 2.25x headroom a
-scale-induced CPA rise eats the entire gain.
+**Do not populate these by inference. Ask Tom, or read Shopify admin.**
