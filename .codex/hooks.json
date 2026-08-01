@@ -1,0 +1,17 @@
+{
+  "description": "KRYO Growth OS deterministic completion gate",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/kryo_experiment_stop_gate.py\"",
+            "timeout": 30,
+            "statusMessage": "Checking KRYO experiment completion evidence"
+          }
+        ]
+      }
+    ]
+  }
+}
