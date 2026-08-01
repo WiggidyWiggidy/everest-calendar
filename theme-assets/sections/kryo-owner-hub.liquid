@@ -12,7 +12,7 @@
 
 {{ 'kryo-owner.css' | asset_url | stylesheet_tag }}
 
-<div class="kryo-owner" data-kryo-owner-hub data-chapters="{{ section.settings.total_chapters }}">
+<div class="kryo-owner" data-kryo-owner-hub data-chapters="{{ section.settings.total_chapters }}" data-steps="{{ section.settings.total_steps }}">
 
   {%- comment -%} ---------- SECTION 1: HERO (§21) ---------- {%- endcomment -%}
   <section class="kryo-owner__hero">
@@ -86,6 +86,7 @@
         <div data-kryo-state="progress" class="kryo-owner__hide">
           <h2 class="kryo-owner__h2">{{ section.settings.progress_resume_heading }}</h2>
           <p class="kryo-owner__progress__label" data-kryo-progress-text></p>
+          <p class="kryo-owner__body" data-kryo-progress-steps style="font-size:15px;margin:4px 0 0"></p>
           <div class="kryo-owner__progress"><div class="kryo-owner__progress__bar" data-kryo-progress-bar style="width:0%"></div></div>
           <div class="kryo-owner__btn-row" style="margin-top:20px">
             <a href="{{ section.settings.setup_url }}" class="kryo-owner__btn kryo-owner__btn--primary" data-kryo-cta="setup">
@@ -211,7 +212,13 @@
     var txt = root.querySelector('[data-kryo-progress-text]');
     var bar = root.querySelector('[data-kryo-progress-bar]');
     if (txt) txt.textContent = 'Chapter ' + ch + ' of ' + total;
-    if (bar) bar.style.width = Math.round(((ch - 1) / total) * 100) + '%';
+    var totalSteps = parseInt(root.getAttribute('data-steps'), 10) || 0;
+    var doneSteps  = Math.max(0, parseInt(p.completedSteps, 10) || 0);
+    var stepsEl = root.querySelector('[data-kryo-progress-steps]');
+    if (stepsEl && totalSteps) stepsEl.textContent = doneSteps + ' of ' + totalSteps + ' steps complete';
+    if (bar) bar.style.width = totalSteps
+      ? Math.round((doneSteps / totalSteps) * 100) + '%'
+      : Math.round(((ch - 1) / total) * 100) + '%';
   }
 
   // Hero CTA label follows progress: "Start setup" -> "Continue setup" (§21)
@@ -253,6 +260,8 @@
 
     { "type": "header", "content": "Progress card" },
     { "type": "range", "id": "total_chapters", "label": "Total chapters", "min": 1, "max": 10, "step": 1, "default": 5 },
+    { "type": "range", "id": "total_steps", "label": "Total setup steps", "min": 1, "max": 40, "step": 1, "default": 24,
+      "info": "Used for \"N of X steps complete\". Must match the number of enabled steps on the setup page." },
     { "type": "text", "id": "progress_new_heading", "label": "New — heading", "default": "Set up your KRYO" },
     { "type": "textarea", "id": "progress_new_body", "label": "New — body", "default": "Follow the guided installation from unboxing to first use." },
     { "type": "text", "id": "progress_new_support", "label": "New — supporting line", "info": "Optional. Leave blank if the timing is not confirmed." },

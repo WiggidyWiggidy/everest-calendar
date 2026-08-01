@@ -215,12 +215,17 @@
     completedSteps:furthest, setupComplete:showingDone}));}catch(e){}}
 
   var i=0, furthest=0, showingDone=false, s0=read();
+  // Deep link: /pages/kryo-setup#chapter-3 jumps straight to that chapter.
+  var hashCh=(location.hash.match(/^#chapter-(\d+)$/)||[])[1];
   if(s0){ if(s0.setupComplete){showingDone=true; furthest=steps.length;}
     else { i=Math.min(Math.max(parseInt(s0.currentStep,10)||0,0),steps.length-1);
            furthest=Math.min(Math.max(parseInt(s0.completedSteps,10)||i,i),steps.length); } }
+  if(hashCh){ var hc=parseInt(hashCh,10); if(firstOf[hc]!==undefined){ i=firstOf[hc]; showingDone=false; } }
 
   function render(){
-    steps.forEach(function(s,n){ if(n===i&&!showingDone) s.setAttribute('data-active',''); else s.removeAttribute('data-active'); });
+    steps.forEach(function(s,n){ if(n===i&&!showingDone){ s.setAttribute('data-active','');
+      s.classList.remove('kryo-owner__fade'); void s.offsetWidth; s.classList.add('kryo-owner__fade');
+    } else s.removeAttribute('data-active'); });
     if(done){ showingDone?done.setAttribute('data-active',''):done.removeAttribute('data-active'); }
     var ctrl=root.querySelector('[data-kryo-controls]'); if(ctrl) ctrl.style.display=showingDone?'none':'';
 
@@ -251,6 +256,8 @@
     if(cur&&cur.scrollIntoView) cur.scrollIntoView({inline:'center',block:'nearest'});
     window.scrollTo({top:0,behavior:'auto'});
     save();
+    try { var want = showingDone ? '#complete' : '#chapter-'+ch;
+          if (location.hash !== want) history.replaceState(null,'',want); } catch(e){}
     if(!showingDone) track('kryo_setup_step_view',{chapter:ch,step:i});
   }
 
@@ -270,6 +277,18 @@
     if(e.target.closest('[data-kryo-review]')){ go(0); return; }
     if(e.target.closest('[data-kryo-support]')){
       track('kryo_whatsapp_support_click',{surface:'setup',chapter:showingDone?total:chapterOf[i],step:i}); }
+  });
+
+  document.addEventListener('keydown', function(e){
+    if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+    if (e.key === 'ArrowRight') { var nx=root.querySelector('[data-kryo-next]'); if(nx) nx.click(); }
+    if (e.key === 'ArrowLeft')  { var bk=root.querySelector('[data-kryo-back]'); if(bk&&!bk.disabled) bk.click(); }
+  });
+
+  // Back/forward buttons move between chapters rather than leaving the page.
+  window.addEventListener('hashchange', function(){
+    var m=(location.hash.match(/^#chapter-(\d+)$/)||[])[1];
+    if(m && firstOf[parseInt(m,10)]!==undefined) go(firstOf[parseInt(m,10)]);
   });
 
   track('kryo_setup_chapter_view',{resumed:!!s0,via:'load'});

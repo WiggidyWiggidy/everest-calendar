@@ -214,3 +214,63 @@
 /* Utilities */
 .kryo-owner__hide { display: none !important; }
 @media (prefers-reduced-motion: reduce) { .kryo-owner * { transition: none !important; } }
+
+/* ==========================================================================
+   Premium polish — depth, rhythm, motion, focus
+   Added after first review. Everything still scoped under .kryo-owner.
+   ========================================================================== */
+
+/* Cards get real depth rather than a flat hairline */
+.kryo-owner__card {
+  box-shadow: 0 1px 2px rgba(23,26,28,.04), 0 1px 3px rgba(23,26,28,.06);
+  transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+.kryo-owner a.kryo-owner__card:hover {
+  box-shadow: 0 4px 12px rgba(23,26,28,.08), 0 2px 4px rgba(23,26,28,.04);
+  transform: translateY(-2px);
+}
+.kryo-owner__card--surface { box-shadow: none; }
+
+/* Buttons: subtle lift, never a glow */
+.kryo-owner__btn--primary { box-shadow: 0 1px 2px rgba(23,26,28,.16); }
+.kryo-owner__btn--primary:hover { box-shadow: 0 3px 8px rgba(23,26,28,.20); }
+.kryo-owner__btn:active { transform: translateY(1px); }
+
+/* Consistent, well-proportioned imagery */
+.kryo-owner__card__title + .kryo-owner__card__desc { margin-top: 4px; }
+
+/* Notes: tighter, more deliberate */
+.kryo-owner__note { border-left-width: 3px; border-radius: 0 var(--kryo-radius-md) var(--kryo-radius-md) 0; }
+.kryo-owner__note p:last-child { margin-bottom: 0; }
+.kryo-owner__note ul, .kryo-owner__note ol { margin: 8px 0 0; padding-left: 20px; }
+.kryo-owner__note li { margin-bottom: 6px; }
+.kryo-owner__note li:last-child { margin-bottom: 0; }
+.kryo-owner__note--critical { background: var(--kryo-danger-bg); }
+.kryo-owner__note--critical .kryo-owner__note__title { color: var(--kryo-danger); }
+.kryo-owner__note--caution  .kryo-owner__note__title { color: var(--kryo-warning); }
+.kryo-owner__note--info     .kryo-owner__note__title { color: var(--kryo-blue); }
+
+/* Placeholder reads as intentional, not broken */
+.kryo-owner__placeholder {
+  background: linear-gradient(0deg, var(--kryo-surface), var(--kryo-surface)),
+              repeating-linear-gradient(45deg, transparent 0 10px, rgba(23,26,28,.02) 10px 20px);
+  aspect-ratio: 4 / 3; min-height: 0;
+}
+
+/* Focus visible everywhere — accessibility is part of premium */
+.kryo-owner a:focus-visible,
+.kryo-owner button:focus-visible,
+.kryo-owner summary:focus-visible { outline: 2px solid var(--kryo-blue); outline-offset: 3px; border-radius: var(--kryo-radius-sm); }
+
+/* Typographic rhythm inside rich text */
+.kryo-owner__body ul, .kryo-owner__body ol { margin: 0 0 16px; padding-left: 22px; }
+.kryo-owner__body li { margin-bottom: 8px; line-height: 1.55; }
+.kryo-owner__body strong { color: var(--kryo-text); font-weight: 600; }
+
+/* Section rhythm on the ink block */
+.kryo-owner__section--ink .kryo-owner__note { background: rgba(255,255,255,.06); color: rgba(255,255,255,.85); }
+
+/* Entry motion — quiet, never showy */
+@keyframes kryoFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.kryo-owner__fade { animation: kryoFade .28s cubic-bezier(.2,.7,.3,1) both; }
+@media (prefers-reduced-motion: reduce) { .kryo-owner__fade { animation: none; } }
