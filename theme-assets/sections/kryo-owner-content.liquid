@@ -62,10 +62,17 @@
       {%- endif -%}
 
       {%- assign entries = section.blocks | where: 'type', 'section' -%}
+      {%- if section.settings.surface == 'safety' and entries.size > 0 -%}
+        <nav class="kryo-content__index" aria-label="Safety contents">
+          {%- for block in entries -%}
+            <a href="#safety-{{ forloop.index }}">{{ block.settings.title }}</a>
+          {%- endfor -%}
+        </nav>
+      {%- endif -%}
       {%- for block in entries -%}
         {%- if block.settings.always_open -%}
           {%- comment -%} Critical safety content stays visible — never behind an accordion (§46) {%- endcomment -%}
-          <div class="kryo-content__open" {{ block.shopify_attributes }}>
+          <div class="kryo-content__open" id="safety-{{ forloop.index }}" {{ block.shopify_attributes }}>
             <h2 class="kryo-owner__h2">{{ block.settings.title }}</h2>
             {%- if block.settings.body != blank -%}
               <div class="kryo-owner__body">{{ block.settings.body }}</div>
@@ -77,7 +84,7 @@
             {%- endif -%}
           </div>
         {%- else -%}
-          <details class="kryo-content__entry kryo-content__entry--flat" {{ block.shopify_attributes }}>
+          <details class="kryo-content__entry kryo-content__entry--flat" id="safety-{{ forloop.index }}" {{ block.shopify_attributes }}>
             <summary class="kryo-owner__h3">{{ block.settings.title }}</summary>
             <div class="kryo-content__answer">
               {%- if block.settings.body != blank -%}{{ block.settings.body }}
@@ -113,17 +120,35 @@
 </div>
 
 {% style %}
-  .kryo-content__entry summary { cursor: pointer; list-style: none; }
+  .kryo-content__entry { padding: 20px 22px; }
+  .kryo-content__entry summary { cursor: pointer; list-style: none; display:flex;
+    align-items:center; justify-content:space-between; gap:16px; }
   .kryo-content__entry summary::-webkit-details-marker { display: none; }
-  .kryo-content__entry summary::after { content: '+'; float: right; font-weight: 400; color: var(--kryo-text-tertiary); }
-  .kryo-content__entry[open] summary::after { content: '−'; }
+  .kryo-content__entry summary::after { content: ''; flex:0 0 auto; width:10px; height:10px;
+    border-right:2px solid var(--kryo-text-tertiary); border-bottom:2px solid var(--kryo-text-tertiary);
+    transform: rotate(45deg) translate(-2px,-2px); transition: transform .2s ease; }
+  .kryo-content__entry[open] summary::after { transform: rotate(225deg) translate(-2px,-2px); }
+  .kryo-content__entry[open] { border-color: var(--kryo-border-strong); }
   .kryo-content__answer { margin-top: 14px; font-size: 15px; line-height: 1.6; color: var(--kryo-text-secondary); }
   .kryo-content__answer ol, .kryo-content__answer ul { margin: 0 0 16px; padding-left: 20px; }
   .kryo-content__answer li { margin-bottom: 8px; }
   .kryo-content__cta { margin-top: 8px; }
   .kryo-content__entry--flat { background: transparent; border: 0; border-bottom: 1px solid var(--kryo-border);
     border-radius: 0; padding: 20px 0; display: block; }
-  .kryo-content__open { padding: 24px 0; border-bottom: 1px solid var(--kryo-border); }
+  .kryo-content__open { padding: 32px 0; border-bottom: 1px solid var(--kryo-border); scroll-margin-top: 90px; }
+  .kryo-content__open h2 { display:flex; align-items:baseline; gap:12px; }
+  .kryo-content__open h2::before { content: counter(kryosec,decimal-leading-zero); counter-increment: kryosec;
+    font-size: 13px; font-weight: 700; letter-spacing:.08em; color: var(--kryo-text-tertiary);
+    font-family: var(--kryo-font-body); }
+  .kryo-owner[data-surface="safety"] .kryo-content__answer,
+  .kryo-owner[data-surface="safety"] .kryo-content__open { counter-reset: none; }
+  .kryo-owner[data-surface="safety"] .kryo-owner__container { counter-reset: kryosec; }
+  .kryo-content__index { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 32px; padding:20px 0 0;
+    border-top:1px solid var(--kryo-border); }
+  .kryo-content__index a { display:inline-flex; padding:7px 13px; border-radius:999px;
+    border:1px solid var(--kryo-border); font:600 13px/1 var(--kryo-font-body);
+    color:var(--kryo-text-secondary); text-decoration:none; }
+  .kryo-content__index a:hover { border-color:var(--kryo-ink); color:var(--kryo-text); }
   .kryo-content__open:last-child { border-bottom: 0; }
   @media (min-width: 990px) { .kryo-owner[data-surface="safety"] .kryo-owner__reading { max-width: 760px; } }
 {% endstyle %}
