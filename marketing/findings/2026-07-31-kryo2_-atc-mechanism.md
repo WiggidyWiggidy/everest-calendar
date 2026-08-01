@@ -1,3 +1,7 @@
+---
+depends-on: [constraint.binding, money.checkouts_as_sales, site.buy_control_position, site.live_pdp]
+---
+
 # kryo2_ add-to-cart — mechanism confirmed (Tom's hypothesis)
 
 Supersedes the "no sticky CTA" claim in `2026-07-31-kryo2_-atc-blackboard.md`.

@@ -16,6 +16,12 @@
  *     ---
  * When a fact is superseded, every dependent conclusion is flagged automatically.
  *
+ * KNOWN LIMITATION — declared dependencies are asserted, not inferred.
+ * The back-fill on 2026-07-31 used keyword matching and produced a false positive: a document
+ * that REFUTED a fact was tagged as depending on it, because refuting a claim means naming it.
+ * Keyword inference cannot distinguish assertion from refutation. Dependencies must be declared
+ * deliberately by the author; this checker verifies they are consistent, not that they are complete.
+ *
  * Exit 0 = clean.  Exit 1 = stale conclusions or overdue facts.
  */
 import fs from 'node:fs';

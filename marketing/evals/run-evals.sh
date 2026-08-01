@@ -12,6 +12,9 @@ if node marketing/evals/lint-facts.mjs > /dev/null 2>&1; then echo "  ok  lint c
 echo "== team wiring: agents have inputs, handoffs, shared state, and a caller =="
 if node marketing/evals/lint-team.mjs > /dev/null 2>&1; then echo "  ok  team-wiring clean"; pass=$((pass+1)); else echo "  FAIL: agents not wired (run: node marketing/evals/lint-team.mjs)"; fail=$((fail+1)); fi
 echo
+echo "== handoff graph: coherent, no dead ends or islands =="
+if node marketing/evals/lint-graph.mjs > /dev/null 2>&1; then echo "  ok  graph clean"; pass=$((pass+1)); else echo "  FAIL: broken handoff graph (run: node marketing/evals/lint-graph.mjs)"; fail=$((fail+1)); fi
+echo
 echo "== belief revision: no conclusion rests on a superseded or overdue fact =="
 if node marketing/evals/check-dependencies.mjs > /dev/null 2>&1; then echo "  ok  belief-revision clean"; pass=$((pass+1)); else echo "  FAIL: stale conclusions (run: node marketing/evals/check-dependencies.mjs)"; fail=$((fail+1)); fi
 echo

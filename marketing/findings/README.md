@@ -1,3 +1,7 @@
+---
+depends-on: [site.buy_control_position, site.live_pdp, site.tracking_capi]
+---
+
 # KRYO Findings Ledger
 
 Persistent record of conversion findings. **No silent reversals** — a finding is superseded only by

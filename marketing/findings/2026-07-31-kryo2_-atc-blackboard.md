@@ -1,3 +1,7 @@
+---
+depends-on: [constraint.binding, delivery.cost_per_lpv, delivery.july_collapse, delivery.uptime, money.checkouts_as_sales, money.cpa, money.sales_lifetime, site.buy_control_position, site.live_pdp, site.tracking_capi]
+---
+
 > ## ⚠️ SUPERSEDED IN PART — read this first (added 2026-07-31, later same day)
 >
 > Two facts on this board were later **disproved by Tom**, and one open fork was closed:
