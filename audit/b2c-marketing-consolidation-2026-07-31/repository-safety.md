@@ -1,3 +1,7 @@
+---
+depends-on: [site.tracking_capi]
+---
+
 # Repository Safety — everest-calendar (2026-07-31)
 
 Read-only inspection. Nothing was reset, checked out, stashed, staged, or discarded.

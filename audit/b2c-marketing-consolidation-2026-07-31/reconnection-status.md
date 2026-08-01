@@ -1,3 +1,7 @@
+---
+depends-on: [money.cpa, money.sales_lifetime, site.tracking_capi]
+---
+
 # Reconnection Status — evidence-based (2026-07-31)
 
 Health judged by **actual data recency in Supabase** (truest signal of what's connected),

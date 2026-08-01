@@ -1,3 +1,7 @@
+---
+depends-on: [site.tracking_capi]
+---
+
 # Git Rescue Results — 2026-07-31
 
 ## Repository identification

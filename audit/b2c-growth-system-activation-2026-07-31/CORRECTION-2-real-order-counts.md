@@ -1,3 +1,7 @@
+---
+depends-on: [constraint.binding, constraint.mobile_atc, delivery.cost_per_lpv, delivery.july_collapse, delivery.uptime, money.cpa, money.sales_lifetime, site.buy_control_position, site.live_pdp, site.tracking_capi]
+---
+
 # CORRECTION 2 — real order counts, and the collapse that never happened
 
 2026-07-31. Supersedes `CORRECTION-real-baseline.md` and every earlier order figure.

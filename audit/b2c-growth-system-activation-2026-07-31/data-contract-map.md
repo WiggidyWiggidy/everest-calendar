@@ -1,3 +1,7 @@
+---
+depends-on: [constraint.binding]
+---
+
 # Data Contract Map
 
 `marketing/data-contracts/` — 9 files.

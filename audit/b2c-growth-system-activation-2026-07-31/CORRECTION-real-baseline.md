@@ -1,3 +1,7 @@
+---
+depends-on: [constraint.binding, delivery.cost_per_lpv, delivery.july_collapse, delivery.uptime, money.checkouts_as_sales, money.cpa, money.sales_lifetime, site.tracking_capi]
+---
+
 > **SUPERSEDED 2026-07-31 — DO NOT USE.**
 > This file states the 6 completed checkouts were 6 real sales. That is WRONG.
 > `shopify_funnel_daily.checkouts_completed` is a raw Shopify order count that

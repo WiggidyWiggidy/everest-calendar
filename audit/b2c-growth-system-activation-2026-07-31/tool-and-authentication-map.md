@@ -1,3 +1,7 @@
+---
+depends-on: [money.cpa, money.sales_lifetime, site.tracking_capi]
+---
+
 # Tool and Authentication Map
 
 ## Tools

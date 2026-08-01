@@ -1,3 +1,7 @@
+---
+depends-on: [delivery.cost_per_lpv, delivery.uptime, money.cpa, money.sales_lifetime, site.tracking_capi]
+---
+
 # Owner Decisions Required — Tom (2026-07-31)
 
 Consolidation cannot proceed past preservation without these. Nothing will be merged, deleted,

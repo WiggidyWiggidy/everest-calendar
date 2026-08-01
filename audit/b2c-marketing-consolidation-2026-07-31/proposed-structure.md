@@ -1,3 +1,7 @@
+---
+depends-on: [site.tracking_capi]
+---
+
 # Proposed Canonical Structure (PROPOSAL ONLY — do not perform)
 
 No renames/moves performed. `marketing/` must NOT be renamed until all code/path imports are

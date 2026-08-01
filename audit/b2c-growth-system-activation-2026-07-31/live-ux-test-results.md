@@ -1,3 +1,7 @@
+---
+depends-on: [constraint.binding, money.cpa, money.sales_lifetime, site.buy_control_position, site.live_pdp, site.tracking_capi]
+---
+
 # live-ux-tester lens — results (2026-07-31)
 
 Method: Playwright MCP against **live** `https://everestlabs.co/products/kryo2_`,

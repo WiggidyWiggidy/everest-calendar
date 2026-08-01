@@ -1,3 +1,7 @@
+---
+depends-on: [site.buy_control_position, site.live_pdp, site.tracking_capi]
+---
+
 # Branch Map — last ~60 days (2026-07-31)
 
 No branch was merged, cherry-picked, or checked out during this audit.

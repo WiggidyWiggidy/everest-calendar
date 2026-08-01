@@ -1,3 +1,7 @@
+---
+depends-on: [site.buy_control_position, site.live_pdp]
+---
+
 # Canonical Funnel Definition — pointer
 
 Defined once in [../../marketing/data-contracts/metric-definitions.md](../../marketing/data-contracts/metric-definitions.md).

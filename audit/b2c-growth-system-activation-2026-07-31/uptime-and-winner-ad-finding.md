@@ -1,3 +1,7 @@
+---
+depends-on: [delivery.uptime, delivery.winner_ad, delivery.cost_per_lpv, money.sales_lifetime, money.cpa]
+---
+
 # The real finding: 46% downtime, and the winner ad is switched off
 
 2026-07-31. Verified directly against `meta_ad_metrics_daily`.

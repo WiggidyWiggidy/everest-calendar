@@ -1,3 +1,7 @@
+---
+depends-on: [money.cpa, money.sales_lifetime, site.buy_control_position, site.live_pdp, site.tracking_capi]
+---
+
 # KRYO add-to-cart / checkout: root cause, fix, and how to verify (2026-07-31)
 
 Status: **root cause confirmed from code + live data. Fix prepared, review-only, NOT deployed.**

@@ -1,3 +1,7 @@
+---
+depends-on: [constraint.binding, delivery.cost_per_lpv, delivery.uptime, money.cpa, money.sales_lifetime, site.buy_control_position, site.live_pdp]
+---
+
 # Recommended Consolidation Sequence (2026-07-31)
 
 Ordered, reversible, low-risk-first. Nothing here has been executed. Each step lists its

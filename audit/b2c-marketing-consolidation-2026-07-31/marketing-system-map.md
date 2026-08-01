@@ -1,3 +1,7 @@
+---
+depends-on: [money.cpa, money.sales_lifetime, site.buy_control_position, site.live_pdp, site.tracking_capi]
+---
+
 # B2C Marketing System Map (2026-07-31) — read-only
 
 ## Application

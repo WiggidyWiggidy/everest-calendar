@@ -1,3 +1,7 @@
+---
+depends-on: [constraint.binding, delivery.cost_per_lpv, delivery.uptime, money.cpa, money.sales_lifetime, site.tracking_capi]
+---
+
 # KRYO — what it takes to scale spend  (corrected data, 2026-07-31)
 
 Baseline: **5 customers · 1,064 LPV · $1,023.83 spend · AOV $2,000 · ROAS 9.8x**

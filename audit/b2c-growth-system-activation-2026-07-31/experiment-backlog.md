@@ -1,3 +1,7 @@
+---
+depends-on: [delivery.cost_per_lpv, delivery.uptime, money.cpa, money.sales_lifetime, site.buy_control_position, site.live_pdp]
+---
+
 # KRYO Experiment Backlog — prepared 2026-07-31
 
 **None of these is launched. None may launch without Tom's approval.**

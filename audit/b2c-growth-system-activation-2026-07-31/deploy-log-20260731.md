@@ -1,3 +1,7 @@
+---
+depends-on: [constraint.binding, site.buy_control_position, site.live_pdp, site.tracking_capi]
+---
+
 # Deploy log — 2026-07-31
 
 ## Change #1 — WhatsApp click tracking  ·  DEPLOYED

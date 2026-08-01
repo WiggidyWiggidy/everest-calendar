@@ -1,3 +1,7 @@
+---
+depends-on: [site.buy_control_position, site.live_pdp, site.tracking_capi]
+---
+
 # Authentication Matrix (2026-07-31) — safe read-only tests only
 
 No credentials were rotated; no external permissions changed. Where an authenticated

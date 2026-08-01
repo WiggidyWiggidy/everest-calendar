@@ -1,3 +1,7 @@
+---
+depends-on: [constraint.binding, delivery.cost_per_lpv, delivery.uptime, delivery.winner_ad, money.cpa, money.sales_lifetime]
+---
+
 # Can $350/week reliably produce 1–2 sales? — 2026-07-31
 
 Two facts from Tom close the open questions:

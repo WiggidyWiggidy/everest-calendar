@@ -1,3 +1,7 @@
+---
+depends-on: [delivery.cost_per_lpv, delivery.uptime, money.cpa, money.sales_lifetime, site.buy_control_position, site.live_pdp]
+---
+
 # Claude / Codex Configuration Map (2026-07-31)
 
 ## Which instructions load when Claude Code launches from this repo

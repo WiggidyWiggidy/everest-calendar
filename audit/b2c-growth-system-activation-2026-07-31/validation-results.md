@@ -1,3 +1,7 @@
+---
+depends-on: [site.buy_control_position, site.live_pdp]
+---
+
 # Validation Results — 2026-07-31
 
 | # | Requirement | Result | Evidence |

@@ -1,3 +1,7 @@
+---
+depends-on: [constraint.binding, delivery.cost_per_lpv, delivery.uptime, money.cpa, money.sales_lifetime, site.buy_control_position, site.live_pdp, site.tracking_capi]
+---
+
 # KRYO B2C — First Conversion Diagnosis
 
 **Date:** 2026-07-31 · **Window:** 60 days to 2026-07-31

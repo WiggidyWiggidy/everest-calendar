@@ -1,3 +1,7 @@
+---
+depends-on: [money.cpa, money.sales_lifetime, site.buy_control_position, site.live_pdp]
+---
+
 # Stale Feed Remediation — 2026-07-31
 
 Nothing here is deployed. All items are prepared for review.

@@ -1,3 +1,7 @@
+---
+depends-on: [money.cpa, money.sales_lifetime, site.buy_control_position, site.live_pdp, site.tracking_capi]
+---
+
 # Working-Tree Classification — 144 changes (2026-07-31)
 
 Every changed/untracked path classified. "Commit?" = should eventually be version-controlled.

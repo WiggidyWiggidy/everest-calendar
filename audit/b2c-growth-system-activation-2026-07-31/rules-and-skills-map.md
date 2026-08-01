@@ -1,3 +1,7 @@
+---
+depends-on: [money.cpa, money.sales_lifetime]
+---
+
 # Rules and Skills Map
 
 ## Active rules — `.claude/rules/`

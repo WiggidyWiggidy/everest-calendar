@@ -1,3 +1,7 @@
+---
+depends-on: [money.cpa, money.sales_lifetime, site.buy_control_position, site.live_pdp, site.tracking_capi]
+---
+
 # Owner Decisions — updated 2026-07-31 after the live-ux-tester lens
 
 ## Decisions only Tom can make

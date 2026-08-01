@@ -1,3 +1,7 @@
+---
+depends-on: [constraint.binding, delivery.cost_per_lpv, delivery.uptime, money.cpa, money.sales_lifetime, site.buy_control_position, site.live_pdp]
+---
+
 # Revised plan after adversarial critique — 2026-07-31
 
 Two agents attacked the plan. Both broke parts of it, including parts I authored.

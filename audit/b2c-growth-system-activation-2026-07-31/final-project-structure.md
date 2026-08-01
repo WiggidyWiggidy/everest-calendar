@@ -1,3 +1,7 @@
+---
+depends-on: [constraint.binding]
+---
+
 # Final Project Structure
 
 ```

@@ -1,3 +1,7 @@
+---
+depends-on: [constraint.binding, delivery.cost_per_lpv, delivery.uptime, delivery.winner_ad, money.cpa, money.sales_lifetime, site.buy_control_position, site.live_pdp, site.tracking_capi]
+---
+
 # Scaling to AUD $200/day — analysis  (2026-07-31)
 
 Basis: **live days only** (33 days, $532.53, 679 LPV, 3 orders).

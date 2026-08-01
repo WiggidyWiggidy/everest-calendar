@@ -1,3 +1,7 @@
+---
+depends-on: [money.cpa, money.sales_lifetime, site.buy_control_position, site.live_pdp]
+---
+
 # Source of Truth Map
 
 `marketing/source-of-truth/` — the only place business facts may live.

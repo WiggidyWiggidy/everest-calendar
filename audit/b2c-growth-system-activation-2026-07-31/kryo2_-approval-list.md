@@ -1,3 +1,7 @@
+---
+depends-on: [constraint.binding, money.cpa, money.sales_lifetime, site.buy_control_position, site.live_pdp, site.tracking_capi]
+---
+
 # kryo2_ — concrete changes for approval (2026-07-31)
 
 Nothing below is deployed. Approve by number; I execute only what you name.
