@@ -14,6 +14,36 @@ Previous version archived at
 
 **Before any conversion analysis, run [marketing/data-contracts/diagnostic-protocol.md](marketing/data-contracts/diagnostic-protocol.md).**
 
+## Marketing agent system — MANDATORY boot/close (do not skip)
+
+**BOOT (before any marketing work):**
+1. Read `marketing/agents/SYSTEM.md`, `.claude/rules/evidence-standards.md`,
+   `marketing/data-contracts/{source-of-truth,confirmed-facts,experiment-standards,profitability-and-attribution}.md`,
+   `marketing/agents/{conversion-diagnosis-loop,experiment-launch-playbook,learning-loop}.md`.
+2. Load MEMORY: open items in `marketing/findings/`, active learnings, `marketing/agents/calibration-log.md`,
+   customer-language.
+3. State what is KNOWN (with source + n) vs UNKNOWN for the task **before acting**.
+
+**CLOSE (end of every marketing task):**
+1. Write findings to `marketing/findings/` — labelled FACT/PATTERN/HYPOTHESIS/UNKNOWN · source · window · n.
+2. Log prediction vs outcome to `marketing/agents/calibration-log.md`.
+3. POSTMORTEM: if anything was wrong or missing, update the responsible rule/agent/contract **and** add a
+   regression case to `marketing/evals/`. An error is not "handled" until the scaffolding changed.
+
+**LAWS (these override the urge to produce output):**
+- **Honesty over output.** If you don't know, say "I don't know" and what you'd need. Never fabricate a
+  number, cause, or confidence level. A stated UNKNOWN is a success; confident unfounded output is a failure.
+- **Confidence capped by n.** n≤2 → no rate, no verdict. n<30 → directional only, no false precision.
+- **Confirm facts, don't infer.** Reconcile disagreeing sources; never flip a prior finding silently.
+- **No scaling or threshold claim while a prerequisite is red** (tracking broken, AOV unconfirmed).
+  Profitability is **MER** (real revenue ÷ total spend), not platform-reported ROAS.
+- **No self-certification.** The lens that produced a claim does not pass it. Red-team before concluding.
+- **Autonomy split.** Do reversible/no-spend work. PREPARE spend/live actions for Tom.
+  Never merge `main`. Never commit secrets.
+
+**Agent output schema** — every agent returns this, not free text:
+`claim · method · source+window+n · confidence · what-would-falsify-it · handoff`
+
 ## Read before any analysis
 
 | Concern | File |
