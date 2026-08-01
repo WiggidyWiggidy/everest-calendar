@@ -1,33 +1,26 @@
 {%- comment -%}
   Everest Labs attribution pixel.
-  Drop into theme.liquid (just before </body>) to start populating attribution_touches.
-  Closes the performance feedback loop: storefront events → Supabase → asset performance scoring.
+  Drop into theme.liquid (just before </body>) to populate:
+    - attribution_touches (page/cart/CTA/support/funnel events)
+    - clarity_section_events (per-section friction telemetry)
 
-  Captures these events:
-    - session_start  (first page view per session)
-    - page_view       (every page load)
-    - product_view    (on /products/* pages)
-    - add_to_cart     (Shopify Web Pixel hook)
-    - checkout_start  (on /checkouts/* navigation)
-    - order_placed    (handled by Shopify webhook server-side, not this pixel)
-
-  POSTs to /api/marketing/sync/storefront-event on the everest-calendar.vercel.app deploy.
-
-  No PII collected. Only:
-    - utm_* params (from URL)
-    - landing_page_id (from page metafield if KRYO variant)
-    - shopify_product_id (from product page)
-    - device_type (sniff)
-    - referrer (document.referrer)
-
-  Idempotent — survives re-renders, dedupes session_start by sessionStorage flag.
+  KRYO2 priorities:
+    - named control clicks (hero CTA, sticky CTA, Chatway, WhatsApp, compatibility)
+    - cart flow (cart view, checkout click, remove, quantity change)
+    - scroll depth milestones
+    - section-level clicks / rage-clicks / scroll abandon
 {%- endcomment -%}
 
-<script id="everest-attribution-pixel" data-pixel-version="1.0">
+<script id="everest-attribution-pixel" data-pixel-version="1.2">
 (function() {
   var EL_API = 'https://everest-calendar.vercel.app/api/marketing/sync/storefront-event';
   var SESSION_KEY = '__el_sess';
-  var SESSION_TTL = 30 * 60 * 1000; // 30 min sliding window
+  var SESSION_TTL = 30 * 60 * 1000;
+  var INTERNAL_KEY = '__el_internal_mode';
+  var INTERNAL_REASON_KEY = '__el_internal_reason';
+  var ANON_KEY = '__el_anon';
+  var FIRST_TOUCH_KEY = '__el_first_touch';
+  var CURRENT_TOUCH_KEY = '__el_current_touch';
 
   function getOrCreateSession() {
     var raw = sessionStorage.getItem(SESSION_KEY);
@@ -47,14 +40,35 @@
     return { id: id, isNew: true };
   }
 
+  function getOrCreateAnonymousId() {
+    try {
+      var existing = localStorage.getItem(ANON_KEY);
+      if (existing) return existing;
+      var anon = 'elv_' + Date.now() + '_' + Math.random().toString(36).slice(2, 22);
+      localStorage.setItem(ANON_KEY, anon);
+      return anon;
+    } catch (e) {
+      return 'elv_' + Date.now() + '_' + Math.random().toString(36).slice(2, 22);
+    }
+  }
+
+  function getCookie(name) {
+    var m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/[.$?*|{}()\\[\\]\\\\/+^]/g, '\\$&') + '=([^;]*)'));
+    return m ? decodeURIComponent(m[1]) : null;
+  }
+
   function getUtm() {
     var p = new URLSearchParams(window.location.search);
     var out = {};
-    ['utm_source','utm_medium','utm_campaign','utm_content','utm_term'].forEach(function(k) {
+    ['utm_source','utm_medium','utm_campaign','utm_content','utm_term','utm_campaign_id','utm_adset_id','utm_ad_id','utm_angle','fbclid'].forEach(function(k) {
       var v = p.get(k);
       if (v) out[k] = v;
     });
     return out;
+  }
+
+  function pageUrl() {
+    return window.location.origin + window.location.pathname + window.location.search;
   }
 
   function deviceType() {
@@ -64,29 +78,94 @@
     return 'desktop';
   }
 
+  function readInternalMode() {
+    try {
+      var p = new URLSearchParams(window.location.search);
+      if (p.get('el_internal') === '1') {
+        localStorage.setItem(INTERNAL_KEY, '1');
+        localStorage.setItem(INTERNAL_REASON_KEY, p.get('el_internal_reason') || 'manual_query_flag');
+      } else if (p.get('el_internal') === '0') {
+        localStorage.removeItem(INTERNAL_KEY);
+        localStorage.removeItem(INTERNAL_REASON_KEY);
+      }
+      return {
+        enabled: localStorage.getItem(INTERNAL_KEY) === '1',
+        reason: localStorage.getItem(INTERNAL_REASON_KEY) || 'manual_query_flag',
+      };
+    } catch (e) {
+      return { enabled: false, reason: null };
+    }
+  }
+
+  function currentTouchPayload() {
+    var utm = getUtm();
+    var touch = {
+      source: utm.utm_source || null,
+      medium: utm.utm_medium || null,
+      campaign: utm.utm_campaign || null,
+      content: utm.utm_content || null,
+      term: utm.utm_term || null,
+      angle: utm.utm_angle || null,
+      campaign_id: utm.utm_campaign_id || null,
+      adset_id: utm.utm_adset_id || null,
+      ad_id: utm.utm_ad_id || null,
+      fbp: getCookie('_fbp'),
+      fbc: getCookie('_fbc'),
+      fbclid: utm.fbclid || null,
+      referrer: document.referrer || null,
+      landing_page: pageUrl()
+    };
+    try {
+      localStorage.setItem(CURRENT_TOUCH_KEY, JSON.stringify(touch));
+      if (!localStorage.getItem(FIRST_TOUCH_KEY)) {
+        touch.created_at = new Date().toISOString();
+        localStorage.setItem(FIRST_TOUCH_KEY, JSON.stringify(touch));
+      }
+    } catch (e) {}
+    return touch;
+  }
+
+  function readTouch(key) {
+    try {
+      var raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   function send(eventType, extra) {
     extra = extra || {};
     var session = getOrCreateSession();
+    var internalMode = readInternalMode();
+    currentTouchPayload();
     var payload = Object.assign({
       event_type: eventType,
       session_id: session.id,
+      anonymous_id: getOrCreateAnonymousId(),
       page_path: window.location.pathname,
+      page_url: pageUrl(),
+      page_title: document.title || null,
       referrer: document.referrer || null,
       device_type: deviceType(),
       ts: new Date().toISOString(),
+      first_touch: readTouch(FIRST_TOUCH_KEY),
+      current_touch: readTouch(CURRENT_TOUCH_KEY),
+      fbp: getCookie('_fbp'),
+      fbc: getCookie('_fbc'),
+      is_internal: internalMode.enabled,
+      internal_reason: internalMode.enabled ? internalMode.reason : null
     }, getUtm(), extra);
 
-    // Use fetch with keepalive so events flush even on navigation away
     try {
       fetch(EL_API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
         keepalive: true,
-        mode: 'no-cors',
+        mode: 'no-cors'
       }).catch(function() {});
     } catch (e) {
-      // sendBeacon fallback
       try {
         var blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
         navigator.sendBeacon(EL_API, blob);
@@ -95,7 +174,58 @@
     return session;
   }
 
-  // Page-context helpers populated from Liquid below
+  function once(key, fn) {
+    once.cache = once.cache || {};
+    if (once.cache[key]) return;
+    once.cache[key] = true;
+    fn();
+  }
+
+  function scrollPct() {
+    var doc = document.documentElement;
+    var max = (doc.scrollHeight || 0) - (window.innerHeight || 0);
+    if (max <= 0) return 100;
+    var y = window.scrollY || doc.scrollTop || 0;
+    return Math.min(100, Math.max(0, Math.round((y / max) * 100)));
+  }
+
+  function normalizeText(el) {
+    if (!el) return '';
+    return [
+      el.getAttribute && el.getAttribute('data-analytics-event'),
+      el.textContent,
+      el.id,
+      el.className,
+      el.getAttribute && el.getAttribute('aria-label'),
+      el.getAttribute && el.getAttribute('title'),
+      el.getAttribute && el.getAttribute('name')
+    ].join(' ').toLowerCase();
+  }
+
+  function closestSectionId(el) {
+    var s = el && el.closest ? el.closest('[data-el-section-id]') : null;
+    return s && s.dataset ? s.dataset.elSectionId : null;
+  }
+
+  function tagSections() {
+    var sections = document.querySelectorAll('section, [data-section-type]');
+    for (var i = 0; i < sections.length; i++) {
+      var s = sections[i];
+      if (s.dataset.elSectionId) continue;
+      var sid = s.getAttribute('id') || '';
+      if (!sid) {
+        var h = s.querySelector('h1, h2, h3');
+        if (h && h.textContent) sid = 'h_' + h.textContent.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40);
+      }
+      if (!sid) sid = 'section_' + i;
+      s.dataset.elSectionId = sid.replace(/^shopify-section-/, '').slice(0, 80);
+    }
+  }
+
+  function isCartPermalink(href) {
+    return /\/cart\/add\b/.test(href || '');
+  }
+
   var ctx = {
     {% if product %}
       shopify_product_id: '{{ product.id }}',
@@ -106,19 +236,16 @@
       page_type: '{{ request.page_type }}',
     {% endif %}
     locale: '{{ request.locale.iso_code | default: "en" }}',
-    market_handle: '{{ localization.market.handle | default: "primary" }}',
+    market_handle: '{{ localization.market.handle | default: "primary" }}'
   };
 
-  // Fire on initial load
-  var sess = send('page_view', ctx);
-  if (sess.isNew) {
-    send('session_start', ctx);
-  }
-  if (ctx.shopify_product_id) {
-    send('product_view', ctx);
-  }
+  tagSections();
 
-  // Fire ATC via Shopify Web Pixel hook if available, else listen for cart/add fetch
+  var sess = send('page_view', ctx);
+  if (sess.isNew) send('session_start', ctx);
+  if (ctx.shopify_product_id) send('product_view', ctx);
+  if (window.location.pathname.indexOf('/cart') === 0) send('cart_view', ctx);
+
   if (window.Shopify && window.Shopify.analytics && window.Shopify.analytics.subscribe) {
     try {
       window.Shopify.analytics.subscribe('product_added_to_cart', function(event) {
@@ -126,27 +253,170 @@
         send('add_to_cart', Object.assign({}, ctx, {
           shopify_variant_id: line.merchandise && line.merchandise.id,
           quantity: line.quantity,
-          event_value: line.cost && line.cost.totalAmount && line.cost.totalAmount.amount,
+          event_value: line.cost && line.cost.totalAmount && line.cost.totalAmount.amount
         }));
       });
       window.Shopify.analytics.subscribe('checkout_started', function(event) {
         send('checkout_start', Object.assign({}, ctx, {
-          event_value: event && event.data && event.data.checkout && event.data.checkout.totalPrice && event.data.checkout.totalPrice.amount,
+          event_value: event && event.data && event.data.checkout && event.data.checkout.totalPrice && event.data.checkout.totalPrice.amount
         }));
       });
     } catch (e) {}
-  } else {
-    // Fallback: monkey-patch fetch for /cart/add
-    var originalFetch = window.fetch;
-    window.fetch = function(url, opts) {
-      try {
-        var u = typeof url === 'string' ? url : (url && url.url) || '';
-        if (/\/cart\/add/.test(u)) {
-          send('add_to_cart', ctx);
+  }
+
+  var originalFetch = window.fetch;
+  window.fetch = function(url, opts) {
+    var u = '';
+    try { u = typeof url === 'string' ? url : (url && url.url) || ''; } catch (e) {}
+    if (/\/cart\/add/.test(u)) {
+      send('cart_add_request', Object.assign({}, ctx, { event_properties: { tracking_source: 'fetch' } }));
+    }
+    return originalFetch.apply(this, arguments).then(function(res) {
+      if (/\/cart\/add/.test(u) && !res.ok) {
+        send('cart_add_failed', Object.assign({}, ctx, {
+          event_properties: { tracking_source: 'fetch', http_status: res.status || null }
+        }));
+      }
+      return res;
+    }).catch(function(err) {
+      if (/\/cart\/add/.test(u)) {
+        send('cart_add_failed', Object.assign({}, ctx, {
+          event_properties: { tracking_source: 'fetch', error: String(err && err.message || err || 'fetch_error') }
+        }));
+      }
+      throw err;
+    });
+  };
+
+  var sectionAtcFired = false;
+  var clickHistory = [];
+  var firedRage = {};
+  var scrollMaxPct = 0;
+  var scrollSeen = {25:false,50:false,75:false,90:false};
+  var didScroll50 = false;
+
+  document.addEventListener('click', function(e) {
+    var target = e.target;
+    var el = target && target.closest ? target.closest('a,button,summary,[role="button"],input[type="submit"],input[type="button"]') : null;
+    var sid = closestSectionId(target);
+
+    if (sid) {
+      var sec = target.closest('[data-el-section-id]');
+      var rect = sec.getBoundingClientRect();
+      var xPct = rect.width > 0 ? Math.round(((e.clientX - rect.left) / rect.width) * 100) : 0;
+      var yPct = rect.height > 0 ? Math.round(((e.clientY - rect.top) / rect.height) * 100) : 0;
+      var sd = scrollPct();
+      send('click', { section_id: sid, page_url: pageUrl(), x_pct: xPct, y_pct: yPct, scroll_depth_pct: sd });
+
+      var now = Date.now();
+      clickHistory.push({ t: now, x: e.clientX, y: e.clientY, sid: sid });
+      clickHistory = clickHistory.filter(function(c) { return now - c.t <= 500; });
+      var sameArea = clickHistory.filter(function(c) {
+        return c.sid === sid && Math.abs(c.x - e.clientX) <= 30 && Math.abs(c.y - e.clientY) <= 30;
+      });
+      if (sameArea.length >= 3) {
+        var bucket = sid + '_' + Math.floor(now / 1000);
+        if (!firedRage[bucket]) {
+          firedRage[bucket] = true;
+          send('rage_click', { section_id: sid, page_url: pageUrl(), x_pct: xPct, y_pct: yPct, scroll_depth_pct: sd });
         }
-      } catch (e) {}
-      return originalFetch.apply(this, arguments);
-    };
+      }
+    }
+
+    if (!el) return;
+    var href = (el.getAttribute('href') || '').toLowerCase();
+    var text = normalizeText(el);
+    var combined = [href, text].join(' ');
+
+    if (isCartPermalink(href)) {
+      send('cart_add_request', Object.assign({}, ctx, {
+        event_properties: {
+          tracking_source: /sticky/.test(text) ? 'sticky_cta' : 'cta_permalink',
+          section_id: sid
+        }
+      }));
+      send(/sticky/.test(text) ? 'sticky_cta_click' : 'hero_cta_click', Object.assign({}, ctx, {
+        event_properties: { section_id: sid }
+      }));
+      return;
+    }
+
+    if (/wa\.me|whatsapp/.test(combined)) {
+      send('whatsapp_click', Object.assign({}, ctx, { event_properties: { section_id: sid } }));
+    } else if (/chatway|live chat|chat with us|message us|message support|talk to us/.test(combined)) {
+      send('chatway_click', Object.assign({}, ctx, { event_properties: { section_id: sid } }));
+    } else if (/compatib|will it fit|fit check|bathroom fit|shower fit/.test(combined)) {
+      send('compatibility_cta_click', Object.assign({}, ctx, { event_properties: { section_id: sid } }));
+    } else if (/install|setup/.test(combined)) {
+      send('installation_faq_open', Object.assign({}, ctx, { event_properties: { section_id: sid } }));
+    } else if (/hose|connection|connect/.test(combined)) {
+      send('hose_connection_faq_open', Object.assign({}, ctx, { event_properties: { section_id: sid } }));
+    } else if (/deliver|shipping/.test(combined)) {
+      send('delivery_faq_open', Object.assign({}, ctx, { event_properties: { section_id: sid } }));
+    } else if (/return|refund|warranty|guarantee/.test(combined)) {
+      send('returns_faq_open', Object.assign({}, ctx, { event_properties: { section_id: sid } }));
+    } else if (window.location.pathname.indexOf('/cart') === 0 && /checkout/.test(combined)) {
+      send('cart_checkout_click', Object.assign({}, ctx, { event_properties: { section_id: sid } }));
+    } else if (window.location.pathname.indexOf('/cart') === 0 && /remove|delete/.test(combined)) {
+      send('cart_remove_item', Object.assign({}, ctx, { event_properties: { section_id: sid } }));
+    }
+  }, true);
+
+  document.addEventListener('change', function(e) {
+    var el = e.target;
+    if (!el) return;
+    var name = (el.getAttribute && el.getAttribute('name') || '').toLowerCase();
+    if (window.location.pathname.indexOf('/cart') === 0 && /updates|quantity/.test(name)) {
+      send('cart_quantity_change', Object.assign({}, ctx, {
+        event_properties: { name: name, value: el.value || null }
+      }));
+    }
+  }, true);
+
+  window.addEventListener('scroll', function() {
+    var sd = scrollPct();
+    if (sd > scrollMaxPct) scrollMaxPct = sd;
+    if (sd >= 25 && !scrollSeen[25]) { scrollSeen[25] = true; send('scroll_depth_25', ctx); }
+    if (sd >= 50 && !scrollSeen[50]) { scrollSeen[50] = true; didScroll50 = true; send('scroll_depth_50', ctx); }
+    if (sd >= 75 && !scrollSeen[75]) { scrollSeen[75] = true; send('scroll_depth_75', ctx); }
+    if (sd >= 90 && !scrollSeen[90]) { scrollSeen[90] = true; send('scroll_depth_90', ctx); }
+  }, { passive: true });
+
+  if ('IntersectionObserver' in window) {
+    var observer = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (!entry.isIntersecting || entry.intersectionRatio < 0.35) return;
+        var el = entry.target;
+        var label = ((el.id || '') + ' ' + (el.className || '') + ' ' + (el.getAttribute('data-section-type') || '')).toLowerCase();
+        if (/comparison|compare/.test(label)) once('comparison_section_view', function(){ send('comparison_section_view', ctx); });
+        if (/offer|price|pricing|buy-box|sticky-cta/.test(label)) once('offer_section_view', function(){ send('offer_section_view', ctx); });
+        if (/guarantee|warranty|return|trust/.test(label)) once('guarantee_section_view', function(){ send('guarantee_section_view', ctx); });
+      });
+    }, { threshold: [0.35] });
+
+    var observed = document.querySelectorAll('section, [data-section-type], [data-el-section-id]');
+    for (var i = 0; i < observed.length; i++) observer.observe(observed[i]);
+  }
+
+  window.addEventListener('pagehide', function() {
+    if (window.location.pathname.indexOf('/cart') === 0) {
+      send('cart_exit_without_checkout', Object.assign({}, ctx, {
+        event_properties: { scroll_depth_pct: scrollMaxPct || scrollPct() }
+      }));
+    }
+    if (window.location.pathname.indexOf('/products/') === -1 || !didScroll50 || sectionAtcFired) return;
+    var visible = '';
+    var els = document.querySelectorAll('[data-el-section-id]');
+    for (var i = 0; i < els.length; i++) {
+      var r = els[i].getBoundingClientRect();
+      if (r.top < window.innerHeight && r.bottom > 0) { visible = els[i].dataset.elSectionId; break; }
+    }
+    if (!visible) return;
+    send('scroll_abandon', { section_id: visible, page_url: pageUrl(), scroll_depth_pct: scrollMaxPct });
+  });
+
+  if (window.Shopify && window.Shopify.analytics && window.Shopify.analytics.subscribe) {
+    try { window.Shopify.analytics.subscribe('product_added_to_cart', function() { sectionAtcFired = true; }); } catch (e) {}
   }
 })();
 </script>

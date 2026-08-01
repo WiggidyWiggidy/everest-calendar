@@ -7,6 +7,8 @@
 -- The skill (running on Tom's free Claude Max OAuth) reads the result and picks 3 to test.
 -- No stats library needed — LLM reasoning over the rows.
 
+DROP FUNCTION IF EXISTS public.get_kryo_test_proposals(INT);
+
 CREATE OR REPLACE FUNCTION public.get_kryo_test_proposals(p_days INT DEFAULT 90)
 RETURNS TABLE (
   rank_position    INT,

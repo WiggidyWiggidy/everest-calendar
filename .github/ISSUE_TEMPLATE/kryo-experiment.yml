@@ -1,0 +1,57 @@
+name: KRYO Experiment
+about: Propose a controlled KRYO growth experiment
+labels: [kryo, experiment]
+body:
+  - type: input
+    id: experiment_id
+    attributes:
+      label: Experiment ID
+      description: Use the ID from the experiment ledger.
+    validations:
+      required: true
+  - type: textarea
+    id: funnel_problem
+    attributes:
+      label: Funnel problem
+      description: What exact constraint are we addressing?
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Include source, max timestamp, freshness status and artifact links.
+    validations:
+      required: true
+  - type: textarea
+    id: hypothesis
+    attributes:
+      label: Hypothesis
+      description: If we change X for audience Y, metric Z should move because...
+    validations:
+      required: true
+  - type: input
+    id: variable
+    attributes:
+      label: One primary variable changed
+    validations:
+      required: true
+  - type: input
+    id: primary_metric
+    attributes:
+      label: Primary metric
+    validations:
+      required: true
+  - type: textarea
+    id: guardrails
+    attributes:
+      label: Guardrail metrics and rollback rule
+    validations:
+      required: true
+  - type: textarea
+    id: implementation_scope
+    attributes:
+      label: Implementation scope
+      description: Files/routes/pages expected to change. No production deploy or ad activation without Tom approval.
+    validations:
+      required: true

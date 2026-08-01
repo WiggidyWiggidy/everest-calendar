@@ -1,0 +1,41 @@
+{%- comment -%}
+  KRYO Product Description — standalone Liquid section that renders product.description (body_html)
+  as its OWN full-width section, separate from the main-product section above.
+
+  This solves the overlap issue where the body_html composed by /api/marketing/compose-body-html
+  was rendering inside main-product's .product__description column (~373px), causing the sticky
+  media gallery to overlap the long-form sections.
+
+  By moving description into its own section, the body_html breaks free of the product info
+  column and renders edge-to-edge below the standard product chrome.
+{%- endcomment -%}
+
+<div class="kryo-product-description-wrap" data-section-id="{{ section.id }}" data-section-type="kryo-product-description">
+  {{ product.description }}
+</div>
+
+{% style %}
+.kryo-product-description-wrap {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  isolation: isolate;
+}
+{% endstyle %}
+
+{% schema %}
+{
+  "name": "KRYO product description",
+  "tag": "section",
+  "class": "kryo-product-description-section",
+  "settings": [],
+  "presets": [
+    {
+      "name": "KRYO product description"
+    }
+  ],
+  "enabled_on": {
+    "templates": ["product"]
+  }
+}
+{% endschema %}

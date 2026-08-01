@@ -1,0 +1,117 @@
+{%- comment -%}
+  KRYO WhatsApp click tracking + lead attribution — PREPARED FOR REVIEW, NOT DEPLOYED.
+
+  PROBLEM (measured live 2026-07-31):
+    - Three wa.me CTAs on /products/kryo2_ (y=968 "Check Fit & Availability",
+      y=6,096 "Hold My Price for 30 Days", y=11,795 "Not ready to order?").
+    - `whatsapp_click` NEVER fires. Verified by intercepting fetch/sendBeacon: clicking the
+      hero WhatsApp CTA emits only a generic `click`, never `whatsapp_click`.
+    - Consequence: 7 buybox click-sessions and 4 confirmed inbound WhatsApp messages were
+      invisible to the funnel. Any prior "WhatsApp isn't diluting" conclusion rested on a
+      dead metric.
+    - Confirmed by Tom: 4 real messages received, all asking to reserve the price for 30 days.
+      That is a 1.6% lead rate on 250 sessions — HIGHER than the 1.2% add-to-cart rate.
+
+  ROOT CAUSE: not fully pinned. The click provably reaches the document-level handler in
+  everest-attribution-pixel.liquid and the `/wa\.me|whatsapp/` regex provably matches, yet no
+  POST is emitted. Rather than depend on that chain, this snippet installs an independent
+  capture-phase listener that cannot be pre-empted by the AI hero blocks' own handlers.
+
+  WHY sendBeacon: the existing pixel uses fetch({keepalive, mode:'no-cors'}) with a JSON
+  Content-Type — a combination where the header is stripped. More importantly a wa.me click
+  NAVIGATES AWAY. We observed exactly this killing the Meta pixel (`facebook.com/tr` ->
+  net::ERR_ABORTED). sendBeacon is the only transport guaranteed to survive unload.
+
+  Install AFTER everest-attribution-pixel.liquid:
+    {% render 'kryo-whatsapp-tracking' %}
+{%- endcomment -%}
+
+<script id="kryo-whatsapp-tracking" data-version="1.0">
+(function () {
+  var EL_API = 'https://everest-calendar.vercel.app/api/marketing/sync/storefront-event';
+
+  // Reuse the main pixel's identifiers so events join to the same session.
+  function readLS(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
+  function sessionId() {
+    try {
+      var raw = readLS('el_session') || readLS('everest_session');
+      if (raw) { var o = JSON.parse(raw); return o.id || o.session_id || null; }
+    } catch (e) {}
+    return null;
+  }
+  function anonId() { return readLS('el_anonymous_id') || readLS('everest_anonymous_id') || null; }
+
+  // Short, human-typable reference so an inbound WhatsApp message can be joined
+  // back to the on-site session. 6 chars is enough at this volume and survives
+  // the user editing the prefilled text.
+  function leadRef() {
+    var existing = readLS('kryo_lead_ref');
+    if (existing) return existing;
+    var ref = 'K' + Math.random().toString(36).slice(2, 7).toUpperCase();
+    try { window.localStorage.setItem('kryo_lead_ref', ref); } catch (e) {}
+    return ref;
+  }
+
+  function beacon(payload) {
+    try {
+      // text/plain is CORS-safelisted, so the body is never stripped.
+      var blob = new Blob([JSON.stringify(payload)], { type: 'text/plain;charset=UTF-8' });
+      if (navigator.sendBeacon && navigator.sendBeacon(EL_API, blob)) return true;
+    } catch (e) {}
+    try {
+      fetch(EL_API, { method: 'POST', body: JSON.stringify(payload), keepalive: true });
+    } catch (e) {}
+    return false;
+  }
+
+  function placementOf(a) {
+    // Attribute the lead to WHICH CTA produced it — the whole point is knowing
+    // whether the pre-cart CTAs are stealing intent from the buy button.
+    var y = Math.round(a.getBoundingClientRect().top + window.scrollY);
+    var docH = document.documentElement.scrollHeight || 1;
+    var pct = Math.round((y / docH) * 100);
+    var addBtn = document.querySelector('button[name="add"]');
+    var addY = addBtn ? Math.round(addBtn.getBoundingClientRect().top + window.scrollY) : null;
+    return {
+      absolute_y: y,
+      pct_down_page: pct,
+      position_vs_add_to_cart: addY === null ? 'unknown' : (y < addY ? 'before_cart' : 'after_cart'),
+      label: (a.innerText || '').trim().replace(/\s+/g, ' ').slice(0, 60)
+    };
+  }
+
+  // CAPTURE phase on document: runs before any block-level handler can stopPropagation.
+  document.addEventListener('click', function (e) {
+    var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+    if (!a) return;
+    var href = a.getAttribute('href') || '';
+    if (!/wa\.me|api\.whatsapp\.com|web\.whatsapp\.com/i.test(href)) return;
+
+    var ref = leadRef();
+    var place = placementOf(a);
+
+    beacon({
+      event_type: 'whatsapp_click',
+      session_id: sessionId(),
+      anonymous_id: anonId(),
+      page_path: location.pathname,
+      page_url: location.href,
+      referrer: document.referrer || null,
+      ts: new Date().toISOString(),
+      event_properties: Object.assign({ lead_ref: ref, destination: href.slice(0, 120) }, place)
+    });
+
+    // Stamp the outbound message with the ref so the inbound WhatsApp can be matched
+    // to this session. Without this, WhatsApp leads can never be attributed to an ad,
+    // a page variant, or a placement.
+    try {
+      var u = new URL(href, location.origin);
+      var t = u.searchParams.get('text') || '';
+      if (t.indexOf(ref) === -1) {
+        u.searchParams.set('text', t + ' [ref ' + ref + ']');
+        a.setAttribute('href', u.toString());
+      }
+    } catch (err) { /* never block the click */ }
+  }, true);
+})();
+</script>

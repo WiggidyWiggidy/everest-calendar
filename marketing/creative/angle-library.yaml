@@ -1,0 +1,9 @@
+# KRYO angle library. Add only approved, evidence-linked angles.
+# Each ad and landing-page variant should reference angle_id + hook_id.
+angles:
+  - angle_id: anti_tub_replacement
+    status: active_historical_winner
+    core_belief: "Ice baths are too much friction for daily life."
+    desired_shift: "A cold shower system gives the useful cold exposure ritual without tub ownership."
+    evidence: "Historical Meta winner: 'Plunge is Dead' through 2026-07-16."
+    allowed_claims_ref: "docs/KRYO_COPY_CONSTITUTION.md"

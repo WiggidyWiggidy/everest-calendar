@@ -1,0 +1,159 @@
+{%- comment -%}
+  KRYO sticky add-to-cart bar — PREPARED FOR REVIEW, NOT DEPLOYED.
+
+  Why this exists (measured 2026-07-31 on /products/kryo2_):
+    - The only Add-to-cart control sits at y=11,731 of a 12,096px document = 97% page depth,
+      13.9 mobile screens down. Desktop: 93.3%.
+    - There is no fixed/sticky buy control anywhere on the page.
+    - Above the fold on mobile the only interactive elements are a "Close" button and the
+      Chatway chat widget. No price, no CTA, no buy affordance.
+    - Only 29.7% of mobile paid sessions reach even the 90% scroll marker — and the button
+      is at 97%.
+    - Result: mobile 1/204 add-to-cart (0.49%) vs desktop 2/44 (4.5%).
+
+  What this does NOT claim: that reachability is the sole cause. Cold-traffic price
+  resistance at AED 3,990 (H2) remains an untested co-factor. This fix is also the test —
+  see marketing/findings/2026-07-31-kryo2_-atc-blackboard.md.
+
+  Install (after Tom approves):
+    Render near the end of the product template, outside the main content column:
+      {% render 'kryo-sticky-atc', product: product %}
+
+  Safety:
+    - Submits to the SAME /cart/add form contract already proven working (200 + real line).
+    - Does not modify, wrap, or re-bind the existing add-to-cart handler. Existing
+      add-to-cart tracking is untouched, per .claude/rules/production-permissions.md.
+    - Emits a distinct `sticky_atc_click` storefront event so its contribution is
+      separable from the in-page button in analysis.
+{%- endcomment -%}
+
+{%- liquid
+  assign target_variant = product.selected_or_first_available_variant
+-%}
+
+{%- if product != blank and target_variant != blank -%}
+<div class="kryo-sticky-atc" id="KryoStickyAtc" data-kryo-sticky-atc hidden>
+  <div class="kryo-sticky-atc__inner">
+    <div class="kryo-sticky-atc__meta">
+      <span class="kryo-sticky-atc__title">{{ product.title }}</span>
+      <span class="kryo-sticky-atc__price" data-sticky-price>
+        {{ target_variant.price | money }}
+      </span>
+    </div>
+
+    <form method="post" action="{{ routes.cart_add_url }}" class="kryo-sticky-atc__form" data-sticky-form>
+      <input type="hidden" name="form_type" value="product">
+      <input type="hidden" name="utf8" value="✓">
+      <input type="hidden" name="id" value="{{ target_variant.id }}" data-sticky-variant-id>
+      <input type="hidden" name="quantity" value="1">
+      <button
+        type="submit"
+        name="add"
+        class="kryo-sticky-atc__button"
+        data-sticky-add
+        {% unless target_variant.available %}disabled{% endunless %}
+      >
+        {% if target_variant.available %}Add to cart{% else %}Sold out{% endif %}
+      </button>
+    </form>
+  </div>
+</div>
+
+<style>
+  .kryo-sticky-atc {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 998; /* below Chatway (999+) so it never traps the chat launcher */
+    background: rgba(255,255,255,.97);
+    backdrop-filter: saturate(180%) blur(10px);
+    border-top: 1px solid rgba(0,0,0,.10);
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    transform: translateY(110%);
+    transition: transform .22s ease;
+  }
+  .kryo-sticky-atc[data-visible="true"] { transform: translateY(0); }
+  .kryo-sticky-atc__inner {
+    display: flex; align-items: center; gap: 12px;
+    max-width: 1100px; margin: 0 auto;
+  }
+  .kryo-sticky-atc__meta { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+  .kryo-sticky-atc__title {
+    font-size: 13px; line-height: 1.2; opacity: .72;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .kryo-sticky-atc__price { font-size: 16px; font-weight: 650; line-height: 1.25; }
+  .kryo-sticky-atc__form { flex: 0 0 auto; }
+  .kryo-sticky-atc__button {
+    min-height: 48px;            /* iOS touch target */
+    min-width: 150px;
+    padding: 0 22px;
+    border: 0; border-radius: 10px;
+    font-size: 16px; font-weight: 650;
+    background: rgb(var(--color-button, 18 18 18));
+    color: rgb(var(--color-button-text, 255 255 255));
+    cursor: pointer;
+  }
+  .kryo-sticky-atc__button[disabled] { opacity: .5; cursor: not-allowed; }
+  @media (prefers-color-scheme: dark) {
+    .kryo-sticky-atc { background: rgba(20,20,20,.97); border-top-color: rgba(255,255,255,.14); }
+  }
+  @media print { .kryo-sticky-atc { display: none; } }
+</style>
+
+<script>
+(function () {
+  var bar = document.getElementById('KryoStickyAtc');
+  if (!bar) return;
+
+  // The in-page product form is the source of truth for the selected variant.
+  var pageForm = document.querySelector('form[action*="/cart/add"]:not([data-sticky-form])');
+  var pageAddBtn = pageForm ? pageForm.querySelector('[name="add"]') : null;
+  var stickyIdInput = bar.querySelector('[data-sticky-variant-id]');
+  var stickyBtn = bar.querySelector('[data-sticky-add]');
+
+  bar.hidden = false;
+
+  // Show once the user has scrolled past the first screen; hide when the real
+  // add-to-cart button is already on screen (avoid two competing controls).
+  function update() {
+    var scrolled = window.scrollY > window.innerHeight * 0.6;
+    var realVisible = false;
+    if (pageAddBtn) {
+      var r = pageAddBtn.getBoundingClientRect();
+      realVisible = r.top < window.innerHeight && r.bottom > 0;
+    }
+    bar.setAttribute('data-visible', (scrolled && !realVisible) ? 'true' : 'false');
+  }
+
+  // Mirror variant selection from the page form so the sticky bar never adds the wrong variant.
+  function syncVariant() {
+    if (!pageForm || !stickyIdInput) return;
+    var pageId = pageForm.querySelector('[name="id"]');
+    if (pageId && pageId.value) stickyIdInput.value = pageId.value;
+    if (pageAddBtn && stickyBtn) {
+      stickyBtn.disabled = !!pageAddBtn.disabled;
+      if (pageAddBtn.disabled) stickyBtn.textContent = 'Sold out';
+    }
+  }
+
+  window.addEventListener('scroll', update, { passive: true });
+  window.addEventListener('resize', update, { passive: true });
+  document.addEventListener('change', syncVariant, true);
+  update(); syncVariant();
+
+  // Distinct event so sticky-bar contribution is separable in analysis.
+  if (stickyBtn) {
+    stickyBtn.addEventListener('click', function () {
+      try {
+        if (window.EverestAttribution && typeof window.EverestAttribution.track === 'function') {
+          window.EverestAttribution.track('sticky_atc_click', {
+            variant_id: stickyIdInput ? stickyIdInput.value : null,
+            page_path: location.pathname
+          });
+        }
+      } catch (e) { /* never block the add */ }
+    });
+  }
+})();
+</script>
+{%- endif -%}

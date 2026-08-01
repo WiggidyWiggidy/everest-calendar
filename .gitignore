@@ -36,3 +36,20 @@ yarn-error.log*
 next-env.d.ts
 logs/
 vendored/
+artifacts/
+
+# --- consolidation 2026-07-31: local perms, caches, generated output ---
+.claude/settings.local.json
+reports/
+screenshots/
+tmp/
+.tmp_linktest/
+tmp-*.liquid
+supabase/.temp/
+$CODEX_HOME/
+
+# Playwright test artifacts
+test-results/
+playwright-report/
+blob-report/
+.playwright-mcp/

@@ -1,0 +1,39 @@
+{
+  "version": "2026-07-25",
+  "meta_ads_selected_whatsapp_asset_id": "907927035270302",
+  "meta_ads_selected_whatsapp_asset_label": "Everest Labs",
+  "source": "Tom screenshot 2026-07-25 12:08:38",
+  "policy": {
+    "meta_native_metric": "Use Meta Click-to-WhatsApp / messaging conversation metrics when the ad objective/destination is WhatsApp and the selected WhatsApp asset matches this ID.",
+    "first_party_metric": "Use kryo_leads for WhatsApp signup/lead and kryo_deposit_events for deposit outcomes, joined by experiment_id, experiment_key, landing_page_version, angle_id, hook_id and Meta IDs.",
+    "required_ad_url_params": [
+      "utm_source",
+      "utm_medium",
+      "utm_campaign_id",
+      "utm_adset_id",
+      "utm_ad_id",
+      "utm_angle",
+      "utm_hook",
+      "experiment_id",
+      "experiment_key",
+      "landing_page_version"
+    ],
+    "meta_signup_metric": "For website WhatsApp access form submissions, send Meta Conversions API event_name=Lead with custom_data.lead_type=whatsapp_signup when META_PIXEL_ID and META_CAPI_ACCESS_TOKEN are configured.",
+    "required_lead_capture_fields": [
+      "consent_to_follow_up",
+      "phone_e164 or session_id/anonymous_id",
+      "fbp",
+      "fbc",
+      "meta_campaign_id",
+      "meta_adset_id",
+      "meta_ad_id",
+      "experiment_id",
+      "experiment_key",
+      "landing_page_version"
+    ]
+  },
+  "website_whatsapp_phone_e164": "+447724709585",
+  "website_whatsapp_phone_display": "+44 7724 709585",
+  "website_whatsapp_link_prefix": "https://wa.me/447724709585",
+  "website_source_verified": "Shopify live theme asset templates/product.kryo2_.json read via /api/marketing/theme/asset on 2026-07-25"
+}

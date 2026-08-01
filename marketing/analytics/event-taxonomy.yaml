@@ -1,0 +1,57 @@
+version: 2026-07-25
+principles:
+  - every event should preserve session_id, anonymous_id, page_path, market, device_type and source identifiers when available
+  - paid verdict events use Meta pixel metrics when fresh, not first-party substitutes
+  - WhatsApp click is interest, not a qualified lead
+  - deposits require explicit deposit lifecycle events
+funnel_events:
+  ad_impression:
+    source: meta_ad_metrics_daily.impressions
+    status: historical_until_meta_fresh
+  outbound_click:
+    source: meta_ad_metrics_daily.outbound_clicks
+    status: historical_until_meta_fresh
+  landing_page_view:
+    source: meta_ad_metrics_daily.landing_page_views + attribution_touches.product_view/page_view
+    status: partial
+  engaged_session:
+    source: vw_kryo_intent_daily + clarity_friction_elements
+    status: usable_when_fresh
+  primary_cta_click:
+    source: attribution_touches hero_cta_click/sticky_cta_click/cart_add_request
+    status: partial
+  whatsapp_click:
+    source: attribution_touches.whatsapp_click
+    status: usable_as_interest_only
+  whatsapp_lead_submitted:
+    source: kryo_leads
+    status: schema_ready_pending_migration_and_page_hook
+  qualified_enquiry:
+    source: kryo_leads.status=qualified
+    status: pending_sales_process
+  deposit_link_sent:
+    source: kryo_deposit_events.deposit_link_sent
+    status: schema_ready_pending_migration_and_payment_flow
+  deposit_completed:
+    source: kryo_deposit_events.deposit_completed
+    status: schema_ready_pending_migration_and_payment_flow
+  checkout_initiated:
+    source: shopify_funnel_daily.checkouts_started + attribution_touches.checkout_start/cart_checkout_click
+    status: usable_when_fresh
+  purchase:
+    source: shopify_funnel_daily + Shopify orders + Meta purchase when fresh
+    status: partial_attribution
+required_identifiers:
+  - experiment_id
+  - experiment_key
+  - landing_page_version
+  - angle_id
+  - hook_id
+  - utm_campaign_id
+  - utm_adset_id
+  - utm_ad_id
+  - utm_source
+  - utm_medium
+  - market
+  - session_id
+  - anonymous_id

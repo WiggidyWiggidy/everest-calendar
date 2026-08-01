@@ -1,142 +1,112 @@
-## Do Not Modify Without Tom's Approval
+# KRYO B2C Growth — Operating Entry Point
 
-Live infrastructure -- do not restart, redeploy, or "improve" without asking:
-- @KRYO_BUILDINGBOT Edge Function, Supabase triggers, 9 RPC functions, 11 scheduled tasks
-- `communication_protocols` table (trust scores), `product_context` table (business KB)
+Scope: **KRYO direct-to-consumer marketing only.** Paid acquisition (Meta), landing pages
+and PDPs, on-site conversion, the WhatsApp assisted-sales pathway, Shopify checkout.
 
-### Objective
-Web dashboard (`everest-calendar.vercel.app`) that: (1) manages supplier negotiations, (2) proposes smart replies with context, (3) learns from corrections, (4) costs $0 extra (Max plan OAuth only).
+Out of scope: B2B, manufacturing, CAD, suppliers — see
+[.claude/rules/business-scope.md](.claude/rules/business-scope.md).
 
-### Cost Rule
-ALL LLM calls route through Max plan OAuth. Never use Anthropic API keys or OpenRouter for new automation. OpenRouter $2/day cap applies to legacy OpenClaw.
-
----
-
-## Session Discipline (MANDATORY)
-
-**START of session:**
-1. Run `SELECT did_anything_break()` -- fix failures FIRST
-2. Answer: "What business outcome will this session produce?"
-
-### Verification Rules (CRITICAL)
-
-- NEVER claim a file exists or doesn't exist without using find/Glob/ls to verify
-- When a file isn't found, search BROADLY (`find ~/Desktop -name "filename"`) before concluding it's missing
-- NEVER say "X is broken" or "X was deleted" -- say "I couldn't find X at [path], let me search more broadly"
-- Before saying something was "built" or "fixed": show the tool call output that proves it
-- If 2 consecutive approaches fail, STOP and ask Tom before trying a 3rd
-- When uncertain, say "I haven't verified this yet" -- never state assumptions as facts
-
-### CAD File Safety
-
-- CAD files: `/Users/happy/Desktop/ISU001_SHELL_CAD/` (primary, git) and `everest-calendar/cad/shell/` (backup)
-- Before ANY CAD edit: run `python3 dimensions.py` to get current validation state
-- After ANY CAD edit: re-run validation. If new failures appear, revert immediately
-- DXF export BLOCKED if validation fails -- `validate_before_export()` enforces this
-- NEVER modify dimensions without stating the source (factory_caliper, step_caliper, spec, design)
-- MUST enter plan mode before any geometry or dimension change
-
-### Before Every Code Change
-1. State your hypothesis in one sentence
-2. Find a working counterexample -- if it uses the same pattern, your hypothesis is wrong
-3. ONE CHANGE AT A TIME. Change one, verify, then proceed.
-4. State what could break if you're wrong
-5. Query current state before updating (SELECT before UPDATE)
-
-### Critique Loop (before any multi-file change)
-Before executing a plan, state 3 ways this plan could fail or produce the wrong result.
-Address each failure mode in the plan before writing code.
-If you can't identify failure modes, the plan isn't specific enough -- make it more specific first.
-
-### After Every Code Change
-1. Verify with evidence (query result, not assumption)
-2. If verification fails: REVERT immediately, don't "fix forward"
-3. Log to `openclaw_memory`
-
-### Circuit Breaker
-If 2 consecutive changes fail: STOP. Log to `build_pipeline`. Tell Tom. Do not resume until Tom responds.
-
-### End of Session
-1. Run `SELECT check_invariants()` -- final health check
-2. Write to `openclaw_memory`: what was done, what's left, what's broken
-3. Update `build_pipeline` for anything resolved
+This file routes. It does not restate business facts; those live in the referenced files.
+Previous version archived at
+[marketing/archive/CLAUDE.md.superseded-2026-07-31.md](marketing/archive/CLAUDE.md.superseded-2026-07-31.md).
 
 ---
 
-## Guardrails (29 Mar 2026)
+**Before any conversion analysis, run [marketing/data-contracts/diagnostic-protocol.md](marketing/data-contracts/diagnostic-protocol.md).**
 
-### 1. Alibaba = Copy-Paste (NOT Chrome)
-Chrome MCP times out on Alibaba. Do not attempt it.
-- Tom approves via swipe inbox, copies from "Ready to Send" tab, pastes into Alibaba chat, clicks "Sent"
-- Every first-contact message includes: "For faster communication, feel free to reach me on WhatsApp: +86 13002019335"
-- Goal: move every supplier to WhatsApp where full automation works
+## Read before any analysis
 
-### 2. Business Impact Gate
-Before building anything: "What business outcome does this produce?"
-- 80% of session on the furthest-upstream blocker
-- 20% on polish (only after blocker resolved)
+| Concern | File |
+|---|---|
+| Evidence standards (mandatory) | [.claude/rules/evidence-standards.md](.claude/rules/evidence-standards.md) |
+| Business scope | [.claude/rules/business-scope.md](.claude/rules/business-scope.md) |
+| Metric definitions | [marketing/data-contracts/metric-definitions.md](marketing/data-contracts/metric-definitions.md) |
+| What data is usable today | [marketing/data-contracts/source-inventory.md](marketing/data-contracts/source-inventory.md) |
+| Known limitations | [marketing/data-contracts/known-limitations.md](marketing/data-contracts/known-limitations.md) |
+| Production permissions | [.claude/rules/production-permissions.md](.claude/rules/production-permissions.md) |
+| Experiment governance | [.claude/rules/experiment-governance.md](.claude/rules/experiment-governance.md) |
 
-### 3. Proof-of-Existence
-Before claiming "X was built": `ls` the file, query the DB, run the function. Never claim "built" based on what you wrote -- only what you verified.
+## Source of truth
 
-### 4. Explain-as-You-Go
-Every plan shows the logic chain. Tom should spot fatal flaws before execution starts. No black boxes.
+Business facts: [marketing/source-of-truth/](marketing/source-of-truth/) — product,
+offer and pricing, positioning, customer, funnel, landing pages, WhatsApp pathway,
+business objectives, agent permissions.
 
----
+**Never state a price, spec, claim or offer term from memory. Read the file.**
 
-## Approval & Message Delivery
+## Data contracts
 
-All approvals via web dashboard at `/inbox`:
-- **Pending tab:** swipe right = approve, left = skip
-- **Ready to Send tab:** copy message, open supplier chat, paste, click "Sent"
-- **Done tab:** completed items
+[marketing/data-contracts/](marketing/data-contracts/) — source inventory, tool map,
+table map, metric definitions, funnel definitions, attribution rules, refresh schedules,
+known limitations, authentication status.
 
-**Tiers:** 0 = auto (internal), 1 = draft + Tom approves, 2 = Tom writes (Jay pricing, commitments >$50)
+## Workflow
 
-**Platforms:** WhatsApp = auto via Green API. Alibaba = copy-paste. Upwork = Chrome MCP.
+| Command | Purpose |
+|---|---|
+| [/kryo-growth-diagnose](.claude/commands/kryo-growth-diagnose.md) | Full evidence-backed conversion diagnosis |
 
-### Supplier Tracking
-Before drafting: query `rpc/get_conversation_thread`. After sending: call `rpc/log_supplier_message`.
-Supplier keys: steven, ally, stella, demi, jack, jay
+Skills live in one place: [.claude/skills/](.claude/skills/).
 
-### Contact Rules
-- **Imran**: Max 3 actions/message. Single deliverable. "OK/Noted" = ask for the file. Silence >24h = stuck.
-- **Jay/Alpicool**: Tier 2. Formal technical language. mm only. Never discuss pricing in measurement requests.
-- **Alper**: Sprint-based ($21.90/hr). Upwork only.
-- **Alibaba suppliers**: Include product identifiers. "Gathering quotes -- no commitment." Never agree to prices.
+## Experiments
 
----
+Governance: [.claude/rules/experiment-governance.md](.claude/rules/experiment-governance.md)
+Active: `marketing/experiments/active/` · Completed: `.../completed/` · Rejected: `.../rejected/`
 
-## Telegram -- DEPRECATED
-Passive notifications still run (free). Do not build new Telegram features. All UI goes to Vercel dashboard.
+## Data freshness gate
 
-## Two Systems -- Do Not Confuse
-- **This system** (everest-calendar): Claude Code + Supabase + scheduled tasks + web dashboard
-- **OpenClaw** (separate, legacy): Local Node.js gateway for personal WhatsApp only
-- They share the same Supabase DB and OpenRouter key. Do NOT edit `~/.openclaw/` files.
+Every number carries its as-of date, checked at the moment of use. A metric without a
+visible measured-at date is forbidden in analysis — same status as a fabricated number.
 
-## Key Tables
-| Table | Purpose | Valid statuses |
-|-------|---------|---------------|
-| `platform_inbox` | Approval queue | pending, approved, edited, rejected, auto_sent, snoozed, transitioned |
-| `orchestrator_directives` | Agent task queue | pending, acknowledged, completed, cancelled |
-| `task_backlog` | Build queue | queued, building, pr_raised, approved, rejected, failed |
-| `system_proposals` | Improvement proposals | pending, approved, rejected, feedback_given, queued, implemented, verified |
-| `supplier_conversations` | Negotiation tracking | (negotiation phases) |
-| `communication_protocols` | Per-contact rules + trust scores | |
-| `draft_corrections` | Learning loop | |
+| Data | Stale after |
+|---|---|
+| Page performance / live page state | 24h |
+| Ad + traffic metrics | 24h |
+| Conversion / funnel / intent | 48h |
 
-Never use status values outside those listed -- Postgres CHECK constraints will reject them.
+If the newest datapoint is older than its threshold, re-sync first or open with
+"No current data — cannot recommend until refreshed."
 
-## Code Rules
-- Use `@/` import paths, never relative `../../`
+## Verification rules
+
+- Never claim a file exists or does not exist without checking. Search broadly before
+  concluding something is missing.
+- Before saying something was built or fixed, show the output that proves it.
+- If two consecutive approaches fail, stop and ask Tom.
+- When uncertain, say "I haven't verified this yet." Never state an assumption as fact.
+
+## Production permissions — summary
+
+Read-only analysis: allowed. Code and SQL prepared on branches: allowed.
+**Deployment, Meta campaign edits, live Shopify changes, Supabase schema changes,
+migration application, and merges to `main`: Tom's approval required.**
+Existing add-to-cart tracking must not be disturbed. No autonomous experiment launch.
+
+Live infrastructure — do not restart, redeploy or "improve" without asking:
+@KRYO_BUILDINGBOT Edge Function, Supabase triggers, RPC functions, scheduled tasks,
+`communication_protocols`, `product_context`.
+
+## Current state — 2026-07-31
+
+The dominant measured loss is **mobile add-to-cart**. On the identical template
+`/products/kryo2`: desktop 10.4% (77 sessions), mobile 0.18% (545 sessions).
+Mobile scrolls *deeper* than desktop. `cta_to_cart_request_rate` is 82% desktop vs 3% mobile.
+
+Full diagnosis:
+[audit/b2c-growth-system-activation-2026-07-31/first-conversion-diagnosis.md](audit/b2c-growth-system-activation-2026-07-31/first-conversion-diagnosis.md)
+
+**Do not run a landing-page copy experiment until this is resolved** — its primary metric
+is not reliably measurable on the segment carrying 80% of the traffic.
+
+## Code rules
+
+- `@/` import paths, never relative `../../`
 - Client Supabase: `import { createClient } from '@/lib/supabase/client'`
 - Server Supabase: `import { createClient } from '@/lib/supabase/server'`
 - Read `src/types/index.ts` before adding types
-- Branch convention: `feature/[name]` off main, PR back to main, never commit to main
+- Branch `feature/[name]` off `main`, PR back to `main`, never commit to `main`
 
-## Every Response (after completing substantive work)
+## Cost rule
 
-After every task, always end with these two lines:
-- **Next**: Single most impactful action to take now, and why
-- **Gap**: One thing that's still missing, unverified, or could break
+All LLM calls route through Max plan OAuth. Never use Anthropic API keys or OpenRouter
+for new automation.

@@ -12,10 +12,28 @@
       "Bash(rm -rf *)",
       "Bash(git push *)",
       "Bash(curl * | bash)",
-      "Bash(wget * | bash)"
+      "Bash(wget * | bash)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)",
+      "Read(./**/*token*)",
+      "Read(./**/*credential*)"
     ]
   },
   "env": {
     "CLAUDE_CODE_EFFORT_LEVEL": "high"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^mcp__.*(meta|facebook|ads).*__.*$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/meta_mcp_guard.py"
+          }
+        ]
+      }
+    ]
   }
 }
