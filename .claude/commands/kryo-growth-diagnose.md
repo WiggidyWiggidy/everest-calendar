@@ -44,8 +44,9 @@ WhatsApp click, checkout start.
 
 ## Step 4 — Identify the largest commercially meaningful drop
 
-Rank stage transitions by absolute lost sessions, not by percentage alone. A 90% drop on
-12 sessions matters less than a 60% drop on 700.
+Rank stage transitions by **absolute lost sessions**, not by percentage alone. A large percentage
+drop on a tiny base matters less than a modest percentage drop on a large one — always compute the
+absolute loss before ranking. (Illustrative only; all live figures come from CURRENT-STATE.md.)
 
 ## Step 5 — Segment
 

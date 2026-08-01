@@ -20,8 +20,8 @@ Economics inputs: `.claude/meta/account-context.md`. **Account currency is AUD.*
 **Gate:** if `account-context.md` still shows `REQUIRED` for COGS / break-even CPA / target CPA,
 say so and stop — every threshold below is unset. Do not invent a margin.
 
-**Verified baseline (live days only, to 2026-07-31):** 33 live days · A$532.53 · 679 LPV · 3 orders ·
-cost/LPV A$0.784 · conv 0.442%/LPV · CPA A$177.51 · AOV ≈ A$2,000 · winner-ad ATC 10.0% of LPV.
+**Baseline figures:** Read **`marketing/data-contracts/CURRENT-STATE.md`** for every current figure. Do not restate figures here.
+Never quote a figure from memory or from this file — read the fact store at use time.
 
 **Output:** the money verdict, the scale/hold/cut recommendation with its threshold, and the sample
 size needed before the verdict is trustworthy.

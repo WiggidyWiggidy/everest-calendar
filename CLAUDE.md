@@ -130,17 +130,15 @@ Live infrastructure — do not restart, redeploy or "improve" without asking:
 @KRYO_BUILDINGBOT Edge Function, Supabase triggers, RPC functions, scheduled tasks,
 `communication_protocols`, `product_context`.
 
-## Current state — 2026-07-31
+## Current state
 
-The dominant measured loss is **mobile add-to-cart**. On the identical template
-`/products/kryo2`: desktop 10.4% (77 sessions), mobile 0.18% (545 sessions).
-Mobile scrolls *deeper* than desktop. `cta_to_cart_request_rate` is 82% desktop vs 3% mobile.
+**All current figures live in one place: [marketing/data-contracts/CURRENT-STATE.md](marketing/data-contracts/CURRENT-STATE.md).**
+Read it at use time. Do not quote a figure from this file, from an agent, or from memory —
+they drift, and on 2026-07-31 an agent was found asserting an AOV that was never real.
 
-Full diagnosis:
-[audit/b2c-growth-system-activation-2026-07-31/first-conversion-diagnosis.md](audit/b2c-growth-system-activation-2026-07-31/first-conversion-diagnosis.md)
+The binding constraint and the blocked prerequisites are stated there, with n, source and as-of
+for every row. Enforced by `marketing/evals/lint-facts.mjs`.
 
-**Do not run a landing-page copy experiment until this is resolved** — its primary metric
-is not reliably measurable on the segment carrying 80% of the traffic.
 
 ## Code rules
 

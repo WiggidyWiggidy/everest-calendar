@@ -31,7 +31,7 @@ Unlabelled prose is treated as UNKNOWN.
 
 ## Prohibited reasoning
 
-- **No generic benchmark as proof of a KRYO problem.** "Industry add-to-cart is 8%" is not
+- **No generic benchmark as proof of a KRYO problem.** e.g. a quoted industry add-to-cart benchmark is not
   evidence that KRYO has a problem. Only KRYO's own segments and history are valid baselines.
 - **No correlation presented as causation.** An observational gap between cohorts is a
   PATTERN. It becomes a FACT about mechanism only after an intervention or a direct test.

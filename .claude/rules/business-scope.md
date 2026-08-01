@@ -18,9 +18,11 @@ Metric definitions live in `marketing/data-contracts/metric-definitions.md`.
 Never restate a business fact inline — reference the file.
 
 ## Priority order
-1. Product-page add-to-cart rate (currently the dominant loss)
-2. Qualified WhatsApp signup — **blocked on lead capture existing at all**
-3. Checkout completion
 
-Prefer one commercially meaningful learning over additional dashboard surface.
+**Read the binding constraint from `marketing/data-contracts/CURRENT-STATE.md`.** It is a fact,
+it changes, and it must not be hard-coded here. This file previously asserted a priority order that
+had been superseded by the findings — a rule stating a fact is a rule that will lie.
+
+The standing principle: prefer one commercially meaningful learning over more dashboard surface.
 A metric nobody will act on is not worth building.
+

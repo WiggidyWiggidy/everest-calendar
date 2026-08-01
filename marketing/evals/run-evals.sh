@@ -7,6 +7,9 @@ pass=0; fail=0
 must_block(){ d="$1"; shift; if $V "$@" 2>&1 | grep -q '"ok": true'; then echo "  FAIL (let through): $d"; fail=$((fail+1)); else echo "  ok  blocked: $d"; pass=$((pass+1)); fi; }
 must_pass(){ d="$1"; shift; if $V "$@" 2>&1 | grep -q '"ok": true'; then echo "  ok  passed:  $d"; pass=$((pass+1)); else echo "  FAIL (blocked a sound claim): $d"; fail=$((fail+1)); fi; }
 
+echo "== fact-location lint: no business figures in rules/agents =="
+if node marketing/evals/lint-facts.mjs > /dev/null 2>&1; then echo "  ok  lint clean"; pass=$((pass+1)); else echo "  FAIL: figures found in rules/agents (run: node marketing/evals/lint-facts.mjs)"; fail=$((fail+1)); fi
+echo
 echo "== must BLOCK: the 10 wrong claims of 2026-07-31 =="
 must_block "aggregate-as-fact (6 checkouts = 6 sales)" --claim "6 completed checkouts means 6 real sales" --instrument "shopify_funnel_daily" --n 6 --fresh --grain aggregate --label FACT
 must_block "uptime-blind window comparison"           --claim "July orders fell 80% while spend rose 64%" --instrument "monthly spend sums" --n 6 --grain aggregate --label FACT

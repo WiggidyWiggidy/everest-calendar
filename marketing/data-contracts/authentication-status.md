@@ -14,7 +14,7 @@
 ## Remediation — Google (GA4 + GSC)
 Re-authorise the Google service credential → backfill from last good date → confirm
 `gsc_sync_runs` logs a success → re-enable schedule.
-**Not blocking** the current diagnosis; the dominant loss is first-party and on-site.
+**Not blocking** the current diagnosis. See `CURRENT-STATE.md` for the binding constraint.
 
 ## Remediation — Shopify orders
 Determine whether the order sync is broken or whether there are genuinely no orders.

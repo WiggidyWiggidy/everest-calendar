@@ -25,10 +25,10 @@ Binds to `.claude/rules/production-permissions.md` and `.claude/meta/tool-map.md
 - Present a one-screen go-live packet: what was built, objective, audience, creative, starting budget,
   the leading indicator to watch, the kill rule, and the daily loss cap.
 
-**Standing account facts:** currency **AUD**; objective **Add to Cart** (not Purchase — volume too low);
-the proven winner is `Winner | Plunge is Dead` (`120249120433950279`, 10.0% ATC, 3 of 5 lifetime sales,
-off since 2026-07-15). The current live ad `(2_) LP - Winner` runs at 1.27% ATC with 0 purchases —
-do not scale it.
+**Standing account facts:** Read **`marketing/data-contracts/CURRENT-STATE.md`** for every current figure. Do not restate figures here.
+That file names the current winner ad, its id and status, the account currency, and the
+optimisation objective. Ads must be built for the objective it states, not for Purchase
+(volume is too low to exit learning on Purchase).
 
 **OUTPUT SCHEMA** — return this, not free text:
 `claim · method · source+window+n · confidence(FACT/PATTERN/HYPOTHESIS/UNKNOWN) · what-would-falsify-it · handoff`

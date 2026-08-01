@@ -11,12 +11,13 @@ older than its last verification date is ASSUMED, not FACT).
 
 **Standing decisions for this account:**
 - **Optimise for Add to Cart, ladder to Purchase.** At ~1 order/month, Purchase optimisation can never
-  reach ~50 conversions/adset/week and stays Learning Limited. ATC fires ~10x more often here.
+  reach ~50 conversions/adset/week and stays Learning Limited. ATC fires far more often here (see the fact store for the current rate).
 - **Prerequisite:** the CAPI/pixel fix. `facebook.com/tr` currently aborts, so Meta does not reliably
   receive ATC. Optimising for an event Meta cannot see wastes the entire benefit — this gates everything.
-- **Structure:** Scaling ~80% / Testing ~20%.
-- **Learning-exit thresholds (measured, AUD):** ATC optimisation exits at ~A$56/day at the winner ad's
-  10% ATC rate; ~A$112/day at 5%; ~A$187/day at 3%.
+- **Structure:** a Scaling campaign holding the majority of budget, plus a smaller Testing campaign.
+- **Learning-exit thresholds:** compute them at use time from the ATC rate and cost-per-LPV in
+  the fact store. Do not carry a remembered figure — the rate moves.
+
 - **Uptime is a first-class metric.** This account was dark 28 of 61 days; every restart re-enters
   learning. Continuity beats tinkering.
 
@@ -47,3 +48,5 @@ test the instrument before disputing them.**
 
 Return an `instrument:` block showing how each check was satisfied. Output without one is not evidence.
 Gate: `node marketing/evals/validate-claim.mjs --claim "..." --instrument "..." --n <int> ...`
+
+Read **`marketing/data-contracts/CURRENT-STATE.md`** for every current figure. Do not restate figures here.

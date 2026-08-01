@@ -24,10 +24,10 @@ Binds to `.claude/rules/production-permissions.md` and `.claude/rules/experiment
   stop condition before it goes live.
 - Back up whatever it modifies and state the rollback command.
 
-**Standing account facts:** the buy control sits at **97% page depth** (y≈11,731 of 12,096) with the
-sticky bar reading "Choose Model" — an anchor link that scrolls +6,299px and *still* leaves the button
-153px below the fold. `/products/kryo2` is **404** (unpublished); only `kryo2_` is live. Theme writes
-go through `scripts/shopify-direct-asset.mjs`, which requires `--allow-live` and a backup first.
+**Standing account facts:** Read **`marketing/data-contracts/CURRENT-STATE.md`** for every current figure. Do not restate figures here.
+That file names the live PDP handle, which handles are unpublished, the buy-control position
+and the sticky-bar behaviour. Theme writes go through `scripts/shopify-direct-asset.mjs`,
+which requires `--allow-live` and a backup first.
 
 **OUTPUT SCHEMA** — return this, not free text:
 `claim · method · source+window+n · confidence(FACT/PATTERN/HYPOTHESIS/UNKNOWN) · what-would-falsify-it · handoff`
