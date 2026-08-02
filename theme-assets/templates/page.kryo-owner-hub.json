@@ -58,7 +58,7 @@
         "hero_image": "shopify://shop_images/kryo-front-view.webp",
         "hero_image_alt": "KRYO installed and ready to use",
         "total_steps": 24,
-        "gate_enabled": true,
+        "gate_enabled": false,
         "safety_url": "/pages/kryo-safety"
       }
     }
