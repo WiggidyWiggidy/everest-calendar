@@ -75,7 +75,8 @@ const F = {
     const m = /^shopify:\/\/shop_images\/(.+)$/.exec(s);
     if (!m) return s;
     const local = IMG_MAP[m[1]] || IMG_MAP[m[1].replace(/\.[^.]+$/, '')];
-    return local || s;
+    if (!local) return s;
+    return typeof local === 'string' ? local : local.url;
   },
   image_tag: (v, kw) => {
     const attr = Object.entries(kw || {})
@@ -103,6 +104,15 @@ function resolve(expr, scope) {
   let cur = scope;
   for (const part of expr.split('.')) {
     if (cur === undefined || cur === null) return undefined;
+    // A Shopify image_picker value is an image drop with .width/.height. Here it is a
+    // string, so resolve intrinsic dimensions from the map — otherwise the local render
+    // cannot verify that images reserve their space before loading.
+    if (typeof cur === 'string' && (part === 'width' || part === 'height')) {
+      const m = /^shopify:\/\/shop_images\/(.+)$/.exec(cur);
+      if (!m) return undefined;
+      const e = IMG_MAP[m[1]] || IMG_MAP[m[1].replace(/\.[^.]+$/, '')];
+      return e && typeof e === 'object' ? e[part] : undefined;
+    }
     cur = cur[part];
   }
   return cur;

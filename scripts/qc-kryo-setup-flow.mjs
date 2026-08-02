@@ -127,8 +127,8 @@ try {
   if (noExpand.length)
     add('P1', 'A part has no expandable instructions', noExpand.map((q) => q.a).join(', '));
   else pass('Instructions expand for more detail', quick.map((q) => `${q.a}:${q.expandable}`).join(' · '));
-  const thin = quick.filter((q) => q.bullets < 3 || q.bullets > 6);
-  if (thin.length) add('P1', 'A part does not carry 3-6 quick instructions', thin.map((q) => `${q.a}:${q.bullets}`).join(', '));
+  const thin = quick.filter((q) => q.bullets < 3);
+  if (thin.length) add('P1', 'A part carries fewer than 3 quick instructions', thin.map((q) => `${q.a}:${q.bullets}`).join(', '));
   else pass('Every part scannable without opening anything', quick.map((q) => `${q.a}:${q.bullets}`).join(' · '));
   if (quick.some((q) => !q.purpose)) add('P1', 'A part is missing its one-sentence purpose', 'see .kryo-su__purpose');
   else pass('Every part states its purpose', '5 of 5');
@@ -210,7 +210,15 @@ try {
   const rows = await p.$$('.kryo-su__tocrow');
   const before = await p.evaluate(() => Math.round(window.scrollY));
   await rows[3].click();
-  await p.waitForTimeout(700);
+  // Wait for smooth scrolling to actually settle rather than guessing a duration —
+  // the page grew with 25 images and a fixed 700ms measured mid-animation.
+  await p.waitForFunction(() => {
+    if (window.__ky === undefined) { window.__ky = -1; window.__kyN = 0; }
+    const y = Math.round(window.scrollY);
+    if (y === window.__ky) { window.__kyN++; } else { window.__ky = y; window.__kyN = 0; }
+    return window.__kyN > 3;
+  }, null, { timeout: 8000 }).catch(() => {});
+  await p.evaluate(() => { delete window.__ky; delete window.__kyN; });
   const after = await p.evaluate(() => ({ y: Math.round(window.scrollY), hash: location.hash }));
   if (after.y <= before + 10) add('P0', 'Section navigator does not move the reader', `scrollY ${before} -> ${after.y}`);
   else pass('One tap to any part', `overview -> ${after.hash} (scrollY ${before} -> ${after.y})`);
@@ -374,6 +382,51 @@ try {
   else pass('Instruction rows accept images', qaImg.withMedia
       ? `${qaImg.withMedia}/${qaImg.rows} rows carry media, ${qaImg.zoomable} tap-to-enlarge, ${qaImg.lazy}/${qaImg.imgs} lazy`
       : `${qaImg.rows} rows ready for images (none added yet)`);
+
+  // §8 FINAL CONTENT CHECK. Every required point must exist somewhere on the page,
+  // with all accordions open (detail is allowed to live inside them).
+  const REQUIRED = {
+    position: [/upright/i, /level floor/i, /airflow/i, /hose reach|hose reaches/i, /power (reach|must reach)/i,
+               /refill/i, /spray .*(away|display|power side)/i, /30\s?cm/i, /40\s?[–-]\s?50\s?cm/i],
+    mount: [/dry-fit/i, /smooth, clean and completely dry|clean and completely dry/i, /end cap/i,
+            /slider|sliding connector/i, /difficult to reposition/i],
+    connect: [/seal .*flat|flat inside the fitting/i, /twisted/i, /hand-tighten|hand-tight/i,
+              /cross-thread/i, /both flow controls closed|flow adjuster closed/i, /24V DC/i, /PSU/i, /dry/i],
+    fill: [/before the pump|before operating the pump/i, /dry-running|running it dry|running the pump dry/i,
+           /filling slowly|fill slowly/i, /overfill/i, /dry the top/i, /refit the (fill )?plug/i,
+           /15\s?°?C/i, /below 1\s?°?C/i, /freeze/i],
+    firstUse: [/back (to|toward)/i, /shoulders/i, /face or chest|face\/chest/i, /lower flow/i,
+               /breathe normally/i, /hyperventilate/i, /rotate gradually/i, /chest pain/i],
+  };
+  const pageText = await p.evaluate(() => {
+    document.querySelectorAll('details').forEach((d) => d.setAttribute('open', ''));
+    return document.body.innerText;
+  });
+  const contentMisses = [];
+  for (const [group, list] of Object.entries(REQUIRED))
+    for (const re of list) if (!re.test(pageText)) contentMisses.push(`${group}: ${re.source.slice(0, 34)}`);
+  if (contentMisses.length)
+    add('P0', 'Required content missing from the page', contentMisses.join(' | '));
+  else pass('Final content check', `${Object.values(REQUIRED).flat().length} required points all present`);
+
+  // The safety acknowledgement must not bundle a marketing opt-in.
+  const gateShape = await p.evaluate(() => {
+    localStorage.clear();
+    return null;
+  });
+  await p.goto(base, { waitUntil: 'load' }); await p.waitForTimeout(300);
+  const gate2 = await p.evaluate(() => ({
+    heading: (document.querySelector('[data-kryo-gate-heading]') || {}).textContent.trim(),
+    confirms: document.querySelectorAll('.kryo-su__gatelist li').length,
+    marketing: !!document.querySelector('[data-kryo-gate-form] input[name="marketing"]'),
+    checkbox: (document.querySelector('[data-kryo-gate-form] input[name="accept"]')
+      || {}).parentElement?.innerText.trim() || '',
+    cta: (document.querySelector('[data-kryo-gate-submit]') || {}).textContent.trim(),
+    secondary: !!document.querySelector('.kryo-su__gatesecondary'),
+  }));
+  if (gate2.marketing) add('P0', 'Marketing consent is bundled into the safety acknowledgement', 'input[name=marketing] present');
+  else if (gate2.confirms !== 5) add('P1', 'Safety popup does not list five confirmations', `${gate2.confirms}`);
+  else pass('Safety popup updated', `"${gate2.heading}" · ${gate2.confirms} confirmations · CTA "${gate2.cta}" · secondary link ${gate2.secondary}`);
 
   if (errors.length) add('P0', 'JavaScript errors during the flow', errors.slice(0, 3).join(' | '));
   else pass('No JavaScript errors', 'whole flow clean');

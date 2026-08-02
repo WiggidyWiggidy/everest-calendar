@@ -70,8 +70,14 @@
         {{ section.settings.gate_lead }}
       </div>
       <p class="kryo-su__body">{{ section.settings.gate_body }}</p>
+      <p class="kryo-su__body kryo-su__gateconfirm">{{ section.settings.gate_confirm_lead }}</p>
+      <ul class="kryo-su__gatelist">
+        {%- assign confirms = section.settings.gate_confirms | split: '|' -%}
+        {%- for line in confirms -%}
+          <li><span class="kryo-su__gatetick" aria-hidden="true"></span>{{ line | strip }}</li>
+        {%- endfor -%}
+      </ul>
       <p class="kryo-su__body" data-kryo-gate-reack hidden>{{ section.settings.gate_reack_body }}</p>
-      <a class="kryo-su__opt kryo-su__opt--link" href="{{ section.settings.safety_url }}">{{ section.settings.gate_link }}</a>
 
       <form data-kryo-gate-form novalidate>
         <div data-kryo-gate-fields>
@@ -81,9 +87,9 @@
             <input type="email" name="email" autocomplete="email" inputmode="email" enterkeyhint="done"></label>
         </div>
         <label class="kryo-su__check"><input type="checkbox" name="accept"><span>{{ section.settings.gate_accept }}</span></label>
-        <label class="kryo-su__check" data-kryo-gate-marketing><input type="checkbox" name="marketing"><span>{{ section.settings.gate_marketing }}</span></label>
         <p class="kryo-su__err" data-kryo-gate-err hidden role="alert"></p>
         <button type="button" class="kryo-su__cta" data-kryo-gate-submit>{{ section.settings.gate_cta }}</button>
+        <a class="kryo-su__opt kryo-su__opt--link kryo-su__gatesecondary" href="{{ section.settings.safety_url }}">{{ section.settings.gate_link }}</a>
       </form>
     </div>
   </section>
@@ -137,9 +143,11 @@
             <button type="button" class="kryo-su__imgbtn" data-kryo-zoom
                     data-src="{{ section.settings.parts_image | image_url: width: 1600 }}"
                     aria-label="{{ section.settings.zoom_aria }}">
-              {{ section.settings.parts_image | image_url: width: 1120
+              {%- assign pim = section.settings.parts_image -%}
+              {{ pim | image_url: width: 1120
                  | image_tag: loading: 'lazy', widths: '430,640,860,1120',
-                   sizes: '(min-width: 990px) 860px, 100vw', alt: parts_alt, class: 'kryo-su__img' }}
+                   sizes: '(min-width: 990px) 860px, 100vw', alt: parts_alt, class: 'kryo-su__img',
+                   width: pim.width, height: pim.height }}
               <span class="kryo-su__zoomhint" aria-hidden="true">{{ section.settings.zoom_hint }}</span>
             </button>
           {%- endif -%}
@@ -209,9 +217,11 @@
                             <button type="button" class="kryo-su__imgbtn kryo-su__qaimg" data-kryo-zoom
                                     data-src="{{ ib.settings.image | image_url: width: 1600 }}"
                                     aria-label="{{ section.settings.zoom_aria }}">
-                              {{ ib.settings.image | image_url: width: 1120
+                              {%- assign qim = ib.settings.image -%}
+                            {{ qim | image_url: width: 1120
                                  | image_tag: loading: 'lazy', widths: '430,640,860,1120',
-                                   sizes: '(min-width: 990px) 860px, 100vw', alt: qa_alt, class: 'kryo-su__img' }}
+                                   sizes: '(min-width: 990px) 860px, 100vw', alt: qa_alt, class: 'kryo-su__img',
+                                   width: qim.width, height: qim.height }}
                               <span class="kryo-su__zoomhint" aria-hidden="true">{{ section.settings.zoom_hint }}</span>
                             </button>
                           {%- elsif ib.settings.slot != blank -%}
@@ -266,7 +276,8 @@
                             data-src="{{ im | image_url: width: 1600 }}" aria-label="{{ section.settings.zoom_aria }}">
                       {{ im | image_url: width: 1120
                          | image_tag: loading: 'lazy', widths: '430,640,860,1120',
-                           sizes: '(min-width: 990px) 860px, 100vw', alt: im_alt, class: 'kryo-su__img' }}
+                           sizes: '(min-width: 990px) 860px, 100vw', alt: im_alt, class: 'kryo-su__img',
+                           width: im.width, height: im.height }}
                       <span class="kryo-su__zoomhint" aria-hidden="true">{{ section.settings.zoom_hint }}</span>
                     </button>
                   {%- elsif slot != blank -%}
@@ -290,10 +301,38 @@
               </div>
             {%- endif -%}
 
-            {%- if block.settings.detail != blank -%}
+            {%- assign has_detail_media = false -%}
+            {%- if block.settings.detail_image_1 != blank or block.settings.detail_image_2 != blank -%}
+              {%- assign has_detail_media = true -%}
+            {%- endif -%}
+            {%- if block.settings.detail != blank or has_detail_media -%}
               <details class="kryo-su__acc" data-kryo-detail="{{ block.settings.anchor }}">
                 <summary><span>{{ section.settings.detail_label }}</span></summary>
-                <div class="kryo-su__accbody">{{ block.settings.detail }}</div>
+                <div class="kryo-su__accbody">
+                  {{ block.settings.detail }}
+                  {%- comment -%} Secondary images live inside the dropdown, one per row. {%- endcomment -%}
+                  {%- if has_detail_media -%}
+                    <div class="kryo-su__media kryo-su__media--detail">
+                      {%- for j in (1..2) -%}
+                        {%- case j -%}
+                          {%- when 1 -%}{%- assign dim = block.settings.detail_image_1 -%}{%- assign dia = block.settings.detail_alt_1 -%}
+                          {%- when 2 -%}{%- assign dim = block.settings.detail_image_2 -%}{%- assign dia = block.settings.detail_alt_2 -%}
+                        {%- endcase -%}
+                        {%- if dim != blank -%}
+                          {%- assign d_alt = dia | default: block.settings.title -%}
+                          <button type="button" class="kryo-su__imgbtn" data-kryo-zoom
+                                  data-src="{{ dim | image_url: width: 1600 }}" aria-label="{{ section.settings.zoom_aria }}">
+                            {{ dim | image_url: width: 1120
+                               | image_tag: loading: 'lazy', widths: '430,640,860,1120',
+                                 sizes: '(min-width: 990px) 860px, 100vw', alt: d_alt, class: 'kryo-su__img',
+                                 width: dim.width, height: dim.height }}
+                            <span class="kryo-su__zoomhint" aria-hidden="true">{{ section.settings.zoom_hint }}</span>
+                          </button>
+                        {%- endif -%}
+                      {%- endfor -%}
+                    </div>
+                  {%- endif -%}
+                </div>
               </details>
             {%- endif -%}
 
@@ -459,6 +498,10 @@
   .kryo-su__qa[open] .kryo-su__qamark::after { transform:rotate(0deg); }
   .kryo-su__qabody { padding:0 0 18px 19px; animation:kryoAccIn 200ms cubic-bezier(.2,.7,.3,1) both; }
   .kryo-su__qaimg { margin:0 0 12px; border-radius:12px; }
+  /* Media inside a dropdown must still be full width on mobile. The panel's own
+     horizontal padding was shrinking it to 316px of 390px. */
+  .kryo-su__accbody .kryo-su__media { margin-left:-16px; margin-right:-16px; }
+  .kryo-su__qabody .kryo-su__qaimg { margin-left:-19px; margin-right:0; }
   .kryo-su__qaimg .kryo-su__img, .kryo-su__ph.kryo-su__qaimg { border-radius:12px; max-height:46vh; }
   .kryo-su__qabody p { font-size:15px; line-height:1.55; color:var(--kryo-text-secondary); margin:0 0 10px; }
   .kryo-su__qabody p:last-child { margin-bottom:0; }
@@ -473,9 +516,10 @@
 
   /* ---- Media ---- */
   .kryo-su__media { display:flex; flex-direction:column; gap:12px; margin:0 0 20px; }
+  .kryo-su__media--detail { margin:14px 0 0; }
   .kryo-su__imgbtn { position:relative; display:block; width:100%; padding:0; border:0; background:none;
     cursor:zoom-in; border-radius:14px; overflow:hidden; }
-  .kryo-su__img { width:100%; height:auto; max-height:62vh; object-fit:contain; display:block;
+  .kryo-su__img { width:100%; height:auto !important; max-height:62vh; object-fit:contain; display:block;
     background:var(--kryo-surface); border-radius:14px; }
   .kryo-su__ph { width:100%; aspect-ratio:4/3; border-radius:14px; margin:0; }
   .kryo-su__zoomhint { position:absolute; right:10px; bottom:10px; padding:6px 10px; border-radius:999px;
@@ -561,6 +605,16 @@
   .kryo-su__check input { margin-top:2px; width:22px; height:22px; flex:0 0 auto; }
   .kryo-su__check[hidden] { display:none; }
   .kryo-su__err { color:var(--kryo-danger); font-size:14px; font-weight:600; margin:8px 0 12px; }
+  .kryo-su__gateconfirm { margin-bottom:10px; color:var(--kryo-text); font-weight:600; }
+  .kryo-su__gatelist { list-style:none; margin:0 0 22px; padding:0; }
+  .kryo-su__gatelist li { display:flex; gap:10px; align-items:flex-start; margin:0 0 12px;
+    font-size:15px; line-height:1.45; color:var(--kryo-text); }
+  .kryo-su__gatetick { flex:0 0 auto; width:20px; height:20px; border-radius:999px;
+    background:var(--kryo-blue-bg); position:relative; }
+  .kryo-su__gatetick::after { content:'\2713'; position:absolute; inset:0; display:flex;
+    align-items:center; justify-content:center; color:var(--kryo-blue-strong);
+    font-size:12px; font-weight:700; }
+  .kryo-su__gatesecondary { margin:14px 0 0; justify-content:center; }
 
   .kryo-su__mark:focus-visible, .kryo-su__cta:focus-visible, .kryo-su__alt:focus-visible,
   .kryo-su__barbtn:focus-visible, .kryo-su__opt:focus-visible, .kryo-su__navrow:focus-visible,
@@ -582,6 +636,7 @@
     .kryo-su__h1 { font-size:40px; }
     .kryo-su__h2 { font-size:30px; }
     .kryo-su__media { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .kryo-su__media--detail { grid-template-columns:1fr; }
     .kryo-su__media > *:only-child { grid-column:1 / -1; }
     .kryo-su__chfoot { flex-direction:row; align-items:center; justify-content:space-between; }
     .kryo-su__mark { width:auto; min-width:240px; }
@@ -764,10 +819,8 @@
   function showGate() {
     gate.hidden = false; guide.hidden = true;
     var fields = root.querySelector('[data-kryo-gate-fields]');
-    var mk = root.querySelector('[data-kryo-gate-marketing]');
     var rb = root.querySelector('[data-kryo-gate-reack]');
     if (fields) fields.hidden = reAck;
-    if (mk) mk.hidden = reAck;
     if (rb) rb.hidden = !reAck;
     var submit = root.querySelector('[data-kryo-gate-submit]');
     if (reAck) {
@@ -811,8 +864,9 @@
     lset(AKEY, JSON.stringify({
       registered: needDetails ? true : (prev.registered !== false),
       accepted_at: new Date().toISOString(),
-      safety_version: SVER, terms_version: TVER,
-      marketing: reAck ? !!prev.marketing : !!d.get('marketing')
+      safety_version: SVER, terms_version: TVER
+      // Marketing consent is deliberately NOT collected here — a safety acknowledgement
+      // must not be bundled with a marketing opt-in.
     }));
     track('kryo_safety_accept', { reack: reAck });
     reAck = false;
@@ -1023,17 +1077,19 @@
       "info": "Change this to require re-acknowledgement. Existing owners are NOT asked for their details again." },
     { "type": "text", "id": "terms_version", "label": "Terms version", "default": "KRYO-UAE-TERMS-2026-08-01" },
     { "type": "text", "id": "gate_eyebrow", "label": "Eyebrow", "default": "BEFORE YOU BEGIN" },
-    { "type": "text", "id": "gate_heading", "label": "Heading", "default": "Before you begin" },
+    { "type": "text", "id": "gate_heading", "label": "Heading", "default": "BEFORE USING KRYO" },
     { "type": "text", "id": "gate_lead_title", "label": "Warning title", "default": "Read this first" },
     { "type": "textarea", "id": "gate_lead", "label": "Warning lead", "default": "Cold exposure can rapidly affect breathing, heart rate and blood pressure." },
-    { "type": "textarea", "id": "gate_body", "label": "Body", "default": "Read the safety information before installing or using KRYO. Start gently, never direct the first flow at your face or chest, and do not use KRYO if a medical condition may make cold exposure unsafe." },
+    { "type": "textarea", "id": "gate_body", "label": "Body", "default": "Cold exposure produces a strong physiological response." },
+    { "type": "text", "id": "gate_confirm_lead", "label": "Confirmation lead", "default": "Confirm that you understand:" },
+    { "type": "textarea", "id": "gate_confirms", "label": "Confirmation lines (separate with |)",
+      "default": "Never run KRYO without water.|Keep mains power and the PSU dry.|Never set below 1\u00b0C or allow the reservoir to freeze.|Start first exposure with back and shoulders toward the Halo, not face or chest.|Stop immediately if you feel unwell." },
     { "type": "textarea", "id": "gate_reack_body", "label": "Re-acknowledgement body", "default": "We have updated the KRYO safety information. Please read it and confirm you understand before continuing. Your setup progress has been kept." },
     { "type": "text", "id": "gate_link", "label": "Safety link", "default": "Read full safety information" },
     { "type": "text", "id": "f_name", "label": "Name field", "default": "Full name" },
     { "type": "text", "id": "f_email", "label": "Email field", "default": "Email address" },
-    { "type": "textarea", "id": "gate_accept", "label": "Required acknowledgement", "default": "I confirm that I am 18 or older, have read and understood the KRYO safety information and terms, understand that cold exposure carries risks, and agree to install and use KRYO only as instructed. I understand that I should seek medical advice before use if I have a medical condition, am pregnant, take relevant medication or am unsure whether cold exposure is safe for me." },
-    { "type": "textarea", "id": "gate_marketing", "label": "Optional marketing consent", "default": "Send me KRYO care tips, product updates and offers by email." },
-    { "type": "text", "id": "gate_cta", "label": "Accept button", "default": "Accept and begin setup" },
+    { "type": "textarea", "id": "gate_accept", "label": "Required acknowledgement", "default": "I have read and understand the KRYO safety instructions and Terms." },
+    { "type": "text", "id": "gate_cta", "label": "Accept button", "default": "I understand \u2014 continue setup" },
     { "type": "text", "id": "reack_heading", "label": "Re-acknowledgement heading", "default": "Safety information has been updated." },
     { "type": "text", "id": "reack_cta", "label": "Re-acknowledgement button", "default": "I understand" },
     { "type": "text", "id": "err_full", "label": "Error — missing details", "default": "Please add your name, a valid email address and tick the acknowledgement." },
@@ -1114,6 +1170,11 @@
         { "type": "image_picker", "id": "image_4", "label": "Image 4" },
         { "type": "text", "id": "alt_4", "label": "Image 4 alt" },
         { "type": "text", "id": "slot_4", "label": "Image 4 expected filename" },
+        { "type": "header", "content": "Secondary images (inside the dropdown)" },
+        { "type": "image_picker", "id": "detail_image_1", "label": "Detail image 1" },
+        { "type": "text", "id": "detail_alt_1", "label": "Detail image 1 alt" },
+        { "type": "image_picker", "id": "detail_image_2", "label": "Detail image 2" },
+        { "type": "text", "id": "detail_alt_2", "label": "Detail image 2 alt" },
         { "type": "text", "id": "next_anchor", "label": "Next section anchor" },
         { "type": "text", "id": "next_label", "label": "Next section label" }
       ]
