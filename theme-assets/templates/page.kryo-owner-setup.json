@@ -39,10 +39,10 @@
             "warning": "<p>Do not press the rear against a wall, towel or curtain.</p>",
             "tip": "",
             "why": "<p>Restricted airflow can reduce cooling performance and may cause overheating.</p>",
-            "image": "shopify://shop_images/kryo-side-view.webp",
+            "image": "shopify://shop_images/kryo-setup-02-place-kryo",
             "cta_label": "Position checked",
             "allow_skip": true,
-            "image_alt": "KRYO standing upright on a level floor with clear space behind it for rear airflow"
+            "image_alt": "KRYO standing upright on the bathroom floor with callouts to keep it upright, keep the vents clear and leave airflow space behind it"
           }
         },
         "step_03": {
@@ -61,7 +61,9 @@
             "tip": "<p>The display and power button are on KRYO’s right-hand side. Mount the Halo on the opposite side where possible.</p>",
             "why": "",
             "cta_label": "Reach checked",
-            "allow_skip": true
+            "allow_skip": true,
+            "image": "shopify://shop_images/kryo-setup-03-dry-fit-reach",
+            "image_alt": "Line drawing of an owner holding the rail against the wall to check hose reach and KRYO position before removing the adhesive backing"
           }
         },
         "step_04": {
@@ -99,7 +101,9 @@
             "tip": "<p>Higher placement helps water spread across the tops of the shoulders and create a wider film over the upper body.</p>",
             "why": "",
             "cta_label": "Height chosen",
-            "allow_skip": true
+            "allow_skip": true,
+            "image": "shopify://shop_images/kryo-setup-05-halo-height",
+            "image_alt": "Halo height guide: mount the Halo 30 cm minimum, 40 to 50 cm preferred, above the top of the tallest user's head"
           }
         },
         "step_06": {
@@ -118,7 +122,9 @@
             "tip": "<p>Mark the rail position with removable tape.</p>",
             "why": "",
             "cta_label": "Position tested",
-            "allow_skip": true
+            "allow_skip": true,
+            "image": "shopify://shop_images/kryo-setup-06-dry-fit-rail",
+            "image_alt": "A hand holding the rail vertically against the tiled wall to confirm height and final position before sticking"
           }
         },
         "step_07": {
@@ -137,7 +143,9 @@
             "tip": "",
             "why": "",
             "cta_label": "Surface ready",
-            "allow_skip": true
+            "allow_skip": true,
+            "image": "shopify://shop_images/kryo-setup-07-clean-wall",
+            "image_alt": "A hand wiping the tiled wall with a microfibre cloth so the surface is clean, dry and free of dust or oil"
           }
         },
         "step_08": {
@@ -156,7 +164,9 @@
             "tip": "",
             "why": "",
             "cta_label": "I understand",
-            "allow_skip": false
+            "allow_skip": false,
+            "image": "shopify://shop_images/kryo-setup-08-stick-rail",
+            "image_alt": "Pressing the rail firmly onto the wall after removing the adhesive backing, holding for ten seconds, only once aligned"
           }
         },
         "step_09": {
@@ -175,7 +185,9 @@
             "tip": "",
             "why": "",
             "cta_label": "I understand",
-            "allow_skip": false
+            "allow_skip": false,
+            "image": "shopify://shop_images/kryo-setup-09-hose-to-rail",
+            "image_alt": "Close-up of the lower rail connection where the hose screws on, hand-tighten only, do not overtighten"
           }
         },
         "step_10": {
@@ -194,7 +206,9 @@
             "tip": "",
             "why": "",
             "cta_label": "Hose connected",
-            "allow_skip": true
+            "allow_skip": true,
+            "image": "shopify://shop_images/kryo-setup-10-hose-to-kryo",
+            "image_alt": "A hand attaching the hose to the KRYO outlet fitting, hand-tighten only, do not overtighten"
           }
         },
         "step_11": {
@@ -232,7 +246,9 @@
             "tip": "",
             "why": "<p>The exact minimum priming volume is pending confirmation and is not published here.</p>",
             "cta_label": "I understand",
-            "allow_skip": false
+            "allow_skip": false,
+            "image": "shopify://shop_images/kryo-setup-12-add-water-prime",
+            "image_alt": "Adding approximately one litre of water into the KRYO fill opening to prime the system before switching on"
           }
         },
         "step_13": {
@@ -289,7 +305,9 @@
             "tip": "",
             "why": "",
             "cta_label": "Plug fitted",
-            "allow_skip": true
+            "allow_skip": true,
+            "image": "shopify://shop_images/kryo-setup-15-fill-cap",
+            "image_alt": "Unscrewing the KRYO fill cap by hand to access the fill opening, no tools required"
           }
         },
         "step_16": {
@@ -308,7 +326,9 @@
             "tip": "",
             "why": "",
             "cta_label": "I understand",
-            "allow_skip": false
+            "allow_skip": false,
+            "image": "shopify://shop_images/kryo-setup-16-first-cooldown",
+            "image_alt": "KRYO front panel showing the temperature display during the first cooldown from room-temperature water"
           }
         },
         "step_17": {
@@ -348,7 +368,9 @@
             "tip": "",
             "why": "",
             "cta_label": "Continue",
-            "allow_skip": false
+            "allow_skip": false,
+            "image": "shopify://shop_images/kryo-setup-18-coverage",
+            "image_alt": "Line drawing showing the Halo's broad water spread across the shoulders and upper back"
           }
         },
         "step_19": {
@@ -386,7 +408,9 @@
             "tip": "<p>Breathe normally.</p>",
             "why": "",
             "cta_label": "I understand",
-            "allow_skip": false
+            "allow_skip": false,
+            "image": "shopify://shop_images/kryo-setup-20-first-flow",
+            "image_alt": "Do and Don't comparison: face away so the first flow hits the upper back and shoulders, never face the Halo directly"
           }
         },
         "step_21": {

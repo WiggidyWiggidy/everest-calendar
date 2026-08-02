@@ -139,15 +139,22 @@
 
           <div class="kryo-su__vis">
             {%- if block.settings.image != blank -%}
+              {%- comment -%}
+                alt must be resolved BEFORE image_tag. Liquid cannot take a piped filter inside a
+                named argument: `alt: x | default: y, class: 'z'` parses as `default` applied to
+                image_tag's OUTPUT, silently swallowing every argument after the pipe — which
+                dropped class="kryo-su__img" and rendered the images unstyled at natural size.
+              {%- endcomment -%}
+              {%- assign img_alt = block.settings.image_alt | default: block.settings.title -%}
               <button type="button" class="kryo-su__imgbtn" data-kryo-zoom
                       data-src="{{ block.settings.image | image_url: width: 1600 }}"
                       aria-label="{{ section.settings.zoom_aria }}">
                 {{ block.settings.image
-                   | image_url: width: 860
-                   | image_tag: loading: 'lazy', widths: '430,640,860',
+                   | image_url: width: 1120
+                   | image_tag: loading: 'lazy', widths: '430,640,860,1120',
                      sizes: '(min-width: 990px) 720px, 100vw',
-                     alt: block.settings.image_alt | default: block.settings.title,
-                     class: 'kryo-su__img' }}
+                     alt: img_alt, class: 'kryo-su__img' }}
+                <span class="kryo-su__zoomhint" aria-hidden="true">{{ section.settings.zoom_hint }}</span>
               </button>
             {%- else -%}
               <div class="kryo-owner__placeholder kryo-su__ph">
@@ -349,9 +356,17 @@
 
   /* Instructional visual — 4:3, ahead of the copy, tap for fullscreen */
   .kryo-su__vis { margin:0 0 18px; }
-  .kryo-su__imgbtn { display:block; width:100%; padding:0; border:0; background:none; cursor:zoom-in;
-    border-radius:15px; overflow:hidden; }
-  .kryo-su__img { width:100%; aspect-ratio:4/3; object-fit:cover; display:block;
+  .kryo-su__imgbtn { position:relative; display:block; width:100%; padding:0; border:0; background:none;
+    cursor:zoom-in; border-radius:15px; overflow:hidden; }
+  /* Technical diagrams carry fine detail that is small at 350px. Fullscreen is undiscoverable
+     without an affordance, so say so on the image itself. */
+  .kryo-su__zoomhint { position:absolute; right:10px; bottom:10px; padding:6px 10px; border-radius:999px;
+    background:rgba(23,26,28,.72); color:#fff; font:600 11px/1 var(--kryo-font-body);
+    letter-spacing:.04em; text-transform:uppercase; pointer-events:none; }
+  /* The instructional images are composed cards with text baked in, in mixed 4:5 and 4:3
+     ratios. A fixed 4:3 cover-crop would slice the copy off, so the image keeps its own
+     ratio and is bounded instead — capped so the written instruction below stays reachable. */
+  .kryo-su__img { width:100%; height:auto; max-height:58vh; object-fit:contain; display:block;
     background:var(--kryo-surface); border-radius:15px; }
   .kryo-su__ph { width:100%; aspect-ratio:4/3; border-radius:15px; margin:0; }
 
@@ -1005,6 +1020,7 @@
     { "type": "text", "id": "nav_hint", "label": "Progress hint", "default": "All steps" },
     { "type": "text", "id": "nav_aria", "label": "Progress accessible label", "default": "Open the setup navigator" },
     { "type": "text", "id": "zoom_aria", "label": "Image accessible label", "default": "View this image full screen" },
+    { "type": "text", "id": "zoom_hint", "label": "Image zoom hint", "default": "Tap to enlarge" },
 
     { "type": "header", "content": "Buttons" },
     { "type": "text", "id": "back_label", "label": "Back", "default": "Back" },

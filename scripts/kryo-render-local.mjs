@@ -54,6 +54,10 @@ const section = {
 };
 
 // ---- the Liquid subset this section actually uses ----
+// Optional: KRYO_IMG_MAP=/path/to/map.json  ->  { "shop-image-name": "./img/file.png" }
+let IMG_MAP = {};
+try { if (process.env.KRYO_IMG_MAP) IMG_MAP = JSON.parse(fs.readFileSync(process.env.KRYO_IMG_MAP, 'utf8')); } catch {}
+
 const F = {
   escape: (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'),
   strip: (v) => String(v ?? '').trim(),
@@ -63,7 +67,16 @@ const F = {
   size: (v) => (Array.isArray(v) ? v.length : String(v ?? '').length),
   asset_url: (v) => `./${path.basename(String(v))}`,
   stylesheet_tag: (v) => `<link rel="stylesheet" href="${v}">`,
-  image_url: (v) => (v ? String(v) : ''),
+  // `shopify://shop_images/name` cannot resolve offline. Map it to a real local file when one
+  // is available (see IMG_MAP below) so the gate measures true image geometry rather than the
+  // 0x0 box a broken <img> produces — which would silently pass the below-the-fold check.
+  image_url: (v) => {
+    const s = v ? String(v) : '';
+    const m = /^shopify:\/\/shop_images\/(.+)$/.exec(s);
+    if (!m) return s;
+    const local = IMG_MAP[m[1]] || IMG_MAP[m[1].replace(/\.[^.]+$/, '')];
+    return local || s;
+  },
   image_tag: (v, kw) => {
     const attr = Object.entries(kw || {})
       .filter(([k]) => k !== 'widths')
