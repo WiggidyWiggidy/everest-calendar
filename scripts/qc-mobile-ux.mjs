@@ -41,8 +41,15 @@ try {
 
     const m = await p.evaluate(() => {
       const vpH = window.innerHeight;
-      const vis = (el) => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el);
-        return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' && +s.opacity > 0; };
+      // checkVisibility() is authoritative. A rect is not: content inside a closed <details>
+      // still reports a laid-out box, so a rect-based test counts hidden controls as visible.
+      const vis = (el) => {
+        if (el.checkVisibility)
+          return el.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true })
+            && el.getBoundingClientRect().width > 0;
+        const r = el.getBoundingClientRect(); const s = getComputedStyle(el);
+        return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' && +s.opacity > 0;
+      };
       const all = [...document.querySelectorAll('a,button,summary,input,select,[role="button"]')].filter(vis);
 
       // Smallest touch target among visible controls.

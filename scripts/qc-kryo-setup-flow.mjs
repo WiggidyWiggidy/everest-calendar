@@ -99,11 +99,34 @@ try {
   else pass('Overview navigator lists five parts', `${shape.tocRows} rows, ${shape.marks} mark-complete controls`);
 
   // ---------- 2. Quick instructions carry the whole setup ----------
-  const quick = await p.evaluate(() => [...document.querySelectorAll('[data-kryo-ch]')].map((s) => ({
-    a: s.getAttribute('data-kryo-ch'),
-    bullets: s.querySelectorAll('.kryo-su__quick li').length,
-    purpose: !!s.querySelector('.kryo-su__purpose'),
-  })));
+  const quick = await p.evaluate(() => {
+    // Instruction TEXT must be visible with every dropdown closed — only the explanation collapses.
+    document.querySelectorAll('.kryo-su__qa[open]').forEach((d) => d.removeAttribute('open'));
+    // checkVisibility() is the authoritative test. getBoundingClientRect() is not:
+    // content inside a closed <details> still reports a laid-out height in Chromium,
+    // which made a hidden explanation read as visible on 2026-08-02.
+    const vis = (el) => (el.checkVisibility
+      ? el.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true })
+      : el.getBoundingClientRect().height > 0);
+    return [...document.querySelectorAll('[data-kryo-ch]')].map((s) => {
+      const rows = [...s.querySelectorAll('.kryo-su__qatext, .kryo-su__quick li')];
+      return {
+        a: s.getAttribute('data-kryo-ch'),
+        bullets: rows.length,
+        visible: rows.filter(vis).length,
+        expandable: s.querySelectorAll('details.kryo-su__qa').length,
+        purpose: !!s.querySelector('.kryo-su__purpose'),
+      };
+    });
+  });
+  const hidden = quick.filter((q) => q.visible !== q.bullets);
+  if (hidden.length)
+    add('P0', 'An instruction line is hidden until a dropdown is opened', hidden.map((q) => `${q.a}:${q.visible}/${q.bullets}`).join(', '));
+  else pass('Every instruction line visible with all dropdowns closed', quick.map((q) => `${q.a}:${q.visible}`).join(' · '));
+  const noExpand = quick.filter((q) => q.expandable === 0);
+  if (noExpand.length)
+    add('P1', 'A part has no expandable instructions', noExpand.map((q) => q.a).join(', '));
+  else pass('Instructions expand for more detail', quick.map((q) => `${q.a}:${q.expandable}`).join(' · '));
   const thin = quick.filter((q) => q.bullets < 3 || q.bullets > 6);
   if (thin.length) add('P1', 'A part does not carry 3-6 quick instructions', thin.map((q) => `${q.a}:${q.bullets}`).join(', '));
   else pass('Every part scannable without opening anything', quick.map((q) => `${q.a}:${q.bullets}`).join(' · '));
@@ -114,8 +137,9 @@ try {
   const warn = await p.evaluate(() => {
     // With every accordion closed, what safety content is actually on the page?
     document.querySelectorAll('details[open]').forEach((d) => d.removeAttribute('open'));
-    const visible = (el) => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el);
-      return r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden'; };
+    const visible = (el) => (el.checkVisibility
+      ? el.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true })
+      : el.getBoundingClientRect().height > 0);
     const crit = [...document.querySelectorAll('.kryo-owner__note--critical')].filter(visible);
     const insideAcc = crit.filter((n) => n.closest('details')).length;
     const perCh = [...document.querySelectorAll('[data-kryo-ch]')].map((s) => ({
@@ -307,6 +331,32 @@ try {
   });
   if (!helpOpens) add('P0', 'Help does not open from a chapter footer', 'sheet stayed hidden');
   else pass('Help opens from a chapter footer', 'WhatsApp topic sheet');
+
+  // Every instruction must be an editable block, or Tom cannot maintain it in the theme editor.
+  const editable = await p.evaluate(() => {
+    const rows = [...document.querySelectorAll('.kryo-su__qa')];
+    return { total: rows.length,
+             withBlockId: rows.filter((r) => r.hasAttribute('data-shopify-editor-block')).length };
+  });
+  if (editable.total === 0 || editable.withBlockId !== editable.total)
+    add('P0', 'Instructions are not editable blocks', `${editable.withBlockId}/${editable.total} carry a block id`);
+  else pass('Every instruction is a theme-editor block', `${editable.total} editable rows`);
+
+  const opens = await p.evaluate(() => {
+    const d = document.querySelector('[data-kryo-ch="position"] details.kryo-su__qa');
+    // An earlier check opens every <details>; close this one first. Measure the DETAILS
+    // element's own height — that is what the reader actually sees grow.
+    d.removeAttribute('open');
+    const before = Math.round(d.getBoundingClientRect().height);
+    const bodyHidden = d.querySelector('.kryo-su__qabody').checkVisibility();
+    d.setAttribute('open', '');
+    return { before, after: Math.round(d.getBoundingClientRect().height),
+             bodyHiddenWhenClosed: !bodyHidden,
+             bodyShownWhenOpen: d.querySelector('.kryo-su__qabody').checkVisibility() };
+  });
+  if (!(opens.after > opens.before && opens.bodyHiddenWhenClosed && opens.bodyShownWhenOpen))
+    add('P0', 'Instruction dropdown does not reveal its explanation', JSON.stringify(opens));
+  else pass('Instruction dropdown reveals its explanation', `${opens.before}px closed -> ${opens.after}px open`);
 
   if (errors.length) add('P0', 'JavaScript errors during the flow', errors.slice(0, 3).join(' | '));
   else pass('No JavaScript errors', 'whole flow clean');

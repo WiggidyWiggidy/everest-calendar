@@ -100,7 +100,6 @@
             "anchor": "position",
             "title": "Position & plan",
             "purpose": "Decide where everything goes before mounting anything.",
-            "quick": "<ul><li>Place KRYO upright on a stable, level floor.</li><li>Keep the rear airflow area clear.</li><li>Confirm hose, power and refill reach.</li><li>Position the Halo above the user and keep spray directed away from the display and power side.</li><li>Do not remove the rail adhesive yet.</li></ul>",
             "critical": "<p>Do not stick the rail down until the complete layout has been checked.</p>",
             "detail": "<p><strong>Halo height.</strong> The Halo should sit at least 30&nbsp;cm above the tallest user’s head. Where space and hose length allow, 40 to 50&nbsp;cm gives broader shoulder coverage — higher placement helps water spread across the tops of the shoulders and create a wider film over the upper body.</p><p><strong>Check every component first.</strong> Lay out every item before you begin and do not install KRYO if anything is missing or damaged: KRYO, two-metre hose, Halo with flow adjuster, rubber seals, UAE PSU and plug, fill-opening plug, mounting rail, sliding connector, Phillips-head screwdriver. The rubber seals are small but essential — keep them with the hose fittings.</p><p><strong>Airflow.</strong> Leave a clear gap behind KRYO so warm air can exit from the rear. Do not press the rear against a wall, towel or curtain — restricted airflow can reduce cooling performance and may cause overheating.</p><p><strong>Reach checks.</strong> Connect the hose and Halo, hold the rail in the proposed position, then confirm: the hose reaches without pulling or kinking; the PSU reaches a suitable wall outlet; a bidet or shower hose can reach the fill opening; spray stays away from KRYO’s display and power side.</p><p><strong>Spray direction.</strong> The display and power button are on KRYO’s right-hand side. Mount the Halo on the opposite side where possible.</p>",
             "next_anchor": "mount",
@@ -117,13 +116,52 @@
             "nav_label": "Position"
           }
         },
+        "q_position_01": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "position",
+            "text": "Place KRYO upright on a stable, level floor.",
+            "detail": "<p>KRYO must stay upright. A level floor keeps the internal water level readable and stops the unit rocking while the pump runs.</p>"
+          }
+        },
+        "q_position_02": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "position",
+            "text": "Keep the rear airflow area clear.",
+            "detail": "<p>Warm air exits from the rear. Pressing it against a wall, towel or curtain restricts airflow, which can reduce cooling performance and may cause overheating.</p>"
+          }
+        },
+        "q_position_03": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "position",
+            "text": "Confirm hose, power and refill reach.",
+            "detail": "<p>Hold the rail where you plan to mount it, then check the hose reaches without pulling or kinking, the PSU reaches a suitable wall outlet, and a bidet or shower hose can reach the fill opening.</p>"
+          }
+        },
+        "q_position_04": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "position",
+            "text": "Position the Halo above the user and keep spray directed away from the display and power side.",
+            "detail": "<p>KRYO’s display and power button are on its right-hand side. Mount the Halo on the opposite side where possible.</p>"
+          }
+        },
+        "q_position_05": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "position",
+            "text": "Do not remove the rail adhesive yet.",
+            "detail": "<p>The adhesive is difficult to reposition. Leave the backing on until the whole layout has been checked.</p>"
+          }
+        },
         "chapter_2": {
           "type": "chapter",
           "settings": {
             "anchor": "mount",
             "title": "Mount the Halo",
             "purpose": "Assemble the rail and mount it once the position is confirmed.",
-            "quick": "<ul><li>Insert the sliding connector into the rail.</li><li>Refit the rail end cap.</li><li>Make sure the slider moves correctly.</li><li>Clean and completely dry the wall.</li><li>Align the rail and press it firmly into position.</li></ul>",
             "critical": "<p>Adhesive is difficult to reposition. Confirm the location before applying it.</p>",
             "detail": "<p><strong>Rail assembly.</strong> Remove one plastic end cap with the supplied screwdriver. Slide the height-adjustable connector into the rail, press the button and confirm it moves freely. Refit the end cap and tighten the screw without overtightening.</p><p><strong>Final position test.</strong> Fit the Halo and hose to the slider, hold the complete rail against the wall and check once more: the rail is vertical; the Halo is high enough; the hose is not stretched and has no sharp kink; spray points away from the power side; rear airflow stays clear; the refill hose reaches KRYO; the power cable reaches safely. Mark the rail position with removable tape.</p><p><strong>Surface preparation.</strong> The wall must be smooth, clean, dry and free from soap film, oil, dust or loose material. Use only the preparation method approved for your wall and the supplied adhesive.</p><p><strong>Applying the rail.</strong> Remove the adhesive covers, align the rail with your marks, make first contact carefully, then press firmly across every adhesive point. Allow the approved setting time before loading the rail.</p>",
             "next_anchor": "connect",
@@ -136,13 +174,52 @@
             "nav_label": "Mount"
           }
         },
+        "q_mount_01": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "mount",
+            "text": "Insert the sliding connector into the rail.",
+            "detail": "<p>Remove one plastic end cap with the supplied screwdriver, then slide the height-adjustable connector into the rail.</p>"
+          }
+        },
+        "q_mount_02": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "mount",
+            "text": "Refit the rail end cap.",
+            "detail": "<p>Tighten the screw without overtightening.</p>"
+          }
+        },
+        "q_mount_03": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "mount",
+            "text": "Make sure the slider moves correctly.",
+            "detail": "<p>Press the button and confirm the connector moves freely along the rail before anything goes on the wall.</p>"
+          }
+        },
+        "q_mount_04": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "mount",
+            "text": "Clean and completely dry the wall.",
+            "detail": "<p>The wall must be smooth, clean, dry and free from soap film, oil, dust or loose material. Use only the preparation method approved for your wall and the supplied adhesive.</p>"
+          }
+        },
+        "q_mount_05": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "mount",
+            "text": "Align the rail and press it firmly into position.",
+            "detail": "<p>Mark the position with removable tape first. Remove the adhesive covers, make first contact carefully, then press across every adhesive point and allow the approved setting time before loading the rail.</p>"
+          }
+        },
         "chapter_3": {
           "type": "chapter",
           "settings": {
             "anchor": "connect",
             "title": "Connect",
             "purpose": "Connect the Halo, hose and power.",
-            "quick": "<ul><li>Check the rubber seal inside each water fitting.</li><li>Connect the hose to the Halo.</li><li>Connect the other end to KRYO.</li><li>Hand-tighten only.</li><li>Connect KRYO’s 24V DC lead to the supplied PSU, then connect the PSU to a suitable dry mains outlet.</li></ul>",
             "critical": "<p>Seal flat. Fit squarely. Hand-tight only.</p><p>Keep the PSU and mains connection dry and away from standing water or splash.</p>",
             "detail": "<p><strong>Seals.</strong> A rubber seal must sit flat inside each hose fitting. Correct: seal flat and centred. Incorrect: missing, twisted or pinched. A missing or misaligned seal can cause leaking.</p><p><strong>Water connections.</strong> Hand-tighten one hose end onto the Halo and the other onto KRYO’s outlet. Check the hose follows a smooth path. Do not cross-thread or overtighten.</p><p><strong>Both flow controls closed to start.</strong> Keep the Halo flow adjuster closed and KRYO’s water-flow control off until you are ready to prime.</p><p><strong>Power.</strong> The PSU converts the UAE wall supply to 24V DC for KRYO. Keep KRYO switched off and dry your hands. Connect KRYO’s 24V DC lead to the PSU, place the PSU and its connection outside the splash zone, then connect the UAE plug to a suitable wall outlet. Route cables away from water and foot traffic.</p>",
             "next_anchor": "fill",
@@ -155,13 +232,52 @@
             "nav_label": "Connect"
           }
         },
+        "q_connect_01": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "connect",
+            "text": "Check the rubber seal inside each water fitting.",
+            "detail": "<p>A seal must sit flat and centred inside the fitting. Missing, twisted or pinched seals are the most common cause of leaks.</p>"
+          }
+        },
+        "q_connect_02": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "connect",
+            "text": "Connect the hose to the Halo.",
+            "detail": "<p>Thread the fitting on squarely so it cannot cross-thread.</p>"
+          }
+        },
+        "q_connect_03": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "connect",
+            "text": "Connect the other end to KRYO.",
+            "detail": "<p>Check the hose then follows a smooth path with no sharp kink.</p>"
+          }
+        },
+        "q_connect_04": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "connect",
+            "text": "Hand-tighten only.",
+            "detail": "<p>Do not use tools. Overtightening can damage the fitting or deform the seal.</p>"
+          }
+        },
+        "q_connect_05": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "connect",
+            "text": "Connect KRYO’s 24V DC lead to the supplied PSU, then connect the PSU to a suitable dry mains outlet.",
+            "detail": "<p>Keep KRYO switched off and dry your hands first. Place the PSU and its connection outside the splash zone, and route cables away from water and foot traffic.</p>"
+          }
+        },
         "chapter_4": {
           "type": "chapter",
           "settings": {
             "anchor": "fill",
             "title": "Fill & start",
             "purpose": "Prime KRYO, start circulation and fill it safely.",
-            "quick": "<ul><li>Open the fill plug.</li><li>Add water before powering the pump.</li><li>Switch KRYO on and confirm smooth circulation.</li><li>Continue filling slowly to the safe level.</li><li>Dry the top and refit the fill plug.</li><li>Start around 15°C.</li></ul>",
             "critical": "<p>Never run the pump dry. If you hear a harsh dry-running sound or see no circulation, switch KRYO off immediately and add water.</p><p>Do not overfill. Never set KRYO below 1°C or allow the reservoir to freeze.</p>",
             "detail": "<p><strong>Prime before power.</strong> The internal circulation system needs water before KRYO is switched on. Add clean water through the top opening until the system is primed. The exact minimum priming volume is pending confirmation and is not published here.</p><p><strong>Switch on and listen.</strong> Switch KRYO on, confirm the internal light turns on, and listen for smooth internal circulation.</p><p><strong>Filling.</strong> Keep the internal light on while filling so you can see the level clearly. Add clean water slowly and stop at the safe level shown. Never let water overflow into the upper internal area, and do not fill to the top of the opening. The exact maximum fill level is pending confirmation and is not published here.</p><p><strong>Closing up.</strong> Wipe away spills, dry the top surface, insert the supplied fill-opening plug and confirm it sits correctly.</p><p><strong>Temperature.</strong> Press SET and choose approximately 15°C for your first session. Lower the temperature gradually only after you know how your body responds.</p>",
             "next_anchor": "first-use",
@@ -174,13 +290,60 @@
             "nav_label": "Fill & start"
           }
         },
+        "q_fill_01": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "fill",
+            "text": "Open the fill plug.",
+            "detail": "<p>Unscrew the top cap by hand. No tools are required.</p>"
+          }
+        },
+        "q_fill_02": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "fill",
+            "text": "Add water before powering the pump.",
+            "detail": "<p>The internal circulation system needs water before KRYO is switched on. The exact minimum priming volume is pending confirmation and is not published here.</p>"
+          }
+        },
+        "q_fill_03": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "fill",
+            "text": "Switch KRYO on and confirm smooth circulation.",
+            "detail": "<p>Confirm the internal light turns on and listen for smooth circulation. A harsh dry-running sound means switch KRYO off immediately and add water.</p>"
+          }
+        },
+        "q_fill_04": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "fill",
+            "text": "Continue filling slowly to the safe level.",
+            "detail": "<p>Keep the internal light on so you can see the level clearly. Never let water overflow into the upper internal area. The exact maximum fill level is pending confirmation and is not published here.</p>"
+          }
+        },
+        "q_fill_05": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "fill",
+            "text": "Dry the top and refit the fill plug.",
+            "detail": "<p>Wipe away spills, dry the top surface, then insert the supplied plug and confirm it sits correctly.</p>"
+          }
+        },
+        "q_fill_06": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "fill",
+            "text": "Start around 15°C.",
+            "detail": "<p>Press SET and choose approximately 15°C for your first session. Lower the temperature gradually only after you know how your body responds.</p>"
+          }
+        },
         "chapter_5": {
           "type": "chapter",
           "settings": {
             "anchor": "first-use",
             "title": "First session",
             "purpose": "Start gently and learn the correct body position.",
-            "quick": "<ul><li>Begin around 15°C and with lower flow.</li><li>Start with your back to the Halo.</li><li>Let the first water hit the shoulders and upper back.</li><li>Once breathing is controlled, rotate gradually.</li><li>Keep the first exposure short and comfortable.</li></ul>",
             "critical": "<p>Do not begin face-first or chest-first.</p>",
             "detail": "<p><strong>Final check before you start.</strong> Rear airflow is clear; the rail is secure; the hose is not kinked; both seals are fitted; the PSU is dry and outside the splash zone; water is below the maximum level; the starting temperature is around 15°C.</p><p><strong>Why position matters.</strong> The Halo balances coverage, flow and droplet size to create a film of cold water over the upper body. Positioning it above your head helps water spread across the shoulders and carry heat away from more skin. KRYO is a different experience from full-body immersion — a short, very cold session can still feel extremely powerful and produce a strong sense of alertness.</p><p><strong>Begin gently.</strong> KRYO can feel more intense than expected. Use a warmer temperature, lower flow and a short exposure for your first session.</p><p><strong>Body position.</strong> Stand with your back to the Halo. Let water land across the tops of your shoulders or upper back before slowly rotating. Breathe normally.</p><p><strong>Controlling intensity.</strong> Lower flow — around 5&nbsp;L/min — gives a gentler experience, cooling down and longer reservoir use. Higher flow — around 8 to 10&nbsp;L/min — gives a more intense experience with larger droplets and stronger wind chill, and uses the reservoir much faster. Flow values remain configurable pending final production validation.</p><p><strong>Staying in control.</strong> Stand with your back to the Halo, start the flow, breathe normally, let water spread across your shoulders, and rotate gradually only when comfortable. End immediately if you feel unwell.</p><p><strong>After your session.</strong> Close the Halo flow adjuster, switch off the water flow and check the remaining water level. Top up when needed, wipe splash from the display and power side, check connections for drips and keep rear airflow clear.</p>",
             "next_anchor": "",
@@ -194,6 +357,46 @@
             "alt_2": "The Halo’s water spread across the shoulders and upper back",
             "number": 5,
             "nav_label": "First session"
+          }
+        },
+        "q_first_use_01": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "first-use",
+            "text": "Begin around 15°C and with lower flow.",
+            "detail": "<p>Lower flow — around 5 L/min — is gentler and makes the reservoir last longer. Higher flow, around 8 to 10 L/min, is more intense and uses the reservoir much faster. Flow values remain configurable pending final production validation.</p>"
+          }
+        },
+        "q_first_use_02": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "first-use",
+            "text": "Start with your back to the Halo.",
+            "detail": "<p>Facing the flow at the start can trigger a gasp reflex and loss of breathing control.</p>"
+          }
+        },
+        "q_first_use_03": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "first-use",
+            "text": "Let the first water hit the shoulders and upper back.",
+            "detail": "<p>This is the largest and least sensitive area, and it lets your breathing settle before the cold reaches your chest.</p>"
+          }
+        },
+        "q_first_use_04": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "first-use",
+            "text": "Once breathing is controlled, rotate gradually.",
+            "detail": "<p>Breathe normally throughout. There is no need to rush the rotation.</p>"
+          }
+        },
+        "q_first_use_05": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "first-use",
+            "text": "Keep the first exposure short and comfortable.",
+            "detail": "<p>KRYO can feel more intense than expected. End the session immediately if you feel unwell.</p>"
           }
         }
       },
@@ -212,10 +415,36 @@
         "part_07",
         "part_08",
         "chapter_1",
+        "q_position_01",
+        "q_position_02",
+        "q_position_03",
+        "q_position_04",
+        "q_position_05",
         "chapter_2",
+        "q_mount_01",
+        "q_mount_02",
+        "q_mount_03",
+        "q_mount_04",
+        "q_mount_05",
         "chapter_3",
+        "q_connect_01",
+        "q_connect_02",
+        "q_connect_03",
+        "q_connect_04",
+        "q_connect_05",
         "chapter_4",
-        "chapter_5"
+        "q_fill_01",
+        "q_fill_02",
+        "q_fill_03",
+        "q_fill_04",
+        "q_fill_05",
+        "q_fill_06",
+        "chapter_5",
+        "q_first_use_01",
+        "q_first_use_02",
+        "q_first_use_03",
+        "q_first_use_04",
+        "q_first_use_05"
       ],
       "settings": {
         "hub_url": "/pages/kryo-resources",

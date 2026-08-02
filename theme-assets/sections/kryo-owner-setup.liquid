@@ -170,7 +170,43 @@
             <h2 class="kryo-su__h2" tabindex="-1">{{ block.settings.title }}</h2>
             <p class="kryo-su__purpose">{{ block.settings.purpose }}</p>
 
-            {%- if block.settings.quick != blank -%}
+            {%- comment -%}
+              Quick instructions are their own blocks so each line is editable in the theme
+              editor and can carry its own explanation. The instruction TEXT is always visible;
+              only the extra detail collapses, so nothing safety-relevant is hidden by default.
+              Falls back to the legacy richtext if a chapter has no instruction blocks.
+            {%- endcomment -%}
+            {%- assign ch_anchor = block.settings.anchor -%}
+            {%- assign quick_count = 0 -%}
+            {%- for ib in section.blocks -%}
+              {%- if ib.type == 'instruction' and ib.settings.chapter == ch_anchor -%}
+                {%- assign quick_count = quick_count | plus: 1 -%}
+              {%- endif -%}
+            {%- endfor -%}
+
+            {%- if quick_count > 0 -%}
+              <div class="kryo-su__quick">
+                {%- for ib in section.blocks -%}
+                  {%- if ib.type == 'instruction' and ib.settings.chapter == ch_anchor -%}
+                    {%- if ib.settings.detail != blank -%}
+                      <details class="kryo-su__qa" {{ ib.shopify_attributes }}>
+                        <summary>
+                          <span class="kryo-su__qadot" aria-hidden="true"></span>
+                          <span class="kryo-su__qatext">{{ ib.settings.text }}</span>
+                          <span class="kryo-su__qamark" aria-hidden="true"></span>
+                        </summary>
+                        <div class="kryo-su__qabody">{{ ib.settings.detail }}</div>
+                      </details>
+                    {%- else -%}
+                      <p class="kryo-su__qa kryo-su__qa--plain" {{ ib.shopify_attributes }}>
+                        <span class="kryo-su__qadot" aria-hidden="true"></span>
+                        <span class="kryo-su__qatext">{{ ib.settings.text }}</span>
+                      </p>
+                    {%- endif -%}
+                  {%- endif -%}
+                {%- endfor -%}
+              </div>
+            {%- elsif block.settings.quick != blank -%}
               <div class="kryo-su__quick">{{ block.settings.quick }}</div>
             {%- endif -%}
 
@@ -376,12 +412,34 @@
     color:#fff; display:inline-flex; align-items:center; justify-content:center; font:700 11px/1 var(--kryo-font-body); }
 
   /* ---- Quick instructions ---- */
-  .kryo-su__quick ul, .kryo-su__quick ol { margin:0 0 18px; padding:0; list-style:none; }
-  .kryo-su__quick li { position:relative; padding:0 0 0 26px; margin:0 0 12px;
-    font-size:16px; line-height:1.5; color:var(--kryo-text); }
-  .kryo-su__quick li::before { content:''; position:absolute; left:4px; top:9px; width:7px; height:7px;
+  .kryo-su__quick { margin:0 0 20px; border-top:1px solid var(--kryo-border); }
+  .kryo-su__qa { border-bottom:1px solid var(--kryo-border); }
+  .kryo-su__qa summary, .kryo-su__qa--plain { display:flex; align-items:flex-start; gap:12px;
+    min-height:56px; padding:14px 0; margin:0; list-style:none; cursor:pointer;
+    font-size:16px; line-height:1.45; color:var(--kryo-text); }
+  .kryo-su__qa--plain { cursor:default; }
+  .kryo-su__qa summary::-webkit-details-marker { display:none; }
+  .kryo-su__qadot { flex:0 0 auto; width:7px; height:7px; margin-top:8px; border-radius:999px;
+    background:var(--kryo-blue); }
+  .kryo-su__qatext { flex:1; }
+  /* Only rows that actually carry an explanation show the affordance. */
+  .kryo-su__qamark { flex:0 0 auto; position:relative; width:20px; height:20px; margin-top:2px; }
+  .kryo-su__qamark::before, .kryo-su__qamark::after { content:''; position:absolute; left:4px; top:9px;
+    width:12px; height:2px; border-radius:2px; background:var(--kryo-text-secondary);
+    transition:transform 180ms cubic-bezier(.2,.7,.3,1); }
+  .kryo-su__qamark::after { transform:rotate(90deg); }
+  .kryo-su__qa[open] .kryo-su__qamark::after { transform:rotate(0deg); }
+  .kryo-su__qabody { padding:0 0 16px 19px; animation:kryoAccIn 200ms cubic-bezier(.2,.7,.3,1) both; }
+  .kryo-su__qabody p { font-size:15px; line-height:1.55; color:var(--kryo-text-secondary); margin:0 0 10px; }
+  .kryo-su__qabody p:last-child { margin-bottom:0; }
+  .kryo-su__qabody ul, .kryo-su__qabody ol { margin:0 0 10px; padding-left:18px; }
+  .kryo-su__qabody li { font-size:15px; line-height:1.55; color:var(--kryo-text-secondary); margin-bottom:6px; }
+  /* legacy richtext fallback */
+  .kryo-su__quick ul, .kryo-su__quick ol { margin:0; padding:0; list-style:none; }
+  .kryo-su__quick li { position:relative; padding:14px 0 14px 19px;
+    border-bottom:1px solid var(--kryo-border); font-size:16px; line-height:1.45; color:var(--kryo-text); }
+  .kryo-su__quick li::before { content:''; position:absolute; left:0; top:22px; width:7px; height:7px;
     border-radius:999px; background:var(--kryo-blue); }
-  .kryo-su__quick p { font-size:16px; line-height:1.5; color:var(--kryo-text); margin:0 0 12px; }
 
   /* ---- Media ---- */
   .kryo-su__media { display:flex; flex-direction:column; gap:12px; margin:0 0 20px; }
@@ -480,7 +538,8 @@
     { outline:2px solid var(--kryo-blue); outline-offset:2px; }
 
   @media (prefers-reduced-motion: reduce) {
-    .kryo-su__accbody, .kryo-su__panel { animation:none !important; }
+    .kryo-su__accbody, .kryo-su__qabody, .kryo-su__panel { animation:none !important; }
+    .kryo-su__qamark::before, .kryo-su__qamark::after { transition:none; }
     .kryo-su__cta:active { transform:none; }
   }
 
@@ -976,6 +1035,17 @@
       ]
     },
     {
+      "type": "instruction",
+      "name": "Quick instruction",
+      "settings": [
+        { "type": "text", "id": "chapter", "label": "Belongs to part",
+          "info": "Must match the part's anchor id: position / mount / connect / fill / first-use" },
+        { "type": "text", "id": "text", "label": "Instruction", "info": "Always visible. One short line." },
+        { "type": "richtext", "id": "detail", "label": "Explanation (optional)",
+          "info": "Leave blank for a plain line. Add text and the row becomes expandable." }
+      ]
+    },
+    {
       "type": "chapter",
       "name": "Chapter",
       "settings": [
@@ -984,7 +1054,8 @@
         { "type": "text", "id": "nav_label", "label": "Sticky-bar label", "info": "Short. Falls back to the title." },
         { "type": "text", "id": "title", "label": "Title" },
         { "type": "textarea", "id": "purpose", "label": "One-sentence purpose" },
-        { "type": "richtext", "id": "quick", "label": "Quick instructions", "info": "3-5 bullets, always visible." },
+        { "type": "richtext", "id": "quick", "label": "Quick instructions (legacy fallback)",
+          "info": "Only used if this part has no Quick instruction blocks." },
         { "type": "richtext", "id": "critical", "label": "Critical warning", "info": "Always visible. Never inside the accordion." },
         { "type": "text", "id": "always_title", "label": "Second always-visible note title" },
         { "type": "select", "id": "always_level", "label": "Second note level",

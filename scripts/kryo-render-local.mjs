@@ -170,6 +170,14 @@ function truthy(src, scope) {
     const l = truthy(bool[1], scope), r = truthy(bool[3], scope);
     return bool[2] === 'and' ? l && r : l || r;
   }
+  // Numeric comparisons matter: `{% if quick_count > 0 %}` silently evaluated to false
+  // without them, so an entire rendered block went missing while real Liquid was fine.
+  const num = /^(.+?)\s*(>=|<=|>|<)\s*(.+)$/.exec(src);
+  if (num) {
+    const l = Number(evalExpr(num[1], scope)) || 0;
+    const r = Number(evalExpr(num[3], scope)) || 0;
+    return num[2] === '>' ? l > r : num[2] === '<' ? l < r : num[2] === '>=' ? l >= r : l <= r;
+  }
   const cmp = /^(.+?)\s*(==|!=)\s*(.+)$/.exec(src);
   if (cmp) {
     const l = evalExpr(cmp[1], scope);
