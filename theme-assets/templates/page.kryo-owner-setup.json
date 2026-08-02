@@ -107,11 +107,7 @@
             "alt_1": "KRYO upright on a level floor with the rear airflow area kept clear",
             "number": 1,
             "nav_label": "Position",
-            "image_1": "shopify://shop_images/kryo-position-airflow",
-            "detail_image_1": "shopify://shop_images/kryo-position-positioning",
-            "detail_alt_1": "Planning where KRYO, the hose, the Halo and the power supply will sit before mounting",
-            "detail_image_2": "shopify://shop_images/kryo-position-rail-height",
-            "detail_alt_2": "Choosing the rail height so the Halo sits above the tallest user's head"
+            "image_1": "shopify://shop_images/kryo-position-airflow.webp"
           }
         },
         "q_position_01": {
@@ -135,7 +131,9 @@
           "settings": {
             "chapter": "position",
             "text": "Check the hose reaches without pulling or kinking.",
-            "detail": "<p>Hold the rail where you plan to mount it and run the hose along its intended path before anything is fixed.</p>"
+            "detail": "<p>Hold the rail where you plan to mount it and run the hose along its intended path before anything is fixed.</p>",
+            "image": "shopify://shop_images/kryo-position-positioning.webp",
+            "image_alt": "Planning where KRYO, the hose, the Halo and the power supply will sit before mounting anything"
           }
         },
         "q_position_04": {
@@ -144,6 +142,16 @@
             "chapter": "position",
             "text": "Check the power reaches and refill access works.",
             "detail": "<p>The PSU must reach a suitable mains outlet, and a bidet or shower hose must reach the fill opening.</p>"
+          }
+        },
+        "q_position_07": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "position",
+            "text": "Plan the Halo height above the tallest user.",
+            "detail": "<p>The Halo must sit a minimum of 30&nbsp;cm above the tallest user&rsquo;s head. Where the room and hose allow, 40&ndash;50&nbsp;cm is preferred.</p><p>A higher Halo improves the spread of water across the shoulders and upper body.</p>",
+            "image": "shopify://shop_images/kryo-position-rail-height.webp",
+            "image_alt": "Halo height guide showing 30 cm minimum and 40 to 50 cm preferred above the tallest user's head"
           }
         },
         "q_position_05": {
@@ -175,11 +183,7 @@
             "alt_1": "Pressing the mounting rail firmly and evenly onto the prepared wall",
             "number": 2,
             "nav_label": "Mount",
-            "image_1": "shopify://shop_images/kryo-mount-rail",
-            "detail_image_1": "shopify://shop_images/kryo-mount-adjust-head-height",
-            "detail_alt_1": "Using the adjustment control to move the Halo up or down on the rail",
-            "detail_image_2": "",
-            "detail_alt_2": ""
+            "image_1": "shopify://shop_images/kryo-mount-rail.webp"
           }
         },
         "q_mount_01": {
@@ -227,7 +231,9 @@
           "settings": {
             "chapter": "mount",
             "text": "Adjust the Halo height and confirm it is secure.",
-            "detail": "<p>Use the adjustment control to move the Halo up or down the rail, then check it is secure before use.</p>"
+            "detail": "<p>Use the adjustment control to move the Halo up or down the rail, then check it is secure before use.</p>",
+            "image": "shopify://shop_images/kryo-mount-adjust-head-height.webp",
+            "image_alt": "Using the adjustment control to move the Halo up or down on the rail"
           }
         },
         "chapter_3": {
@@ -243,11 +249,7 @@
             "alt_1": "Attaching the hose to the Halo flow adjuster, hand-tight only",
             "number": 3,
             "nav_label": "Connect",
-            "image_1": "shopify://shop_images/kryo-connect-hose-to-halo",
-            "detail_image_1": "",
-            "detail_alt_1": "",
-            "detail_image_2": "",
-            "detail_alt_2": ""
+            "image_1": "shopify://shop_images/kryo-connect-hose-to-halo.webp"
           }
         },
         "q_connect_01": {
@@ -272,7 +274,7 @@
             "chapter": "connect",
             "text": "Connect the other end to the KRYO cooling unit.",
             "detail": "<p>Check the hose then follows a smooth path with no sharp kink.</p>",
-            "image": "shopify://shop_images/kryo-connect-hose-to-unit",
+            "image": "shopify://shop_images/kryo-connect-hose-to-unit.webp",
             "image_alt": "Attaching the other end of the hose to the KRYO cooling unit outlet"
           }
         },
@@ -290,7 +292,7 @@
             "chapter": "connect",
             "text": "Connect the 24V DC lead to the PSU, then the PSU to a mains outlet.",
             "detail": "<p>Keep KRYO switched off and dry your hands first. Place the PSU and its connection outside the splash zone and route cables away from water and foot traffic.</p>",
-            "image": "shopify://shop_images/kryo-connect-power-outlet",
+            "image": "shopify://shop_images/kryo-connect-power-outlet.webp",
             "image_alt": "Connecting the PSU to a suitable dry mains outlet away from splash"
           }
         },
@@ -308,12 +310,8 @@
             "alt_2": "Switching KRYO on once water has been added",
             "number": 4,
             "nav_label": "Fill & start",
-            "image_1": "shopify://shop_images/kryo-fill-cap",
-            "image_2": "shopify://shop_images/kryo-fill-power-on",
-            "detail_image_1": "",
-            "detail_alt_1": "",
-            "detail_image_2": "",
-            "detail_alt_2": "",
+            "image_1": "shopify://shop_images/kryo-fill-cap.png",
+            "image_2": "shopify://shop_images/kryo-fill-power-on.webp",
             "always_title": "Normal noise",
             "always_level": "info",
             "always_visible": "<p>You may hear the internal pressurising pump while KRYO is operating. This is normal.</p>"
@@ -415,11 +413,7 @@
             "alt_1": "First session position: stand with your back to the Halo so the first water hits the upper back and shoulders, never the face or chest",
             "number": 5,
             "nav_label": "First session",
-            "image_1": "shopify://shop_images/kryo-first-use-critical",
-            "detail_image_1": "",
-            "detail_alt_1": "",
-            "detail_image_2": "",
-            "detail_alt_2": ""
+            "image_1": "shopify://shop_images/kryo-first-use-critical.webp"
           }
         },
         "q_first_use_01": {
@@ -474,6 +468,7 @@
         "q_position_02",
         "q_position_03",
         "q_position_04",
+        "q_position_07",
         "q_position_05",
         "q_position_06",
         "chapter_2",

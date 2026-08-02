@@ -428,6 +428,20 @@ try {
   else if (gate2.confirms !== 5) add('P1', 'Safety popup does not list five confirmations', `${gate2.confirms}`);
   else pass('Safety popup updated', `"${gate2.heading}" · ${gate2.confirms} confirmations · CTA "${gate2.cta}" · secondary link ${gate2.secondary}`);
 
+  // Every image must actually load. A shopify:// reference without a file extension does not
+  // resolve, which shipped 11 invisible images on 2026-08-03 while every other check passed.
+  const broken = await p.evaluate(() => {
+    document.querySelectorAll('details').forEach((d) => d.setAttribute('open', ''));
+    // The fullscreen viewer's <img> has no src until an image is tapped — not a content image.
+    const imgs = [...document.querySelectorAll('img:not([data-kryo-zoom-img])')];
+    return { total: imgs.length,
+      bad: imgs.map((i) => i.getAttribute('src') || '')
+               .filter((src) => !src || src.startsWith('shopify://')) };
+  });
+  if (broken.bad.length)
+    add('P0', 'Image reference does not resolve', `${broken.bad.length} of ${broken.total}: ${broken.bad.slice(0, 3).join(', ')}`);
+  else pass('Every image reference resolves', `${broken.total} content images, all with a real URL`);
+
   if (errors.length) add('P0', 'JavaScript errors during the flow', errors.slice(0, 3).join(' | '));
   else pass('No JavaScript errors', 'whole flow clean');
 

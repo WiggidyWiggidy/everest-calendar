@@ -74,8 +74,11 @@ const F = {
     const s = v ? String(v) : '';
     const m = /^shopify:\/\/shop_images\/(.+)$/.exec(s);
     if (!m) return s;
-    const local = IMG_MAP[m[1]] || IMG_MAP[m[1].replace(/\.[^.]+$/, '')];
-    if (!local) return s;
+    // NO extensionless fallback. `shopify://shop_images/name` without a file extension does
+    // not resolve on Shopify; matching it here hid 11 broken references on 2026-08-03.
+    if (!/\.[a-z0-9]{2,5}$/i.test(m[1])) return '';
+    const local = IMG_MAP[m[1]];
+    if (!local) return '';
     return typeof local === 'string' ? local : local.url;
   },
   image_tag: (v, kw) => {
@@ -110,7 +113,7 @@ function resolve(expr, scope) {
     if (typeof cur === 'string' && (part === 'width' || part === 'height')) {
       const m = /^shopify:\/\/shop_images\/(.+)$/.exec(cur);
       if (!m) return undefined;
-      const e = IMG_MAP[m[1]] || IMG_MAP[m[1].replace(/\.[^.]+$/, '')];
+      const e = IMG_MAP[m[1]];
       return e && typeof e === 'object' ? e[part] : undefined;
     }
     cur = cur[part];

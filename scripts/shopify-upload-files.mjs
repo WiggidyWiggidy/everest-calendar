@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Upload images to Shopify Files (Content > Files) and print the
- * `shopify://shop_images/<name>` reference that an image_picker setting expects.
+ * `shopify://shop_images/<name.ext>` reference that an image_picker setting expects.
+ * The EXTENSION IS REQUIRED — Shopify cannot resolve the reference without it.
  *
  * Usage:
  *   node scripts/shopify-upload-files.mjs manifest.json --vercel-env production [--dry-run]
@@ -97,7 +98,7 @@ for (const item of manifest) {
   const name = item.name;
   if (existing.has(name)) {
     console.log(`SKIP (exists)  ${name}`);
-    results.push({ name, ref: `shopify://shop_images/${name.replace(/\.[^.]+$/, '')}`, existed: true });
+    results.push({ name, ref: `shopify://shop_images/${name}`, existed: true });
     continue;
   }
   if (dryRun) { console.log(`WOULD UPLOAD  ${name}  <- ${item.file}`); results.push({ name, ref: null, dryRun: true }); continue; }
@@ -125,7 +126,7 @@ for (const item of manifest) {
   if (cErrs.length) throw new Error(`fileCreate ${name}: ${JSON.stringify(cErrs)}`);
 
   console.log(`UPLOADED      ${name}`);
-  results.push({ name, ref: `shopify://shop_images/${name.replace(/\.[^.]+$/, '')}`, id: created.fileCreate.files[0].id });
+  results.push({ name, ref: `shopify://shop_images/${name}`, id: created.fileCreate.files[0].id });
 }
 
 // Shopify processes asynchronously; a READY status is what makes the reference resolve.
