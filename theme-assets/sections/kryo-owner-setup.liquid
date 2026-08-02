@@ -144,10 +144,11 @@
                     data-src="{{ section.settings.parts_image | image_url: width: 1600 }}"
                     aria-label="{{ section.settings.zoom_aria }}">
               {%- assign pim = section.settings.parts_image -%}
-              {{ pim | image_url: width: 1120
-                 | image_tag: loading: 'lazy', widths: '430,640,860,1120',
-                   sizes: '(min-width: 990px) 860px, 100vw', alt: parts_alt, class: 'kryo-su__img',
-                   width: pim.width, height: pim.height }}
+              <img src="{{ pim | image_url: width: 1200 }}"
+     srcset="{{ pim | image_url: width: 430 }} 430w, {{ pim | image_url: width: 860 }} 860w, {{ pim | image_url: width: 1200 }} 1200w"
+     sizes="(min-width: 990px) 860px, 100vw"
+     alt="{{ parts_alt | escape }}" class="kryo-su__img"
+     width="{{ pim.width }}" height="{{ pim.height }}" loading="lazy" decoding="async">
               <span class="kryo-su__zoomhint" aria-hidden="true">{{ section.settings.zoom_hint }}</span>
             </button>
           {%- endif -%}
@@ -177,6 +178,43 @@
             </p>
             <h2 class="kryo-su__h2" tabindex="-1">{{ block.settings.title }}</h2>
             <p class="kryo-su__purpose">{{ block.settings.purpose }}</p>
+
+            {%- comment -%} Media: full width, stacked, lazy below the first viewport. {%- endcomment -%}
+            {%- assign has_media = false -%}
+            {%- if block.settings.image_1 != blank or block.settings.slot_1 != blank -%}{%- assign has_media = true -%}{%- endif -%}
+            {%- if block.settings.image_2 != blank or block.settings.slot_2 != blank -%}{%- assign has_media = true -%}{%- endif -%}
+            {%- if block.settings.image_3 != blank or block.settings.slot_3 != blank -%}{%- assign has_media = true -%}{%- endif -%}
+            {%- if block.settings.image_4 != blank or block.settings.slot_4 != blank -%}{%- assign has_media = true -%}{%- endif -%}
+            {%- if has_media -%}
+              <div class="kryo-su__media">
+                {%- for i in (1..4) -%}
+                  {%- case i -%}
+                    {%- when 1 -%}{%- assign im = block.settings.image_1 -%}{%- assign ia = block.settings.alt_1 -%}{%- assign slot = block.settings.slot_1 -%}
+                    {%- when 2 -%}{%- assign im = block.settings.image_2 -%}{%- assign ia = block.settings.alt_2 -%}{%- assign slot = block.settings.slot_2 -%}
+                    {%- when 3 -%}{%- assign im = block.settings.image_3 -%}{%- assign ia = block.settings.alt_3 -%}{%- assign slot = block.settings.slot_3 -%}
+                    {%- when 4 -%}{%- assign im = block.settings.image_4 -%}{%- assign ia = block.settings.alt_4 -%}{%- assign slot = block.settings.slot_4 -%}
+                  {%- endcase -%}
+                  {%- if im != blank -%}
+                    {%- assign im_alt = ia | default: block.settings.title -%}
+                    <button type="button" class="kryo-su__imgbtn" data-kryo-zoom
+                            data-src="{{ im | image_url: width: 1600 }}" aria-label="{{ section.settings.zoom_aria }}">
+                      <img src="{{ im | image_url: width: 1200 }}"
+     srcset="{{ im | image_url: width: 430 }} 430w, {{ im | image_url: width: 860 }} 860w, {{ im | image_url: width: 1200 }} 1200w"
+     sizes="(min-width: 990px) 860px, 100vw"
+     alt="{{ im_alt | escape }}" class="kryo-su__img"
+     width="{{ im.width }}" height="{{ im.height }}" loading="eager" decoding="async">
+                      <span class="kryo-su__zoomhint" aria-hidden="true">{{ section.settings.zoom_hint }}</span>
+                    </button>
+                  {%- elsif slot != blank -%}
+                    <div class="kryo-owner__placeholder kryo-su__ph">
+                      <strong>IMAGE REQUIRED</strong>
+                      <span>{{ block.settings.title }}</span>
+                      <span>{{ slot }}</span>
+                    </div>
+                  {%- endif -%}
+                {%- endfor -%}
+              </div>
+            {%- endif -%}
 
             {%- comment -%}
               Quick instructions are their own blocks so each line is editable in the theme
@@ -218,10 +256,11 @@
                                     data-src="{{ ib.settings.image | image_url: width: 1600 }}"
                                     aria-label="{{ section.settings.zoom_aria }}">
                               {%- assign qim = ib.settings.image -%}
-                            {{ qim | image_url: width: 1120
-                                 | image_tag: loading: 'lazy', widths: '430,640,860,1120',
-                                   sizes: '(min-width: 990px) 860px, 100vw', alt: qa_alt, class: 'kryo-su__img',
-                                   width: qim.width, height: qim.height }}
+                            <img src="{{ qim | image_url: width: 1200 }}"
+     srcset="{{ qim | image_url: width: 430 }} 430w, {{ qim | image_url: width: 860 }} 860w, {{ qim | image_url: width: 1200 }} 1200w"
+     sizes="(min-width: 990px) 860px, 100vw"
+     alt="{{ qa_alt | escape }}" class="kryo-su__img"
+     width="{{ qim.width }}" height="{{ qim.height }}" loading="lazy" decoding="async">
                               <span class="kryo-su__zoomhint" aria-hidden="true">{{ section.settings.zoom_hint }}</span>
                             </button>
                           {%- elsif ib.settings.slot != blank -%}
@@ -252,42 +291,6 @@
               <div class="kryo-owner__note kryo-owner__note--critical">
                 <p class="kryo-owner__note__title">{{ section.settings.lbl_critical }}</p>
                 {{ block.settings.critical }}
-              </div>
-            {%- endif -%}
-
-            {%- comment -%} Media: full width, stacked, lazy below the first viewport. {%- endcomment -%}
-            {%- assign has_media = false -%}
-            {%- if block.settings.image_1 != blank or block.settings.slot_1 != blank -%}{%- assign has_media = true -%}{%- endif -%}
-            {%- if block.settings.image_2 != blank or block.settings.slot_2 != blank -%}{%- assign has_media = true -%}{%- endif -%}
-            {%- if block.settings.image_3 != blank or block.settings.slot_3 != blank -%}{%- assign has_media = true -%}{%- endif -%}
-            {%- if block.settings.image_4 != blank or block.settings.slot_4 != blank -%}{%- assign has_media = true -%}{%- endif -%}
-            {%- if has_media -%}
-              <div class="kryo-su__media">
-                {%- for i in (1..4) -%}
-                  {%- case i -%}
-                    {%- when 1 -%}{%- assign im = block.settings.image_1 -%}{%- assign ia = block.settings.alt_1 -%}{%- assign slot = block.settings.slot_1 -%}
-                    {%- when 2 -%}{%- assign im = block.settings.image_2 -%}{%- assign ia = block.settings.alt_2 -%}{%- assign slot = block.settings.slot_2 -%}
-                    {%- when 3 -%}{%- assign im = block.settings.image_3 -%}{%- assign ia = block.settings.alt_3 -%}{%- assign slot = block.settings.slot_3 -%}
-                    {%- when 4 -%}{%- assign im = block.settings.image_4 -%}{%- assign ia = block.settings.alt_4 -%}{%- assign slot = block.settings.slot_4 -%}
-                  {%- endcase -%}
-                  {%- if im != blank -%}
-                    {%- assign im_alt = ia | default: block.settings.title -%}
-                    <button type="button" class="kryo-su__imgbtn" data-kryo-zoom
-                            data-src="{{ im | image_url: width: 1600 }}" aria-label="{{ section.settings.zoom_aria }}">
-                      {{ im | image_url: width: 1120
-                         | image_tag: loading: 'lazy', widths: '430,640,860,1120',
-                           sizes: '(min-width: 990px) 860px, 100vw', alt: im_alt, class: 'kryo-su__img',
-                           width: im.width, height: im.height }}
-                      <span class="kryo-su__zoomhint" aria-hidden="true">{{ section.settings.zoom_hint }}</span>
-                    </button>
-                  {%- elsif slot != blank -%}
-                    <div class="kryo-owner__placeholder kryo-su__ph">
-                      <strong>IMAGE REQUIRED</strong>
-                      <span>{{ block.settings.title }}</span>
-                      <span>{{ slot }}</span>
-                    </div>
-                  {%- endif -%}
-                {%- endfor -%}
               </div>
             {%- endif -%}
 
@@ -322,10 +325,11 @@
                           {%- assign d_alt = dia | default: block.settings.title -%}
                           <button type="button" class="kryo-su__imgbtn" data-kryo-zoom
                                   data-src="{{ dim | image_url: width: 1600 }}" aria-label="{{ section.settings.zoom_aria }}">
-                            {{ dim | image_url: width: 1120
-                               | image_tag: loading: 'lazy', widths: '430,640,860,1120',
-                                 sizes: '(min-width: 990px) 860px, 100vw', alt: d_alt, class: 'kryo-su__img',
-                                 width: dim.width, height: dim.height }}
+                            <img src="{{ dim | image_url: width: 1200 }}"
+     srcset="{{ dim | image_url: width: 430 }} 430w, {{ dim | image_url: width: 860 }} 860w, {{ dim | image_url: width: 1200 }} 1200w"
+     sizes="(min-width: 990px) 860px, 100vw"
+     alt="{{ d_alt | escape }}" class="kryo-su__img"
+     width="{{ dim.width }}" height="{{ dim.height }}" loading="lazy" decoding="async">
                             <span class="kryo-su__zoomhint" aria-hidden="true">{{ section.settings.zoom_hint }}</span>
                           </button>
                         {%- endif -%}
