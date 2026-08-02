@@ -69,7 +69,10 @@ try {
       const h1Top = h1 ? Math.round(h1.getBoundingClientRect().top + window.scrollY) : null;
 
       // Is a primary action reachable without scrolling, in the bottom third?
-      const prim = all.filter(el => /next|begin|start|continue|understand|done|here|checked|connected/i.test(el.innerText || ''));
+      // Navigation is not a primary action. Without this, a "Fill & start" nav chip was
+      // judged as an undersized primary button.
+      const prim = all.filter(el => !el.closest('nav')
+        && /next|begin|start|continue|understand|done|here|checked|connected/i.test(el.innerText || ''));
       const primIn = prim.map(el => { const r = el.getBoundingClientRect();
         return { text: (el.innerText || '').trim().slice(0, 24), top: Math.round(r.top),
                  inView: r.top >= 0 && r.bottom <= vpH, bottomThird: r.top > vpH * 0.66,

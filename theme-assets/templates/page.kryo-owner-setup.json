@@ -113,7 +113,8 @@
             "alt_3": "A hand holding the rail vertically against the tiled wall to confirm height and final position",
             "slot_4": "12_halo_height_visual.webp",
             "alt_4": "Halo height guide showing 30 cm minimum and 40 to 50 cm preferred above the tallest user’s head",
-            "number": 1
+            "number": 1,
+            "nav_label": "Position"
           }
         },
         "chapter_2": {
@@ -131,7 +132,8 @@
             "alt_1": "A hand wiping the tiled wall with a microfibre cloth so the surface is clean, dry and free of dust or oil",
             "slot_2": "04_mount_rail.webp",
             "alt_2": "The rail being aligned and pressed firmly into position on the prepared wall",
-            "number": 2
+            "number": 2,
+            "nav_label": "Mount"
           }
         },
         "chapter_3": {
@@ -149,7 +151,8 @@
             "alt_1": "Close-up of the lower rail connection where the hose screws on, showing the rubber seal seated flat",
             "slot_2": "05_hose_to_kryo.webp",
             "alt_2": "A hand attaching the hose to the KRYO outlet fitting, hand-tighten only",
-            "number": 3
+            "number": 3,
+            "nav_label": "Connect"
           }
         },
         "chapter_4": {
@@ -167,7 +170,8 @@
             "alt_1": "Unscrewing the KRYO fill plug by hand to open the fill opening, no tools required",
             "slot_2": "15_add_water_prime_close.webp",
             "alt_2": "Adding water into the KRYO fill opening to prime the system before switching it on",
-            "number": 4
+            "number": 4,
+            "nav_label": "Fill & start"
           }
         },
         "chapter_5": {
@@ -188,7 +192,8 @@
             "alt_1": "Do and Don’t comparison showing the first flow across the upper back and shoulders, never the face or chest",
             "slot_2": "14_shoulder_coverage.webp",
             "alt_2": "The Halo’s water spread across the shoulders and upper back",
-            "number": 5
+            "number": 5,
+            "nav_label": "First session"
           }
         }
       },
@@ -217,7 +222,8 @@
         "safety_url": "/pages/kryo-safety",
         "whatsapp_url": "https://wa.me/447724709585",
         "parts_image": "shopify://shop_images/kryo-whats-in-the-box.webp",
-        "parts_image_alt": "Every KRYO component laid out for identification: KRYO, hose, Halo, rail, sliding connector, seals, PSU and fill plug"
+        "parts_image_alt": "Every KRYO component laid out for identification: KRYO, hose, Halo, rail, sliding connector, seals, PSU and fill plug",
+        "logo": "shopify://shop_images/Copy_of_Blue_White_Simple_Initial_E_Letter_Negative_Space_Logo_410_x_205px_450_x_250px_600_x_200px_4.png"
       }
     }
   },

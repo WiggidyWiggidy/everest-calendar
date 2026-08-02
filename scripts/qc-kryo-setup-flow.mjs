@@ -151,6 +151,36 @@ try {
   if (missing.length) add('P0', 'Technical detail was lost, not moved', missing.map((d) => `${d.a}:${d.words}w`).join(', '));
   else pass('All technical detail retained in accordions', detail.map((d) => `${d.a}:${d.words}w`).join(' · '));
 
+  // ---------- Sticky bar: five section links + the real Everest Labs logo ----------
+  const bar = await p.evaluate(() => {
+    const chips = [...document.querySelectorAll('[data-kryo-chip]')];
+    const head = document.querySelector('.kryo-su__bar');
+    const logo = document.querySelector('.kryo-su__logo');
+    const wordmark = document.querySelector('.kryo-su__wordmark');
+    return {
+      anchors: chips.map((c) => c.getAttribute('data-kryo-chip')),
+      labels: chips.map((c) => c.innerText.trim().replace(/\s+/g, ' ')),
+      minH: chips.length ? Math.min(...chips.map((c) => Math.round(c.getBoundingClientRect().height))) : 0,
+      sticky: head ? getComputedStyle(head).position : null,
+      headH: head ? Math.round(head.getBoundingClientRect().height) : 0,
+      logoSrc: logo ? logo.getAttribute('src') : null,
+      logoH: logo ? Math.round(logo.getBoundingClientRect().height) : 0,
+      wordmarkOnly: !logo && !!wordmark,
+      rowScrollable: (() => { const r = document.querySelector('[data-kryo-chips]');
+        return r ? r.scrollWidth > r.clientWidth : false; })(),
+    };
+  });
+  if (bar.anchors.length !== 5 || WANT.some((a, i) => bar.anchors[i] !== a))
+    add('P0', 'Sticky bar does not carry the five section links', bar.anchors.join(', ') || 'none');
+  else pass('Five section links in the sticky bar', bar.labels.join(' · '));
+  if (bar.sticky !== 'sticky') add('P0', 'Section links are not sticky', `position: ${bar.sticky}`);
+  else pass('Section links stay on screen', `sticky header ${bar.headH}px${bar.rowScrollable ? ', row scrolls' : ''}`);
+  if (bar.minH < 40) add('P1', 'Section link tap target too small', `${bar.minH}px high`);
+  else pass('Section links are tappable', `${bar.minH}px high`);
+  if (bar.wordmarkOnly) add('P0', 'Header still shows the text wordmark, not the logo', 'no .kryo-su__logo image');
+  else if (!bar.logoSrc) add('P0', 'No logo in the owner header', 'neither image nor wordmark');
+  else pass('Real Everest Labs logo in the header', `${bar.logoH}px tall — ${bar.logoSrc.split('/').pop().slice(0, 46)}`);
+
   // ---------- 3. One tap to any part ----------
   await p.evaluate(() => window.scrollTo(0, 0));
   const rows = await p.$$('.kryo-su__tocrow');
@@ -161,13 +191,18 @@ try {
   if (after.y <= before + 10) add('P0', 'Section navigator does not move the reader', `scrollY ${before} -> ${after.y}`);
   else pass('One tap to any part', `overview -> ${after.hash} (scrollY ${before} -> ${after.y})`);
 
+  // Tolerance is derived from the header actually rendered, not a fixed number — the
+  // header is now two rows and a hardcoded 96px threshold flagged correct behaviour.
   const jumped = await p.evaluate(() => {
     const el = document.getElementById('fill');
-    return Math.round(el.getBoundingClientRect().top);
+    const head = document.querySelector('.kryo-su__bar');
+    return { top: Math.round(el.getBoundingClientRect().top),
+             head: head ? Math.round(head.getBoundingClientRect().height) : 0 };
   });
-  if (jumped < -8 || jumped > 96)
-    add('P1', 'Jump target lands under the sticky header or too far down', `section top at ${jumped}px`);
-  else pass('Jump clears the sticky header', `section top at ${jumped}px`);
+  if (jumped.top < jumped.head - 8 || jumped.top > jumped.head + 48)
+    add('P1', 'Jump target lands under the sticky header or too far down',
+        `section top at ${jumped.top}px, header is ${jumped.head}px`);
+  else pass('Jump clears the sticky header', `section top ${jumped.top}px vs ${jumped.head}px header`);
 
   // ---------- 7. No horizontal overflow, at every width ----------
   for (const w of [320, 375, 390, 430]) {
@@ -254,6 +289,25 @@ try {
   if (noise.length) add('P1', 'Ecommerce controls inside the owner flow', noise.join(', '));
   else pass('No ecommerce controls in the owner flow', 'cart / shop / newsletter all absent');
 
+  const helpEverywhere = await p.evaluate(() => {
+    const chs = [...document.querySelectorAll('[data-kryo-ch]')];
+    return { perChapter: chs.filter((c) => c.querySelector('[data-kryo-help-open]')).length,
+             total: chs.length, overview: !!document.querySelector('.kryo-su__overview [data-kryo-help-open]') };
+  });
+  if (helpEverywhere.perChapter !== helpEverywhere.total || !helpEverywhere.overview)
+    add('P0', 'Help is not reachable from every part', `${helpEverywhere.perChapter}/${helpEverywhere.total} parts, overview=${helpEverywhere.overview}`);
+  else pass('Help reachable from the overview and every part', `${helpEverywhere.total} of ${helpEverywhere.total} parts + overview`);
+
+  const helpOpens = await p.evaluate(() => {
+    const btn = document.querySelector('[data-kryo-ch="fill"] [data-kryo-help-open]');
+    btn.click();
+    const open = !document.querySelector('[data-kryo-sheet="help"]').hidden;
+    document.querySelector('[data-kryo-sheet="help"] [data-kryo-sheet-close]').click();
+    return open;
+  });
+  if (!helpOpens) add('P0', 'Help does not open from a chapter footer', 'sheet stayed hidden');
+  else pass('Help opens from a chapter footer', 'WhatsApp topic sheet');
+
   if (errors.length) add('P0', 'JavaScript errors during the flow', errors.slice(0, 3).join(' | '));
   else pass('No JavaScript errors', 'whole flow clean');
 
@@ -266,17 +320,21 @@ try {
   await p.check('[data-kryo-gate-form] input[name="accept"]');
   await p.click('[data-kryo-gate-submit]'); await p.waitForTimeout(300);
   await p.screenshot({ path: `${out}/v2-2-overview.png` });
-  await p.evaluate(() => window.scrollTo(0, document.querySelector('.kryo-su__rules').getBoundingClientRect().top + window.scrollY - 70));
+  await p.evaluate((h) => window.scrollTo(0, document.querySelector('.kryo-su__rules').getBoundingClientRect().top + window.scrollY - h),
+    await p.evaluate(() => Math.round(document.querySelector('.kryo-su__bar').getBoundingClientRect().height) + 12));
   await p.waitForTimeout(300);
   await p.screenshot({ path: `${out}/v2-3-rules.png` });
-  await p.evaluate(() => { const e = document.getElementById('connect'); window.scrollTo(0, e.getBoundingClientRect().top + window.scrollY - 64); });
+  // Use the real header height, exactly as the page's own scrollToAnchor does — a hardcoded
+  // offset put the section 50px too high and hid the eyebrow behind the sticky header.
+  const headH = await p.evaluate(() => Math.round(document.querySelector('.kryo-su__bar').getBoundingClientRect().height) + 8);
+  await p.evaluate((h) => { const e = document.getElementById('connect'); window.scrollTo(0, e.getBoundingClientRect().top + window.scrollY - h); }, headH);
   await p.waitForTimeout(400);
   await p.screenshot({ path: `${out}/v2-4-chapter.png` });
-  await p.evaluate(() => { const e = document.getElementById('first-use'); window.scrollTo(0, e.getBoundingClientRect().top + window.scrollY - 64); });
+  await p.evaluate((h) => { const e = document.getElementById('first-use'); window.scrollTo(0, e.getBoundingClientRect().top + window.scrollY - h); }, headH);
   await p.waitForTimeout(400);
   await p.screenshot({ path: `${out}/v2-5-first-use.png` });
-  await p.click('[data-kryo-nav-open]'); await p.waitForTimeout(300);
-  await p.screenshot({ path: `${out}/v2-6-sections.png` });
+  await p.evaluate(() => window.scrollTo(0, 0)); await p.waitForTimeout(200);
+  await p.screenshot({ path: `${out}/v2-6-header.png` });
 } finally { await b.close(); }
 
 const p0 = findings.filter((f) => f.sev === 'P0');

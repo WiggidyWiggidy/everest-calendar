@@ -31,20 +31,33 @@
      data-end-done-heading="{{ section.settings.end_done_heading | escape }}"
      data-end-done-body="{{ section.settings.end_done_body | escape }}">
 
-  {%- comment -%} ===== Owner header — compact, sticky, no ecommerce nav ===== {%- endcomment -%}
+  {%- comment -%}
+    Owner header. The logo falls back to the theme's own `settings.logo`, so the owner
+    pages carry the same mark as the rest of the site and follow it if it is ever changed.
+  {%- endcomment -%}
+  {%- assign owner_logo = section.settings.logo | default: settings.logo -%}
   <header class="kryo-su__bar">
-    <a class="kryo-su__brand" href="{{ section.settings.hub_url }}" aria-label="Everest Labs owner guide">
-      {%- if section.settings.logo != blank -%}
-        {{ section.settings.logo | image_url: width: 300 | image_tag: alt: 'Everest Labs', class: 'kryo-su__logo', loading: 'eager' }}
-      {%- else -%}
-        <span class="kryo-su__wordmark">EVEREST LABS</span>
-      {%- endif -%}
-    </a>
-    <div class="kryo-su__baractions">
-      <button type="button" class="kryo-su__barbtn" data-kryo-nav-open>{{ section.settings.sections_label }}</button>
-      <button type="button" class="kryo-su__barbtn kryo-su__barbtn--help" data-kryo-help-open
-              aria-label="{{ section.settings.help_aria }}">{{ section.settings.help_label }}</button>
+    <div class="kryo-su__barrow">
+      <a class="kryo-su__brand" href="{{ section.settings.hub_url }}" aria-label="Everest Labs owner guide">
+        {%- if owner_logo != blank -%}
+          {{ owner_logo | image_url: width: 420 | image_tag: alt: 'Everest Labs', class: 'kryo-su__logo', loading: 'eager' }}
+        {%- else -%}
+          <span class="kryo-su__wordmark">EVEREST LABS</span>
+        {%- endif -%}
+      </a>
     </div>
+    {%- comment -%} Five scroll-to links. Horizontally scrollable at 320px. {%- endcomment -%}
+    <nav class="kryo-su__chips" data-kryo-chips aria-label="{{ section.settings.nav_heading }}">
+      {%- for block in section.blocks -%}
+        {%- if block.type == 'chapter' -%}
+          <a class="kryo-su__chip" href="#{{ block.settings.anchor }}"
+             data-kryo-chip="{{ block.settings.anchor }}" data-kryo-jump>
+            <span class="kryo-su__chipnum">{{ block.settings.number }}</span>
+            <span>{{ block.settings.nav_label | default: block.settings.title }}</span>
+          </a>
+        {%- endif -%}
+      {%- endfor -%}
+    </nav>
   </header>
 
   {%- comment -%} ===== GATE — unchanged logic. One acknowledgement, ever. ===== {%- endcomment -%}
@@ -97,6 +110,8 @@
       </ol>
 
       <button type="button" class="kryo-su__cta kryo-su__cta--resume" data-kryo-resume hidden></button>
+      <button type="button" class="kryo-su__opt kryo-su__opt--help" data-kryo-help-open
+              aria-label="{{ section.settings.help_aria }}">{{ section.settings.help_label_long }}</button>
 
       {%- comment -%} ---- Don't miss these — never collapsed ---- {%- endcomment -%}
       <div class="kryo-su__rules">
@@ -223,11 +238,16 @@
               <button type="button" class="kryo-su__mark" data-kryo-mark="{{ block.settings.anchor }}">
                 {{ section.settings.mark_done }}
               </button>
-              {%- if block.settings.next_anchor != blank -%}
-                <a class="kryo-su__nextlink" href="#{{ block.settings.next_anchor }}">
-                  {{ section.settings.next_word }} {{ block.settings.next_label }} <span aria-hidden="true">&#8594;</span>
-                </a>
-              {%- endif -%}
+              <div class="kryo-su__chlinks">
+                {%- comment -%} Help lives here now the sticky bar carries the section links —
+                  it is reachable from every part, where someone actually gets stuck. {%- endcomment -%}
+                <button type="button" class="kryo-su__sublink" data-kryo-help-open>{{ section.settings.help_label_long }}</button>
+                {%- if block.settings.next_anchor != blank -%}
+                  <a class="kryo-su__sublink kryo-su__sublink--next" href="#{{ block.settings.next_anchor }}" data-kryo-jump>
+                    {{ section.settings.next_word }} {{ block.settings.next_label }} <span aria-hidden="true">&#8594;</span>
+                  </a>
+                {%- endif -%}
+              </div>
             </div>
           </div>
         </section>
@@ -243,21 +263,6 @@
   </main>
 
   {%- comment -%} ===== Sheets ===== {%- endcomment -%}
-  <div class="kryo-su__sheet" data-kryo-sheet="nav" hidden>
-    <div class="kryo-su__panel" role="dialog" aria-modal="true" aria-label="{{ section.settings.nav_heading }}">
-      <div class="kryo-su__grab" aria-hidden="true"></div>
-      <h2 class="kryo-su__h3">{{ section.settings.nav_heading }}</h2>
-      <a class="kryo-su__navrow" href="#overview" data-kryo-jump>{{ section.settings.overview_label }}</a>
-      {%- for block in section.blocks -%}
-        {%- if block.type == 'chapter' -%}
-          <a class="kryo-su__navrow" href="#{{ block.settings.anchor }}" data-kryo-jump
-             data-kryo-navstate="{{ block.settings.anchor }}">{{ block.settings.title }}</a>
-        {%- endif -%}
-      {%- endfor -%}
-      <button type="button" class="kryo-su__alt" data-kryo-sheet-close>{{ section.settings.close_label }}</button>
-    </div>
-  </div>
-
   <div class="kryo-su__sheet" data-kryo-sheet="help" hidden>
     <div class="kryo-su__panel" role="dialog" aria-modal="true" aria-label="{{ section.settings.help_heading }}">
       <div class="kryo-su__grab" aria-hidden="true"></div>
@@ -281,26 +286,45 @@
 </div>
 
 {% style %}
-  .kryo-su { --bar:56px; padding:0; }
+  /* --head is the full sticky header: logo row + the section-link row. */
+  .kryo-su { --bar:56px; --head:114px; padding:0; }
   .kryo-su__sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
 
-  /* ---- Header ---- */
-  .kryo-su__bar { position:sticky; top:0; z-index:40; height:var(--bar);
-    display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 20px;
-    background:var(--kryo-white); border-bottom:1px solid var(--kryo-border); }
+  /* ---- Header: logo row + five section links ---- */
+  .kryo-su__bar { position:sticky; top:0; z-index:40; background:var(--kryo-white);
+    border-bottom:1px solid var(--kryo-border); }
+  .kryo-su__barrow { height:var(--bar); display:flex; align-items:center; padding:0 20px; }
   .kryo-su__brand { display:inline-flex; align-items:center; min-height:48px; min-width:48px; text-decoration:none; }
-  .kryo-su__logo { height:20px; width:auto; display:block; }
+  .kryo-su__logo { height:26px; width:auto; display:block; }
   .kryo-su__wordmark { font:700 13px/1 var(--kryo-font-body); letter-spacing:.14em; color:var(--kryo-text); }
-  .kryo-su__baractions { display:flex; align-items:center; gap:4px; }
-  .kryo-su__barbtn { min-height:48px; padding:0 10px; border:0; background:none; cursor:pointer;
+
+  .kryo-su__chips { display:flex; gap:6px; padding:0 20px 10px; overflow-x:auto;
+    scrollbar-width:none; -webkit-overflow-scrolling:touch; scroll-behavior:smooth; }
+  .kryo-su__chips::-webkit-scrollbar { display:none; }
+  .kryo-su__chip { flex:0 0 auto; display:inline-flex; align-items:center; gap:7px; min-height:48px;
+    padding:0 14px; border-radius:999px; border:1px solid var(--kryo-border);
+    background:var(--kryo-white); color:var(--kryo-text-secondary); text-decoration:none;
+    font:600 14px/1 var(--kryo-font-body); white-space:nowrap; }
+  .kryo-su__chipnum { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px;
+    border-radius:999px; background:var(--kryo-surface); color:var(--kryo-text-secondary); font-size:11px; }
+  .kryo-su__chip[data-state="current"] { background:var(--kryo-ink); border-color:var(--kryo-ink); color:#fff; }
+  .kryo-su__chip[data-state="current"] .kryo-su__chipnum { background:rgba(255,255,255,.22); color:#fff; }
+  .kryo-su__chip[data-state="done"] { border-color:var(--kryo-success); color:var(--kryo-success); }
+  .kryo-su__chip[data-state="done"] .kryo-su__chipnum { background:var(--kryo-success); color:#fff; font-size:0; }
+  .kryo-su__chip[data-state="done"] .kryo-su__chipnum::after { content:'\2713'; font-size:11px; }
+
+  .kryo-su__opt--help { justify-content:center; color:var(--kryo-text); margin-bottom:18px; cursor:pointer; }
+  .kryo-su__chlinks { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .kryo-su__sublink { min-height:48px; padding:0; border:0; background:none; cursor:pointer;
+    display:inline-flex; align-items:center; gap:6px; text-decoration:none;
     font:600 15px/1 var(--kryo-font-body); color:var(--kryo-text-secondary); }
-  .kryo-su__barbtn--help { color:var(--kryo-text); }
+  .kryo-su__sublink--next { color:var(--kryo-blue); }
 
   /* ---- Layout ---- */
   .kryo-su__wrap { padding:24px 20px; max-width:640px; margin:0 auto; }
   .kryo-su__guide[hidden], .kryo-su__gate[hidden] { display:none; }
-  .kryo-su__ch { scroll-margin-top:calc(var(--bar) + 8px); border-top:1px solid var(--kryo-border); }
-  .kryo-su__overview { scroll-margin-top:calc(var(--bar) + 8px); }
+  .kryo-su__ch { scroll-margin-top:var(--head); border-top:1px solid var(--kryo-border); }
+  .kryo-su__overview { scroll-margin-top:var(--head); }
   .kryo-su__eyebrow { display:flex; align-items:center; gap:8px; flex-wrap:wrap;
     font:700 11px/1.3 var(--kryo-font-body); letter-spacing:.12em; text-transform:uppercase;
     color:var(--kryo-text-secondary); margin:0 0 10px; }
@@ -398,8 +422,6 @@
     transition:background 150ms ease, color 150ms ease, border-color 150ms ease; }
   .kryo-su__mark[data-state="done"] { background:var(--kryo-success-bg); border-color:var(--kryo-success-bg);
     color:var(--kryo-success); }
-  .kryo-su__nextlink { display:inline-flex; align-items:center; justify-content:center; gap:6px;
-    min-height:48px; text-decoration:none; font:600 15px/1 var(--kryo-font-body); color:var(--kryo-blue); }
 
   .kryo-su__cta { width:100%; min-height:56px; padding:0 18px; border:0; border-radius:999px;
     background:var(--kryo-ink); color:#fff; font:600 17px/1.2 var(--kryo-font-body); cursor:pointer;
@@ -465,7 +487,9 @@
   /* ---- Desktop: same content, wider measure. Mobile is the source of truth. ---- */
   @media (min-width:990px) {
     .kryo-su__wrap { max-width:900px; padding:36px 32px; }
-    .kryo-su__bar { padding-left:32px; padding-right:32px; }
+    .kryo-su__barrow { padding-left:32px; padding-right:32px; }
+    .kryo-su__chips { padding-left:32px; padding-right:32px; }
+    .kryo-su__logo { height:30px; }
     .kryo-su__h1 { font-size:40px; }
     .kryo-su__h2 { font-size:30px; }
     .kryo-su__media { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
@@ -594,8 +618,9 @@
       if (isDone) count++;
       var row = root.querySelector('[data-kryo-toc="' + a + '"]');
       if (row) row.setAttribute('data-state', isDone ? 'done' : 'todo');
-      var nav = root.querySelector('[data-kryo-navstate="' + a + '"]');
-      if (nav) nav.setAttribute('data-state', isDone ? 'done' : 'todo');
+      var chip = root.querySelector('[data-kryo-chip="' + a + '"]');
+      if (chip && chip.getAttribute('data-state') !== 'current')
+        chip.setAttribute('data-state', isDone ? 'done' : 'todo');
       var mark = root.querySelector('[data-kryo-mark="' + a + '"]');
       if (mark) {
         mark.setAttribute('data-state', isDone ? 'done' : 'todo');
@@ -635,7 +660,8 @@
   function scrollToAnchor(id, push) {
     var el = document.getElementById(id);
     if (!el) return;
-    var top = el.getBoundingClientRect().top + window.scrollY - 64;
+    var head = root.querySelector('.kryo-su__bar');
+    var top = el.getBoundingClientRect().top + window.scrollY - ((head ? head.offsetHeight : 106) + 8);
     window.scrollTo({ top: top, behavior: reduce ? 'auto' : 'smooth' });
     // One history entry per jump — browser Back returns to where they were reading,
     // it never walks back through twenty individual actions.
@@ -728,6 +754,20 @@
 
   // ---- Which chapter is the reader in (for support context + analytics) ----
   var currentAnchor = 'overview';
+  function setCurrentChip(a) {
+    [].forEach.call(root.querySelectorAll('[data-kryo-chip]'), function (chip) {
+      var anchor = chip.getAttribute('data-kryo-chip');
+      if (anchor === a) {
+        chip.setAttribute('data-state', 'current');
+        // Keep the chip you are reading visible in the scrolling row.
+        var row = chip.parentNode;
+        var want = chip.offsetLeft - (row.clientWidth - chip.offsetWidth) / 2;
+        if (Math.abs(row.scrollLeft - want) > 24) row.scrollLeft = Math.max(0, want);
+      } else {
+        chip.setAttribute('data-state', done[anchor] ? 'done' : 'todo');
+      }
+    });
+  }
   function currentChapterTitle() {
     var sec = root.querySelector('[data-kryo-ch="' + currentAnchor + '"]');
     var h = sec && sec.querySelector('.kryo-su__h2');
@@ -741,6 +781,7 @@
         var a = e.target.getAttribute('data-kryo-ch');
         if (!a) return;
         currentAnchor = a;
+        setCurrentChip(a);
         if (!seen[a]) { seen[a] = 1; track('kryo_setup_chapter_view', { chapter: a, via: 'scroll' }); }
       });
     }, { rootMargin: '-64px 0px -70% 0px' });
@@ -748,11 +789,16 @@
   }
 
   // ---- Events ----
-  root.querySelector('[data-kryo-help-open]').addEventListener('click', function () {
-    track('kryo_support_open', { surface: 'setup', chapter: currentAnchor });
-    openSheet('help');
+  // Help is now triggered from inside the guide (overview + every chapter footer),
+  // because the sticky bar carries the five section links.
+  [].forEach.call(root.querySelectorAll('[data-kryo-help-open]'), function (btn) {
+    if (btn.getAttribute('data-wired')) return;
+    btn.setAttribute('data-wired', '1');
+    btn.addEventListener('click', function () {
+      track('kryo_support_open', { surface: 'setup', chapter: currentAnchor });
+      openSheet('help');
+    });
   });
-  root.querySelector('[data-kryo-nav-open]').addEventListener('click', function () { openSheet('nav'); });
 
   var submitBtn = root.querySelector('[data-kryo-gate-submit]');
   if (submitBtn) submitBtn.addEventListener('click', acceptGate);
@@ -848,8 +894,7 @@
       "info": "Keeps the owner hub's 'x of y steps' figure sensible now progress is chapter-level." },
 
     { "type": "header", "content": "Header" },
-    { "type": "text", "id": "sections_label", "label": "Sections button", "default": "Sections" },
-    { "type": "text", "id": "help_label", "label": "Help button", "default": "Help" },
+    { "type": "text", "id": "help_label_long", "label": "Help link", "default": "Get help" },
     { "type": "text", "id": "help_aria", "label": "Help accessible label", "default": "Get help with setup" },
     { "type": "text", "id": "zoom_aria", "label": "Image accessible label", "default": "View this image full screen" },
     { "type": "text", "id": "zoom_hint", "label": "Image zoom hint", "default": "Tap to enlarge" },
@@ -861,7 +906,6 @@
     { "type": "text", "id": "continue_label", "label": "Returning owner button", "default": "Continue setup" },
     { "type": "text", "id": "chapter_word", "label": "Chapter word", "default": "PART" },
     { "type": "text", "id": "of_word", "label": "Of word", "default": "OF" },
-    { "type": "text", "id": "overview_label", "label": "Overview nav label", "default": "Overview" },
     { "type": "text", "id": "next_word", "label": "Next-section prefix", "default": "Next:" },
     { "type": "text", "id": "detail_label", "label": "Accordion label", "default": "Show detailed instructions" },
     { "type": "text", "id": "lbl_critical", "label": "Critical note title", "default": "Important" },
@@ -937,6 +981,7 @@
       "settings": [
         { "type": "range", "id": "number", "label": "Part number", "min": 1, "max": 5, "step": 1, "default": 1 },
         { "type": "text", "id": "anchor", "label": "Anchor id", "info": "position / mount / connect / fill / first-use" },
+        { "type": "text", "id": "nav_label", "label": "Sticky-bar label", "info": "Short. Falls back to the title." },
         { "type": "text", "id": "title", "label": "Title" },
         { "type": "textarea", "id": "purpose", "label": "One-sentence purpose" },
         { "type": "richtext", "id": "quick", "label": "Quick instructions", "info": "3-5 bullets, always visible." },
