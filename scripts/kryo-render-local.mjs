@@ -87,6 +87,9 @@ const F = {
   plus: (v, n) => Number(v || 0) + Number(n),
   minus: (v, n) => Number(v || 0) - Number(n),
   append: (v, n) => String(v ?? '') + String(n ?? ''),
+  truncate: (v, n, e) => { const s = String(v ?? ''); const len = Number(n) || 50;
+    const ell = e === undefined ? '...' : String(e);
+    return s.length <= len ? s : s.slice(0, Math.max(0, len - ell.length)) + ell; },
 };
 
 function resolve(expr, scope) {

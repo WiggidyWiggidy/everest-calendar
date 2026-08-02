@@ -14,6 +14,11 @@
   /* Core palette — charcoal, white, off-white, Everest blue (§3) */
   --kryo-ink: #171A1C;
   --kryo-blue: #047ACA;
+  /* Completion states use blue, not green, to match the site palette.
+     --kryo-blue-strong is the text-on-tint value: #047ACA on #E8F3FC is only 4.02:1,
+     which fails AA for normal text; #0468AC gives 5.21:1. */
+  --kryo-blue-bg: #E8F3FC;
+  --kryo-blue-strong: #0468AC;
   --kryo-white: #FFFFFF;
   --kryo-surface: #F8F8F8;
 

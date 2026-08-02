@@ -358,6 +358,23 @@ try {
     add('P0', 'Instruction dropdown does not reveal its explanation', JSON.stringify(opens));
   else pass('Instruction dropdown reveals its explanation', `${opens.before}px closed -> ${opens.after}px open`);
 
+  const qaImg = await p.evaluate(() => {
+    const rows = [...document.querySelectorAll('details.kryo-su__qa')];
+    const withMedia = rows.filter((r) => r.querySelector('.kryo-su__qaimg'));
+    const outsideBody = withMedia.filter((r) => !r.querySelector('.kryo-su__qabody .kryo-su__qaimg')).length;
+    const imgs = [...document.querySelectorAll('.kryo-su__qaimg img')];
+    return { rows: rows.length, withMedia: withMedia.length, outsideBody,
+             lazy: imgs.filter((i) => i.getAttribute('loading') === 'lazy').length, imgs: imgs.length,
+             zoomable: withMedia.filter((r) => r.querySelector('[data-kryo-zoom]')).length };
+  });
+  if (qaImg.outsideBody > 0)
+    add('P0', 'An instruction image is outside the expandable body', `${qaImg.outsideBody} rows`);
+  else if (qaImg.imgs && qaImg.lazy !== qaImg.imgs)
+    add('P1', 'An instruction image is not lazy-loaded', `${qaImg.lazy}/${qaImg.imgs}`);
+  else pass('Instruction rows accept images', qaImg.withMedia
+      ? `${qaImg.withMedia}/${qaImg.rows} rows carry media, ${qaImg.zoomable} tap-to-enlarge, ${qaImg.lazy}/${qaImg.imgs} lazy`
+      : `${qaImg.rows} rows ready for images (none added yet)`);
+
   if (errors.length) add('P0', 'JavaScript errors during the flow', errors.slice(0, 3).join(' | '));
   else pass('No JavaScript errors', 'whole flow clean');
 
