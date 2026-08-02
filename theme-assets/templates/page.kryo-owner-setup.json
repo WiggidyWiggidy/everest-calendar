@@ -1,535 +1,227 @@
 {
   "sections": {
-    "setup": {
+    "kryo_owner_setup": {
       "type": "kryo-owner-setup",
       "blocks": {
-        "step_01": {
-          "type": "setup_step",
+        "rule_01": {
+          "type": "rule",
           "settings": {
-            "enabled": true,
-            "chapter": 1,
-            "chapter_label": "CHAPTER 1 · UNBOX & POSITION",
-            "title": "Check every component",
-            "instruction": "<p>Lay out every item before you begin. Do not install KRYO if anything is missing or damaged.</p>",
-            "actions": "<ul><li>KRYO</li><li>Two-metre hose</li><li>Halo with flow adjuster</li><li>Rubber seals</li><li>UAE PSU and plug</li><li>Fill-opening plug</li><li>Mounting rail</li><li>Sliding connector</li><li>Phillips-head screwdriver</li></ul>",
-            "asset_id": "KRYO-SETUP-01",
-            "warning_level": "caution",
-            "warning_title": "KEEP THE SEALS SAFE",
-            "warning": "<p>The rubber seals are small but essential. Keep them with the hose fittings.</p>",
-            "tip": "",
-            "why": "",
-            "image": "shopify://shop_images/kryo-whats-in-the-box.webp",
-            "cta_label": "Everything is here",
-            "allow_skip": true,
-            "image_alt": "Every KRYO component laid out on the floor for a completeness check before installation"
+            "title": "Dry-fit first",
+            "body": "Check KRYO, hose, Halo, power and refill reach before sticking the rail."
           }
         },
-        "step_02": {
-          "type": "setup_step",
+        "rule_02": {
+          "type": "rule",
           "settings": {
-            "enabled": true,
-            "chapter": 1,
-            "chapter_label": "CHAPTER 1 · UNBOX & POSITION",
-            "title": "Give KRYO room to breathe",
-            "instruction": "<p>Place KRYO upright on a stable, level floor. Leave a clear gap behind it so warm air can exit from the rear.</p>",
-            "actions": "",
-            "asset_id": "KRYO-SETUP-02",
-            "warning_level": "caution",
-            "warning_title": "",
-            "warning": "<p>Do not press the rear against a wall, towel or curtain.</p>",
-            "tip": "",
-            "why": "<p>Restricted airflow can reduce cooling performance and may cause overheating.</p>",
-            "image": "shopify://shop_images/kryo-setup-02-place-kryo",
-            "cta_label": "Position checked",
-            "allow_skip": true,
-            "image_alt": "KRYO standing upright on the bathroom floor with callouts to keep it upright, keep the vents clear and leave airflow space behind it"
+            "title": "Keep airflow and power clear",
+            "body": "Keep rear airflow open. PSU, mains plug and outlet stay dry and away from splash."
           }
         },
-        "step_03": {
-          "type": "setup_step",
+        "rule_03": {
+          "type": "rule",
           "settings": {
-            "enabled": true,
-            "chapter": 1,
-            "chapter_label": "CHAPTER 1 · UNBOX & POSITION",
-            "title": "Check reach before mounting",
-            "instruction": "<p>The hose, power cable and refill access determine the best rail position.</p>",
-            "actions": "<ol><li>Connect the hose and Halo.</li><li>Hold the rail in the proposed position.</li><li>Check the hose reaches without pulling or kinking.</li><li>Check the PSU reaches a suitable wall outlet.</li><li>Check a bidet or shower hose can reach the fill opening.</li><li>Keep spray away from KRYO’s display and power side.</li></ol>",
-            "asset_id": "KRYO-SETUP-03",
-            "warning_level": "caution",
-            "warning_title": "",
-            "warning": "<p>Do not remove the rail adhesive backing yet.</p>",
-            "tip": "<p>The display and power button are on KRYO’s right-hand side. Mount the Halo on the opposite side where possible.</p>",
-            "why": "",
-            "cta_label": "Reach checked",
-            "allow_skip": true,
-            "image": "shopify://shop_images/kryo-setup-03-dry-fit-reach",
-            "image_alt": "Line drawing of an owner holding the rail against the wall to check hose reach and KRYO position before removing the adhesive backing"
+            "title": "Check every seal",
+            "body": "Rubber seals sit flat inside the fittings. Hand-tighten only."
           }
         },
-        "step_04": {
-          "type": "setup_step",
+        "rule_04": {
+          "type": "rule",
           "settings": {
-            "enabled": true,
-            "chapter": 2,
-            "chapter_label": "CHAPTER 2 · MOUNT THE HALO",
-            "title": "Insert the sliding connector",
-            "instruction": "",
-            "actions": "<ol><li>Remove one plastic end cap with the supplied screwdriver.</li><li>Slide the height-adjustable connector into the rail.</li><li>Press the button and confirm it moves freely.</li><li>Refit the end cap.</li><li>Tighten the screw without overtightening.</li></ol>",
-            "asset_id": "KRYO-SETUP-04",
-            "warning_level": "caution",
-            "warning_title": "",
-            "warning": "",
-            "tip": "",
-            "why": "",
-            "cta_label": "Connector inserted",
-            "allow_skip": true
+            "title": "Prime before power",
+            "body": "Never run the pump dry. Do not overfill and never set KRYO below 1°C."
           }
         },
-        "step_05": {
-          "type": "setup_step",
+        "rule_05": {
+          "type": "rule",
           "settings": {
-            "enabled": true,
-            "chapter": 2,
-            "chapter_label": "CHAPTER 2 · MOUNT THE HALO",
-            "title": "Position above the tallest user",
-            "instruction": "<p>The Halo should sit at least 30 cm above the tallest user’s head. Where space allows, 40 to 50 cm provides broader shoulder coverage.</p>",
-            "actions": "",
-            "asset_id": "KRYO-SETUP-05",
-            "warning_level": "caution",
-            "warning_title": "",
-            "warning": "",
-            "tip": "<p>Higher placement helps water spread across the tops of the shoulders and create a wider film over the upper body.</p>",
-            "why": "",
-            "cta_label": "Height chosen",
-            "allow_skip": true,
-            "image": "shopify://shop_images/kryo-setup-05-halo-height",
-            "image_alt": "Halo height guide: mount the Halo 30 cm minimum, 40 to 50 cm preferred, above the top of the tallest user's head"
+            "title": "Back first",
+            "body": "For the first session, start with the water across the upper back and shoulders, not the face or chest."
           }
         },
-        "step_06": {
-          "type": "setup_step",
+        "part_01": {
+          "type": "part",
           "settings": {
-            "enabled": true,
-            "chapter": 2,
-            "chapter_label": "CHAPTER 2 · MOUNT THE HALO",
-            "title": "Test the final position",
-            "instruction": "<p>Fit the Halo and hose to the slider. Hold the complete rail against the wall and check the setup one final time.</p>",
-            "actions": "<ul><li>Rail is vertical</li><li>Halo is high enough</li><li>Hose is not stretched</li><li>Hose has no sharp kink</li><li>Spray points away from the power side</li><li>Rear airflow stays clear</li><li>Refill hose reaches KRYO</li><li>Power cable reaches safely</li></ul>",
-            "asset_id": "KRYO-SETUP-06",
-            "warning_level": "caution",
-            "warning_title": "",
-            "warning": "",
-            "tip": "<p>Mark the rail position with removable tape.</p>",
-            "why": "",
-            "cta_label": "Position tested",
-            "allow_skip": true,
-            "image": "shopify://shop_images/kryo-setup-06-dry-fit-rail",
-            "image_alt": "A hand holding the rail vertically against the tiled wall to confirm height and final position before sticking"
+            "term": "Halo",
+            "definition": "The ring-shaped shower head that mounts on the rail above you. It spreads cold water across the shoulders and upper body."
           }
         },
-        "step_07": {
-          "type": "setup_step",
+        "part_02": {
+          "type": "part",
           "settings": {
-            "enabled": true,
-            "chapter": 2,
-            "chapter_label": "CHAPTER 2 · MOUNT THE HALO",
-            "title": "Clean and dry the surface",
-            "instruction": "<p>The wall must be smooth, clean, dry and free from soap film, oil, dust or loose material.</p>",
-            "actions": "",
-            "asset_id": "KRYO-SETUP-07",
-            "warning_level": "caution",
-            "warning_title": "",
-            "warning": "<p>Use only the preparation method approved for your wall and the supplied adhesive.</p>",
-            "tip": "",
-            "why": "",
-            "cta_label": "Surface ready",
-            "allow_skip": true,
-            "image": "shopify://shop_images/kryo-setup-07-clean-wall",
-            "image_alt": "A hand wiping the tiled wall with a microfibre cloth so the surface is clean, dry and free of dust or oil"
+            "term": "Flow adjuster",
+            "definition": "The control on the Halo that opens and closes water flow. Keep it closed until you are ready to start."
           }
         },
-        "step_08": {
-          "type": "setup_step",
+        "part_03": {
+          "type": "part",
           "settings": {
-            "enabled": true,
-            "chapter": 2,
-            "chapter_label": "CHAPTER 2 · MOUNT THE HALO",
-            "title": "Get the first placement right",
-            "instruction": "<p>The adhesive is strongest when the rail is aligned correctly the first time.</p>",
-            "actions": "<ol><li>Remove the adhesive covers.</li><li>Align the rail with your marks.</li><li>Make first contact carefully.</li><li>Press firmly across every adhesive point.</li><li>Allow the approved setting time before loading the rail.</li></ol>",
-            "asset_id": "KRYO-SETUP-08",
-            "warning_level": "critical",
-            "warning_title": "REPOSITIONING WEAKENS THE ADHESIVE",
-            "warning": "<p>Get the alignment right on first contact.</p>",
-            "tip": "",
-            "why": "",
-            "cta_label": "I understand",
-            "allow_skip": false,
-            "image": "shopify://shop_images/kryo-setup-08-stick-rail",
-            "image_alt": "Pressing the rail firmly onto the wall after removing the adhesive backing, holding for ten seconds, only once aligned"
+            "term": "Mounting rail",
+            "definition": "The vertical adhesive rail that fixes to the wall and carries the Halo."
           }
         },
-        "step_09": {
-          "type": "setup_step",
+        "part_04": {
+          "type": "part",
           "settings": {
-            "enabled": true,
-            "chapter": 3,
-            "chapter_label": "CHAPTER 3 · CONNECT KRYO",
-            "title": "Check both seals",
-            "instruction": "<p>A rubber seal must sit flat inside each hose fitting.</p>",
-            "actions": "<ul><li><strong>Correct:</strong> seal flat and centred.</li><li><strong>Incorrect:</strong> missing, twisted or pinched.</li></ul>",
-            "asset_id": "KRYO-SETUP-09",
-            "warning_level": "critical",
-            "warning_title": "A MISSING SEAL WILL LEAK",
-            "warning": "<p>A missing or misaligned seal can cause leaking.</p>",
-            "tip": "",
-            "why": "",
-            "cta_label": "I understand",
-            "allow_skip": false,
-            "image": "shopify://shop_images/kryo-setup-09-hose-to-rail",
-            "image_alt": "Close-up of the lower rail connection where the hose screws on, hand-tighten only, do not overtighten"
+            "term": "Sliding connector",
+            "definition": "The height-adjustable carrier that slides inside the rail and holds the Halo."
           }
         },
-        "step_10": {
-          "type": "setup_step",
+        "part_05": {
+          "type": "part",
           "settings": {
-            "enabled": true,
-            "chapter": 3,
-            "chapter_label": "CHAPTER 3 · CONNECT KRYO",
-            "title": "Make both water connections",
-            "instruction": "",
-            "actions": "<ol><li>Hand-tighten one hose end onto the Halo.</li><li>Hand-tighten the other end onto KRYO’s outlet.</li><li>Check the hose follows a smooth path.</li><li>Keep the Halo flow adjuster closed.</li><li>Keep KRYO’s water-flow control off.</li></ol>",
-            "asset_id": "KRYO-SETUP-10",
-            "warning_level": "caution",
-            "warning_title": "",
-            "warning": "<p>Do not cross-thread or overtighten.</p>",
-            "tip": "",
-            "why": "",
-            "cta_label": "Hose connected",
-            "allow_skip": true,
-            "image": "shopify://shop_images/kryo-setup-10-hose-to-kryo",
-            "image_alt": "A hand attaching the hose to the KRYO outlet fitting, hand-tighten only, do not overtighten"
+            "term": "2 metre hose",
+            "definition": "Carries water between KRYO and the Halo. A rubber seal sits inside each fitting."
           }
         },
-        "step_11": {
-          "type": "setup_step",
+        "part_06": {
+          "type": "part",
           "settings": {
-            "enabled": true,
-            "chapter": 3,
-            "chapter_label": "CHAPTER 3 · CONNECT KRYO",
-            "title": "Keep mains power dry",
-            "instruction": "<p>The PSU converts the UAE wall supply to 24V DC for KRYO.</p>",
-            "actions": "<ol><li>Keep KRYO switched off.</li><li>Dry your hands.</li><li>Connect KRYO’s 24V DC lead to the PSU.</li><li>Place the PSU and connection outside the splash zone.</li><li>Connect the UAE plug to a suitable wall outlet.</li><li>Route cables away from water and foot traffic.</li></ol>",
-            "asset_id": "KRYO-SETUP-11",
-            "warning_level": "critical",
-            "warning_title": "DO NOT PLUG OR UNPLUG WITH WET HANDS",
-            "warning": "<p>Keep the PSU, plug and connections outside the splash zone.</p>",
-            "tip": "",
-            "why": "",
-            "cta_label": "I understand",
-            "allow_skip": false
+            "term": "PSU",
+            "definition": "The power supply that converts the UAE wall supply to 24V DC for KRYO. It must stay dry."
           }
         },
-        "step_12": {
-          "type": "setup_step",
+        "part_07": {
+          "type": "part",
           "settings": {
-            "enabled": true,
-            "chapter": 4,
-            "chapter_label": "CHAPTER 4 · FILL & START",
-            "title": "Never start KRYO dry",
-            "instruction": "<p>The internal circulation system needs water before KRYO is switched on.</p>",
-            "actions": "<p>Add clean water through the top opening until the system is primed.</p>",
-            "asset_id": "KRYO-SETUP-12",
-            "warning_level": "critical",
-            "warning_title": "RUNNING DRY MAY DAMAGE THE PUMP",
-            "warning": "<p>Never switch KRYO on before adding priming water.</p>",
-            "tip": "",
-            "why": "<p>The exact minimum priming volume is pending confirmation and is not published here.</p>",
-            "cta_label": "I understand",
-            "allow_skip": false,
-            "image": "shopify://shop_images/kryo-setup-12-add-water-prime",
-            "image_alt": "Adding approximately one litre of water into the KRYO fill opening to prime the system before switching on"
+            "term": "Fill opening and plug",
+            "definition": "The opening on top of KRYO where you add water, and the plug that closes it."
           }
         },
-        "step_13": {
-          "type": "setup_step",
+        "part_08": {
+          "type": "part",
           "settings": {
-            "enabled": true,
-            "chapter": 4,
-            "chapter_label": "CHAPTER 4 · FILL & START",
-            "title": "Switch on and listen",
-            "instruction": "",
-            "actions": "<ol><li>Switch KRYO on.</li><li>Confirm the internal light turns on.</li><li>Listen for smooth internal circulation.</li></ol>",
-            "asset_id": "KRYO-SETUP-13",
-            "warning_level": "critical",
-            "warning_title": "IF YOU HEAR A HARSH DRY-RUNNING SOUND",
-            "warning": "<p>Switch KRYO off immediately and add more water.</p>",
-            "tip": "",
-            "why": "",
-            "cta_label": "I understand",
-            "allow_skip": false
+            "term": "KRYO water-flow control",
+            "definition": "The control on KRYO that starts and stops circulation to the Halo."
           }
         },
-        "step_14": {
-          "type": "setup_step",
+        "chapter_1": {
+          "type": "chapter",
           "settings": {
-            "enabled": true,
-            "chapter": 4,
-            "chapter_label": "CHAPTER 4 · FILL & START",
-            "title": "Watch the water level",
-            "instruction": "<p>Keep the internal light on while filling so you can see the level clearly.</p>",
-            "actions": "<ol><li>Add clean water slowly.</li><li>Stop at the safe level shown.</li><li>Never let water overflow into the upper internal area.</li></ol>",
-            "asset_id": "KRYO-SETUP-14",
-            "warning_level": "caution",
-            "warning_title": "",
-            "warning": "<p>Do not fill to the top of the opening.</p>",
-            "tip": "",
-            "why": "<p>The exact maximum fill level is pending confirmation and is not published here.</p>",
-            "cta_label": "Level checked",
-            "allow_skip": true
+            "anchor": "position",
+            "title": "Position & plan",
+            "purpose": "Decide where everything goes before mounting anything.",
+            "quick": "<ul><li>Place KRYO upright on a stable, level floor.</li><li>Keep the rear airflow area clear.</li><li>Confirm hose, power and refill reach.</li><li>Position the Halo above the user and keep spray directed away from the display and power side.</li><li>Do not remove the rail adhesive yet.</li></ul>",
+            "critical": "<p>Do not stick the rail down until the complete layout has been checked.</p>",
+            "detail": "<p><strong>Halo height.</strong> The Halo should sit at least 30&nbsp;cm above the tallest user’s head. Where space and hose length allow, 40 to 50&nbsp;cm gives broader shoulder coverage — higher placement helps water spread across the tops of the shoulders and create a wider film over the upper body.</p><p><strong>Check every component first.</strong> Lay out every item before you begin and do not install KRYO if anything is missing or damaged: KRYO, two-metre hose, Halo with flow adjuster, rubber seals, UAE PSU and plug, fill-opening plug, mounting rail, sliding connector, Phillips-head screwdriver. The rubber seals are small but essential — keep them with the hose fittings.</p><p><strong>Airflow.</strong> Leave a clear gap behind KRYO so warm air can exit from the rear. Do not press the rear against a wall, towel or curtain — restricted airflow can reduce cooling performance and may cause overheating.</p><p><strong>Reach checks.</strong> Connect the hose and Halo, hold the rail in the proposed position, then confirm: the hose reaches without pulling or kinking; the PSU reaches a suitable wall outlet; a bidet or shower hose can reach the fill opening; spray stays away from KRYO’s display and power side.</p><p><strong>Spray direction.</strong> The display and power button are on KRYO’s right-hand side. Mount the Halo on the opposite side where possible.</p>",
+            "next_anchor": "mount",
+            "next_label": "Mount the Halo",
+            "slot_1": "01_place_kryo.webp",
+            "alt_1": "KRYO standing upright on a level bathroom floor with clear space behind it for rear airflow",
+            "slot_2": "11_dry_fit_before_adhesive.webp",
+            "alt_2": "An owner holding the rail against the wall to check hose, power and refill reach before removing the adhesive backing",
+            "slot_3": "02_dry_fit_rail.webp",
+            "alt_3": "A hand holding the rail vertically against the tiled wall to confirm height and final position",
+            "slot_4": "12_halo_height_visual.webp",
+            "alt_4": "Halo height guide showing 30 cm minimum and 40 to 50 cm preferred above the tallest user’s head",
+            "number": 1
           }
         },
-        "step_15": {
-          "type": "setup_step",
+        "chapter_2": {
+          "type": "chapter",
           "settings": {
-            "enabled": true,
-            "chapter": 4,
-            "chapter_label": "CHAPTER 4 · FILL & START",
-            "title": "Fit the top plug",
-            "instruction": "",
-            "actions": "<ol><li>Wipe away spills.</li><li>Dry the top surface.</li><li>Insert the supplied fill-opening plug.</li><li>Confirm it sits correctly.</li></ol>",
-            "asset_id": "KRYO-SETUP-15",
-            "warning_level": "caution",
-            "warning_title": "",
-            "warning": "",
-            "tip": "",
-            "why": "",
-            "cta_label": "Plug fitted",
-            "allow_skip": true,
-            "image": "shopify://shop_images/kryo-setup-15-fill-cap",
-            "image_alt": "Unscrewing the KRYO fill cap by hand to access the fill opening, no tools required"
+            "anchor": "mount",
+            "title": "Mount the Halo",
+            "purpose": "Assemble the rail and mount it once the position is confirmed.",
+            "quick": "<ul><li>Insert the sliding connector into the rail.</li><li>Refit the rail end cap.</li><li>Make sure the slider moves correctly.</li><li>Clean and completely dry the wall.</li><li>Align the rail and press it firmly into position.</li></ul>",
+            "critical": "<p>Adhesive is difficult to reposition. Confirm the location before applying it.</p>",
+            "detail": "<p><strong>Rail assembly.</strong> Remove one plastic end cap with the supplied screwdriver. Slide the height-adjustable connector into the rail, press the button and confirm it moves freely. Refit the end cap and tighten the screw without overtightening.</p><p><strong>Final position test.</strong> Fit the Halo and hose to the slider, hold the complete rail against the wall and check once more: the rail is vertical; the Halo is high enough; the hose is not stretched and has no sharp kink; spray points away from the power side; rear airflow stays clear; the refill hose reaches KRYO; the power cable reaches safely. Mark the rail position with removable tape.</p><p><strong>Surface preparation.</strong> The wall must be smooth, clean, dry and free from soap film, oil, dust or loose material. Use only the preparation method approved for your wall and the supplied adhesive.</p><p><strong>Applying the rail.</strong> Remove the adhesive covers, align the rail with your marks, make first contact carefully, then press firmly across every adhesive point. Allow the approved setting time before loading the rail.</p>",
+            "next_anchor": "connect",
+            "next_label": "Connect",
+            "slot_1": "03_clean_wall.webp",
+            "alt_1": "A hand wiping the tiled wall with a microfibre cloth so the surface is clean, dry and free of dust or oil",
+            "slot_2": "04_mount_rail.webp",
+            "alt_2": "The rail being aligned and pressed firmly into position on the prepared wall",
+            "number": 2
           }
         },
-        "step_16": {
-          "type": "setup_step",
+        "chapter_3": {
+          "type": "chapter",
           "settings": {
-            "enabled": true,
-            "chapter": 4,
-            "chapter_label": "CHAPTER 4 · FILL & START",
-            "title": "Start at 15°C",
-            "instruction": "<p>Press <strong>SET</strong> and choose approximately 15°C for your first session. Lower the temperature gradually only after you know how your body responds.</p>",
-            "actions": "",
-            "asset_id": "KRYO-SETUP-16",
-            "warning_level": "critical",
-            "warning_title": "TEMPERATURE LIMITS",
-            "warning": "<p>Never set KRYO below 1°C. Never allow the reservoir to freeze.</p>",
-            "tip": "",
-            "why": "",
-            "cta_label": "I understand",
-            "allow_skip": false,
-            "image": "shopify://shop_images/kryo-setup-16-first-cooldown",
-            "image_alt": "KRYO front panel showing the temperature display during the first cooldown from room-temperature water"
+            "anchor": "connect",
+            "title": "Connect",
+            "purpose": "Connect the Halo, hose and power.",
+            "quick": "<ul><li>Check the rubber seal inside each water fitting.</li><li>Connect the hose to the Halo.</li><li>Connect the other end to KRYO.</li><li>Hand-tighten only.</li><li>Connect KRYO’s 24V DC lead to the supplied PSU, then connect the PSU to a suitable dry mains outlet.</li></ul>",
+            "critical": "<p>Seal flat. Fit squarely. Hand-tight only.</p><p>Keep the PSU and mains connection dry and away from standing water or splash.</p>",
+            "detail": "<p><strong>Seals.</strong> A rubber seal must sit flat inside each hose fitting. Correct: seal flat and centred. Incorrect: missing, twisted or pinched. A missing or misaligned seal can cause leaking.</p><p><strong>Water connections.</strong> Hand-tighten one hose end onto the Halo and the other onto KRYO’s outlet. Check the hose follows a smooth path. Do not cross-thread or overtighten.</p><p><strong>Both flow controls closed to start.</strong> Keep the Halo flow adjuster closed and KRYO’s water-flow control off until you are ready to prime.</p><p><strong>Power.</strong> The PSU converts the UAE wall supply to 24V DC for KRYO. Keep KRYO switched off and dry your hands. Connect KRYO’s 24V DC lead to the PSU, place the PSU and its connection outside the splash zone, then connect the UAE plug to a suitable wall outlet. Route cables away from water and foot traffic.</p>",
+            "next_anchor": "fill",
+            "next_label": "Fill & start",
+            "slot_1": "09_hose_to_rail.webp",
+            "alt_1": "Close-up of the lower rail connection where the hose screws on, showing the rubber seal seated flat",
+            "slot_2": "05_hose_to_kryo.webp",
+            "alt_2": "A hand attaching the hose to the KRYO outlet fitting, hand-tighten only",
+            "number": 3
           }
         },
-        "step_17": {
-          "type": "setup_step",
+        "chapter_4": {
+          "type": "chapter",
           "settings": {
-            "enabled": true,
-            "chapter": 5,
-            "chapter_label": "CHAPTER 5 · FIRST SESSION",
-            "title": "Your KRYO is ready",
-            "instruction": "<p>Run through the final check before your first session.</p>",
-            "actions": "<ul><li>Rear airflow is clear</li><li>Rail is secure</li><li>Hose is not kinked</li><li>Both seals are fitted</li><li>PSU is dry and outside the splash zone</li><li>Water is below the maximum level</li><li>Starting temperature is around 15°C</li></ul>",
-            "asset_id": "KRYO-SETUP-17",
-            "warning_level": "caution",
-            "warning_title": "",
-            "warning": "",
-            "tip": "",
-            "why": "",
-            "image": "shopify://shop_images/kryo-front-view.webp",
-            "cta_label": "Continue",
-            "allow_skip": false,
-            "image_alt": "The installed KRYO with the Halo mounted, ready for a first session"
+            "anchor": "fill",
+            "title": "Fill & start",
+            "purpose": "Prime KRYO, start circulation and fill it safely.",
+            "quick": "<ul><li>Open the fill plug.</li><li>Add water before powering the pump.</li><li>Switch KRYO on and confirm smooth circulation.</li><li>Continue filling slowly to the safe level.</li><li>Dry the top and refit the fill plug.</li><li>Start around 15°C.</li></ul>",
+            "critical": "<p>Never run the pump dry. If you hear a harsh dry-running sound or see no circulation, switch KRYO off immediately and add water.</p><p>Do not overfill. Never set KRYO below 1°C or allow the reservoir to freeze.</p>",
+            "detail": "<p><strong>Prime before power.</strong> The internal circulation system needs water before KRYO is switched on. Add clean water through the top opening until the system is primed. The exact minimum priming volume is pending confirmation and is not published here.</p><p><strong>Switch on and listen.</strong> Switch KRYO on, confirm the internal light turns on, and listen for smooth internal circulation.</p><p><strong>Filling.</strong> Keep the internal light on while filling so you can see the level clearly. Add clean water slowly and stop at the safe level shown. Never let water overflow into the upper internal area, and do not fill to the top of the opening. The exact maximum fill level is pending confirmation and is not published here.</p><p><strong>Closing up.</strong> Wipe away spills, dry the top surface, insert the supplied fill-opening plug and confirm it sits correctly.</p><p><strong>Temperature.</strong> Press SET and choose approximately 15°C for your first session. Lower the temperature gradually only after you know how your body responds.</p>",
+            "next_anchor": "first-use",
+            "next_label": "First session",
+            "slot_1": "06_open_fill_cap.webp",
+            "alt_1": "Unscrewing the KRYO fill plug by hand to open the fill opening, no tools required",
+            "slot_2": "15_add_water_prime_close.webp",
+            "alt_2": "Adding water into the KRYO fill opening to prime the system before switching it on",
+            "number": 4
           }
         },
-        "step_18": {
-          "type": "setup_step",
+        "chapter_5": {
+          "type": "chapter",
           "settings": {
-            "enabled": true,
-            "chapter": 5,
-            "chapter_label": "CHAPTER 5 · FIRST SESSION",
-            "title": "Broad cold coverage. Compact design.",
-            "instruction": "<p>The Halo balances coverage, flow and droplet size to create a film of cold water over the upper body. Positioning it above your head helps water spread across the shoulders and carry heat away from more skin.</p>",
-            "actions": "",
-            "asset_id": "KRYO-SETUP-18",
-            "warning_level": "info",
-            "warning_title": "",
-            "warning": "<p>KRYO is a different experience from full-body immersion. A short, very cold session can still feel extremely powerful and produce a strong sense of alertness.</p>",
-            "tip": "",
-            "why": "",
-            "cta_label": "Continue",
-            "allow_skip": false,
-            "image": "shopify://shop_images/kryo-setup-18-coverage",
-            "image_alt": "Line drawing showing the Halo's broad water spread across the shoulders and upper back"
-          }
-        },
-        "step_19": {
-          "type": "setup_step",
-          "settings": {
-            "enabled": true,
-            "chapter": 5,
-            "chapter_label": "CHAPTER 5 · FIRST SESSION",
-            "title": "Begin around 15°C",
-            "instruction": "<p>KRYO can feel more intense than expected. Use a warmer temperature, lower flow and short exposure for your first session.</p>",
-            "actions": "",
-            "asset_id": "KRYO-SETUP-19",
-            "warning_level": "caution",
-            "warning_title": "",
-            "warning": "",
-            "tip": "",
-            "why": "",
-            "cta_label": "Continue",
-            "allow_skip": false
-          }
-        },
-        "step_20": {
-          "type": "setup_step",
-          "settings": {
-            "enabled": true,
-            "chapter": 5,
-            "chapter_label": "CHAPTER 5 · FIRST SESSION",
-            "title": "Do not face the first flow",
-            "instruction": "<p>Stand with your back to the Halo. Let water land across the tops of your shoulders or upper back before slowly rotating.</p>",
-            "actions": "",
-            "asset_id": "KRYO-SETUP-20",
-            "warning_level": "critical",
-            "warning_title": "DO NOT DIRECT THE FIRST FLOW AT YOUR FACE OR CHEST",
-            "warning": "<p>Begin with your back toward the Halo.</p>",
-            "tip": "<p>Breathe normally.</p>",
-            "why": "",
-            "cta_label": "I understand",
-            "allow_skip": false,
-            "image": "shopify://shop_images/kryo-setup-20-first-flow",
-            "image_alt": "Do and Don't comparison: face away so the first flow hits the upper back and shoulders, never face the Halo directly"
-          }
-        },
-        "step_21": {
-          "type": "setup_step",
-          "settings": {
-            "enabled": true,
-            "chapter": 5,
-            "chapter_label": "CHAPTER 5 · FIRST SESSION",
-            "title": "Control the intensity",
-            "instruction": "<p><strong>Lower flow —</strong> around 5 L/min for a gentler experience, cooling down and longer reservoir use.</p><p><strong>Higher flow —</strong> around 8 to 10 L/min for a more intense experience, larger droplets and stronger wind chill.</p>",
-            "actions": "",
-            "asset_id": "KRYO-SETUP-21",
-            "warning_level": "caution",
-            "warning_title": "",
-            "warning": "<p>Higher flow uses the reservoir much faster.</p>",
-            "tip": "",
-            "why": "<p>Flow values remain configurable pending final production validation.</p>",
-            "cta_label": "Continue",
-            "allow_skip": false
-          }
-        },
-        "step_22": {
-          "type": "setup_step",
-          "settings": {
-            "enabled": true,
-            "chapter": 5,
-            "chapter_label": "CHAPTER 5 · FIRST SESSION",
-            "title": "Stay in control",
-            "instruction": "",
-            "actions": "<ol><li>Stand with your back to the Halo.</li><li>Start the flow.</li><li>Breathe normally.</li><li>Let water spread across your shoulders.</li><li>Rotate gradually only when comfortable.</li><li>End immediately if you feel unwell.</li></ol>",
-            "asset_id": "KRYO-SETUP-22",
-            "warning_level": "caution",
-            "warning_title": "",
-            "warning": "",
-            "tip": "",
-            "why": "",
-            "cta_label": "Continue",
-            "allow_skip": false
-          }
-        },
-        "step_23": {
-          "type": "setup_step",
-          "settings": {
-            "enabled": true,
-            "chapter": 5,
-            "chapter_label": "CHAPTER 5 · FIRST SESSION",
-            "title": "Stop immediately if something feels wrong",
-            "instruction": "<p>Stop the flow and move to a safe, warm environment if you experience any of the following.</p>",
-            "actions": "<ul><li>Chest pain</li><li>Severe breathlessness</li><li>Dizziness or faintness</li><li>Confusion</li><li>Loss of coordination</li><li>Uncontrolled shivering</li><li>Blue or unusually pale skin</li><li>Racing or irregular heartbeat</li><li>Panic or loss of breathing control</li></ul>",
-            "asset_id": "KRYO-SETUP-23",
-            "warning_level": "critical",
-            "warning_title": "SEEK URGENT MEDICAL HELP",
-            "warning": "<p>Seek urgent medical help for severe or persistent symptoms.</p>",
-            "tip": "",
-            "why": "",
-            "cta_label": "I understand",
-            "allow_skip": false
-          }
-        },
-        "step_24": {
-          "type": "setup_step",
-          "settings": {
-            "enabled": true,
-            "chapter": 5,
-            "chapter_label": "CHAPTER 5 · FIRST SESSION",
-            "title": "First session complete",
-            "instruction": "<p>Close the Halo flow adjuster, switch off the water flow and check the remaining water level.</p>",
-            "actions": "<ul><li>Top up when needed</li><li>Wipe splash from display and power side</li><li>Check connections for drips</li><li>Keep rear airflow clear</li></ul>",
-            "asset_id": "KRYO-SETUP-24",
-            "warning_level": "caution",
-            "warning_title": "",
-            "warning": "",
-            "tip": "",
-            "why": "",
-            "cta_label": "Finish setup",
-            "allow_skip": false
+            "anchor": "first-use",
+            "title": "First session",
+            "purpose": "Start gently and learn the correct body position.",
+            "quick": "<ul><li>Begin around 15°C and with lower flow.</li><li>Start with your back to the Halo.</li><li>Let the first water hit the shoulders and upper back.</li><li>Once breathing is controlled, rotate gradually.</li><li>Keep the first exposure short and comfortable.</li></ul>",
+            "critical": "<p>Do not begin face-first or chest-first.</p>",
+            "detail": "<p><strong>Final check before you start.</strong> Rear airflow is clear; the rail is secure; the hose is not kinked; both seals are fitted; the PSU is dry and outside the splash zone; water is below the maximum level; the starting temperature is around 15°C.</p><p><strong>Why position matters.</strong> The Halo balances coverage, flow and droplet size to create a film of cold water over the upper body. Positioning it above your head helps water spread across the shoulders and carry heat away from more skin. KRYO is a different experience from full-body immersion — a short, very cold session can still feel extremely powerful and produce a strong sense of alertness.</p><p><strong>Begin gently.</strong> KRYO can feel more intense than expected. Use a warmer temperature, lower flow and a short exposure for your first session.</p><p><strong>Body position.</strong> Stand with your back to the Halo. Let water land across the tops of your shoulders or upper back before slowly rotating. Breathe normally.</p><p><strong>Controlling intensity.</strong> Lower flow — around 5&nbsp;L/min — gives a gentler experience, cooling down and longer reservoir use. Higher flow — around 8 to 10&nbsp;L/min — gives a more intense experience with larger droplets and stronger wind chill, and uses the reservoir much faster. Flow values remain configurable pending final production validation.</p><p><strong>Staying in control.</strong> Stand with your back to the Halo, start the flow, breathe normally, let water spread across your shoulders, and rotate gradually only when comfortable. End immediately if you feel unwell.</p><p><strong>After your session.</strong> Close the Halo flow adjuster, switch off the water flow and check the remaining water level. Top up when needed, wipe splash from the display and power side, check connections for drips and keep rear airflow clear.</p>",
+            "next_anchor": "",
+            "next_label": "",
+            "always_title": "Stop immediately if you experience",
+            "always_level": "critical",
+            "always_visible": "<p>Chest pain or pressure · severe breathlessness · dizziness or faintness · confusion · loss of coordination · uncontrolled shivering · blue or unusually pale skin · racing or irregular heartbeat · panic or loss of breathing control.</p><p>Stop the flow, move to a safe warm environment, and seek urgent medical help for severe or persistent symptoms.</p>",
+            "slot_1": "13_first_use_position.webp",
+            "alt_1": "Do and Don’t comparison showing the first flow across the upper back and shoulders, never the face or chest",
+            "slot_2": "14_shoulder_coverage.webp",
+            "alt_2": "The Halo’s water spread across the shoulders and upper back",
+            "number": 5
           }
         }
       },
       "block_order": [
-        "step_01",
-        "step_02",
-        "step_03",
-        "step_04",
-        "step_05",
-        "step_06",
-        "step_07",
-        "step_08",
-        "step_09",
-        "step_10",
-        "step_11",
-        "step_12",
-        "step_13",
-        "step_14",
-        "step_15",
-        "step_16",
-        "step_17",
-        "step_18",
-        "step_19",
-        "step_20",
-        "step_21",
-        "step_22",
-        "step_23",
-        "step_24"
+        "rule_01",
+        "rule_02",
+        "rule_03",
+        "rule_04",
+        "rule_05",
+        "part_01",
+        "part_02",
+        "part_03",
+        "part_04",
+        "part_05",
+        "part_06",
+        "part_07",
+        "part_08",
+        "chapter_1",
+        "chapter_2",
+        "chapter_3",
+        "chapter_4",
+        "chapter_5"
       ],
       "settings": {
-        "chapter_names": "Unbox & Position,Mount the Halo,Connect KRYO,Fill & Start,First Session",
         "hub_url": "/pages/kryo-resources",
-        "why_label": "Why this matters",
-        "back_label": "Back",
-        "next_label": "Next",
+        "safety_url": "/pages/kryo-safety",
         "whatsapp_url": "https://wa.me/447724709585",
-        "complete_heading": "You're ready.",
-        "complete_body": "Your KRYO is installed and you know how to start safely.",
-        "safety_url": "/pages/kryo-safety"
+        "parts_image": "shopify://shop_images/kryo-whats-in-the-box.webp",
+        "parts_image_alt": "Every KRYO component laid out for identification: KRYO, hose, Halo, rail, sliding connector, seals, PSU and fill plug"
       }
     }
   },
   "order": [
-    "setup"
+    "kryo_owner_setup"
   ]
 }

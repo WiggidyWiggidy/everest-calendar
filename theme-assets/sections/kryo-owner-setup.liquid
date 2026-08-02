@@ -1,72 +1,56 @@
 {%- comment -%}
-  KRYO Setup — mobile-first owner companion  ·  /pages/kryo-setup
-  Implements "KRYO OWNER SETUP — Mobile-First UX Upgrade Brief".
+  KRYO Setup — one scrollable page, five parts  ·  /pages/kryo-setup
+  Brief: "KRYO SETUP UX REVISION".
 
-  Designed for a person holding an iPhone in one hand while installing hardware with the other.
-  390px is the primary viewport. Desktop is a courtesy layout, never the basis for a decision.
+  This replaces the 24-screen wizard with a single scrollable guide. A confident owner reads
+  only the quick instructions and scrolls; a novice opens "Show detailed instructions" and gets
+  every piece of technical detail the wizard used to hold. Critical warnings and the stop
+  criteria are NEVER inside an accordion.
 
-  Zones: owner header (56px) · compact chapter progress · one physical action · sticky action bar.
-  Gate: ONE acknowledgement, owned by getKryoOwnerState(). A returning owner never sees it twice.
-
-  The hub's own modal gate is disabled (gate_enabled=false) so exactly one gate exists in the
-  journey. Re-enabling it is a one-field revert in page.kryo-owner-hub.json.
+  Unchanged on purpose: the safety gate and its state contract, progress persistence (migrated,
+  not reset), Help/WhatsApp support, the owner header, the KRYO design tokens, analytics.
 {%- endcomment -%}
 
 {{ 'kryo-owner.css' | asset_url | stylesheet_tag }}
 
-{%- assign chapter_names = section.settings.chapter_names | split: ',' -%}
-
 <div class="kryo-owner kryo-su" data-kryo-setup
-     data-chapters="{{ section.settings.chapter_names | escape }}"
      data-hub="{{ section.settings.hub_url }}"
      data-safety-url="{{ section.settings.safety_url }}"
      data-wa="{{ section.settings.whatsapp_url }}"
      data-safety-version="{{ section.settings.safety_version }}"
      data-terms-version="{{ section.settings.terms_version }}"
-     data-next="{{ section.settings.next_label | escape }}"
-     data-already="{{ section.settings.already_label | escape }}"
-     data-begin="{{ section.settings.begin_label | escape }}"
-     data-continue="{{ section.settings.continue_label | escape }}"
-     data-chapter-cta="{{ section.settings.chapter_cta | escape }}"
+     data-legacy-steps="{{ section.settings.legacy_total_steps }}"
      data-gate-cta="{{ section.settings.gate_cta | escape }}"
      data-reack-cta="{{ section.settings.reack_cta | escape }}"
      data-reack-heading="{{ section.settings.reack_heading | escape }}"
-     data-done-cta="{{ section.settings.complete_cta | escape }}"
-     data-done-alt="{{ section.settings.complete_cta_secondary | escape }}"
      data-err-full="{{ section.settings.err_full | escape }}"
-     data-err-ack="{{ section.settings.err_ack | escape }}">
+     data-err-ack="{{ section.settings.err_ack | escape }}"
+     data-mark-done="{{ section.settings.mark_done | escape }}"
+     data-marked="{{ section.settings.marked | escape }}"
+     data-continue-label="{{ section.settings.continue_label | escape }}"
+     data-end-done-heading="{{ section.settings.end_done_heading | escape }}"
+     data-end-done-body="{{ section.settings.end_done_body | escape }}">
 
-  {%- comment -%} ===== ZONE 1a — owner header. No ecommerce nav, no cart. ===== {%- endcomment -%}
+  {%- comment -%} ===== Owner header — compact, sticky, no ecommerce nav ===== {%- endcomment -%}
   <header class="kryo-su__bar">
-    <a class="kryo-su__brand" href="{{ section.settings.hub_url }}" data-kryo-brand aria-label="Everest Labs owner guide">
+    <a class="kryo-su__brand" href="{{ section.settings.hub_url }}" aria-label="Everest Labs owner guide">
       {%- if section.settings.logo != blank -%}
         {{ section.settings.logo | image_url: width: 300 | image_tag: alt: 'Everest Labs', class: 'kryo-su__logo', loading: 'eager' }}
       {%- else -%}
         <span class="kryo-su__wordmark">EVEREST LABS</span>
       {%- endif -%}
     </a>
-    <button type="button" class="kryo-su__help" data-kryo-help-open aria-label="{{ section.settings.help_aria }}">
-      {{ section.settings.help_label }}
-    </button>
+    <div class="kryo-su__baractions">
+      <button type="button" class="kryo-su__barbtn" data-kryo-nav-open>{{ section.settings.sections_label }}</button>
+      <button type="button" class="kryo-su__barbtn kryo-su__barbtn--help" data-kryo-help-open
+              aria-label="{{ section.settings.help_aria }}">{{ section.settings.help_label }}</button>
+    </div>
   </header>
 
-  {%- comment -%} ===== ZONE 1b — compact progress. Whole bar is the tap target. ===== {%- endcomment -%}
-  <button type="button" class="kryo-su__prog" data-kryo-nav-open hidden aria-label="{{ section.settings.nav_aria }}">
-    <span class="kryo-su__prog__row">
-      <span class="kryo-su__prog__label" data-kryo-prog-label></span>
-      <span class="kryo-su__prog__hint" aria-hidden="true">{{ section.settings.nav_hint }}</span>
-    </span>
-    <span class="kryo-su__segs" data-kryo-segs>
-      {%- for name in chapter_names -%}
-        <span class="kryo-su__seg" data-seg="{{ forloop.index }}"><i></i></span>
-      {%- endfor -%}
-    </span>
-  </button>
-
-  {%- comment -%} ===== GATE — one acknowledgement, never a second registration ===== {%- endcomment -%}
-  <section class="kryo-su__screen" data-kryo-screen="gate" hidden>
+  {%- comment -%} ===== GATE — unchanged logic. One acknowledgement, ever. ===== {%- endcomment -%}
+  <section class="kryo-su__gate" data-kryo-gate hidden>
     <div class="kryo-su__wrap">
-      <p class="kryo-su__eyebrow" data-kryo-gate-eyebrow>{{ section.settings.gate_eyebrow }}</p>
+      <p class="kryo-su__eyebrow">{{ section.settings.gate_eyebrow }}</p>
       <h1 class="kryo-su__h1" tabindex="-1" data-kryo-gate-heading>{{ section.settings.gate_heading }}</h1>
       <div class="kryo-owner__note kryo-owner__note--critical">
         <p class="kryo-owner__note__title">{{ section.settings.gate_lead_title }}</p>
@@ -78,191 +62,206 @@
 
       <form data-kryo-gate-form novalidate>
         <div data-kryo-gate-fields>
-          <label class="kryo-su__f">
-            <span>{{ section.settings.f_name }}</span>
-            <input type="text" name="name" autocomplete="name" enterkeyhint="next">
-          </label>
-          <label class="kryo-su__f">
-            <span>{{ section.settings.f_email }}</span>
-            <input type="email" name="email" autocomplete="email" inputmode="email" enterkeyhint="done">
-          </label>
+          <label class="kryo-su__f"><span>{{ section.settings.f_name }}</span>
+            <input type="text" name="name" autocomplete="name" enterkeyhint="next"></label>
+          <label class="kryo-su__f"><span>{{ section.settings.f_email }}</span>
+            <input type="email" name="email" autocomplete="email" inputmode="email" enterkeyhint="done"></label>
         </div>
-        <label class="kryo-su__check">
-          <input type="checkbox" name="accept"><span>{{ section.settings.gate_accept }}</span>
-        </label>
-        <label class="kryo-su__check" data-kryo-gate-marketing>
-          <input type="checkbox" name="marketing"><span>{{ section.settings.gate_marketing }}</span>
-        </label>
+        <label class="kryo-su__check"><input type="checkbox" name="accept"><span>{{ section.settings.gate_accept }}</span></label>
+        <label class="kryo-su__check" data-kryo-gate-marketing><input type="checkbox" name="marketing"><span>{{ section.settings.gate_marketing }}</span></label>
         <p class="kryo-su__err" data-kryo-gate-err hidden role="alert"></p>
+        <button type="button" class="kryo-su__cta" data-kryo-gate-submit>{{ section.settings.gate_cta }}</button>
       </form>
     </div>
   </section>
 
-  {%- comment -%} ===== START — compact, not a marketing hero ===== {%- endcomment -%}
-  <section class="kryo-su__screen" data-kryo-screen="start" hidden>
-    <div class="kryo-su__wrap">
+  {%- comment -%} ===== THE GUIDE — one scroll ===== {%- endcomment -%}
+  <main class="kryo-su__guide" data-kryo-guide hidden>
+
+    {%- comment -%} ---- Overview ---- {%- endcomment -%}
+    <section class="kryo-su__wrap kryo-su__overview" id="overview">
       <p class="kryo-su__eyebrow">{{ section.settings.start_eyebrow }}</p>
       <h1 class="kryo-su__h1" tabindex="-1">{{ section.settings.start_heading }}</h1>
       <p class="kryo-su__body">{{ section.settings.start_body }}</p>
-      <ol class="kryo-su__chlist">
-        {%- for name in chapter_names -%}
-          <li><span class="kryo-su__chnum">{{ forloop.index }}</span><span>{{ name | strip }}</span></li>
+
+      <ol class="kryo-su__toc">
+        {%- for block in section.blocks -%}
+          {%- if block.type == 'chapter' -%}
+            <li><a class="kryo-su__tocrow" href="#{{ block.settings.anchor }}" data-kryo-toc="{{ block.settings.anchor }}">
+              <span class="kryo-su__tocnum" aria-hidden="true"></span>
+              <span class="kryo-su__toctitle">{{ block.settings.title }}</span>
+              <span class="kryo-su__tocstate" data-kryo-tocstate="{{ block.settings.anchor }}" aria-hidden="true"></span>
+            </a></li>
+          {%- endif -%}
         {%- endfor -%}
       </ol>
-      {%- if section.settings.start_duration != blank -%}
-        <p class="kryo-su__meta">{{ section.settings.start_duration }}</p>
-      {%- endif -%}
-      <label class="kryo-su__check kryo-su__wake" data-kryo-wake-row hidden>
-        <input type="checkbox" data-kryo-wake>
-        <span><strong>{{ section.settings.wake_label }}</strong><br>
-          <span class="kryo-su__meta">{{ section.settings.wake_help }}</span></span>
-      </label>
-    </div>
-  </section>
 
-  {%- comment -%} ===== ZONE 2 — one physical action per screen ===== {%- endcomment -%}
-  {%- for block in section.blocks -%}
-    {%- if block.type == 'setup_step' and block.settings.enabled -%}
-      {%- assign is_locked = false -%}
-      {%- if block.settings.warning_level == 'critical' or block.settings.allow_skip == false -%}
-        {%- assign is_locked = true -%}
-      {%- endif -%}
-      <section class="kryo-su__screen kryo-su__step" data-kryo-step
-               data-chapter="{{ block.settings.chapter }}"
-               data-slug="{{ block.settings.title | handleize }}"
-               data-locked="{% if is_locked %}1{% else %}0{% endif %}"
-               data-cta="{{ block.settings.cta_label | escape }}"
-               hidden {{ block.shopify_attributes }}>
-        <div class="kryo-su__wrap">
-          <p class="kryo-su__eyebrow">{{ block.settings.chapter_label }}</p>
-          <h1 class="kryo-su__h1" tabindex="-1">{{ block.settings.title }}</h1>
+      <button type="button" class="kryo-su__cta kryo-su__cta--resume" data-kryo-resume hidden></button>
 
-          <div class="kryo-su__vis">
-            {%- if block.settings.image != blank -%}
-              {%- comment -%}
-                alt must be resolved BEFORE image_tag. Liquid cannot take a piped filter inside a
-                named argument: `alt: x | default: y, class: 'z'` parses as `default` applied to
-                image_tag's OUTPUT, silently swallowing every argument after the pipe — which
-                dropped class="kryo-su__img" and rendered the images unstyled at natural size.
-              {%- endcomment -%}
-              {%- assign img_alt = block.settings.image_alt | default: block.settings.title -%}
-              <button type="button" class="kryo-su__imgbtn" data-kryo-zoom
-                      data-src="{{ block.settings.image | image_url: width: 1600 }}"
-                      aria-label="{{ section.settings.zoom_aria }}">
-                {{ block.settings.image
-                   | image_url: width: 1120
-                   | image_tag: loading: 'lazy', widths: '430,640,860,1120',
-                     sizes: '(min-width: 990px) 720px, 100vw',
-                     alt: img_alt, class: 'kryo-su__img' }}
-                <span class="kryo-su__zoomhint" aria-hidden="true">{{ section.settings.zoom_hint }}</span>
-              </button>
-            {%- else -%}
-              <div class="kryo-owner__placeholder kryo-su__ph">
-                <strong>IMAGE REQUIRED</strong>
-                <span>CHAPTER {{ block.settings.chapter }}</span>
-                <span>{{ block.settings.title }}</span>
-                <span>{{ block.settings.asset_id | default: 'KRYO-SETUP' }}</span>
+      {%- comment -%} ---- Don't miss these — never collapsed ---- {%- endcomment -%}
+      <div class="kryo-su__rules">
+        <p class="kryo-su__ruleshead">{{ section.settings.rules_heading }}</p>
+        <ol class="kryo-su__rulelist">
+          {%- for block in section.blocks -%}
+            {%- if block.type == 'rule' -%}
+              <li {{ block.shopify_attributes }}>
+                <span class="kryo-su__rulenum" aria-hidden="true"></span>
+                <span><strong>{{ block.settings.title }}</strong><br>{{ block.settings.body }}</span>
+              </li>
+            {%- endif -%}
+          {%- endfor -%}
+        </ol>
+      </div>
+
+      {%- comment -%} ---- Know the parts — collapsed ---- {%- endcomment -%}
+      <details class="kryo-su__acc kryo-su__acc--parts">
+        <summary><span>{{ section.settings.parts_heading }}</span></summary>
+        <div class="kryo-su__accbody">
+          {%- if section.settings.parts_image != blank -%}
+            {%- assign parts_alt = section.settings.parts_image_alt | default: section.settings.parts_heading -%}
+            <button type="button" class="kryo-su__imgbtn" data-kryo-zoom
+                    data-src="{{ section.settings.parts_image | image_url: width: 1600 }}"
+                    aria-label="{{ section.settings.zoom_aria }}">
+              {{ section.settings.parts_image | image_url: width: 1120
+                 | image_tag: loading: 'lazy', widths: '430,640,860,1120',
+                   sizes: '(min-width: 990px) 860px, 100vw', alt: parts_alt, class: 'kryo-su__img' }}
+              <span class="kryo-su__zoomhint" aria-hidden="true">{{ section.settings.zoom_hint }}</span>
+            </button>
+          {%- endif -%}
+          <dl class="kryo-su__glossary">
+            {%- for block in section.blocks -%}
+              {%- if block.type == 'part' -%}
+                <div {{ block.shopify_attributes }}>
+                  <dt>{{ block.settings.term }}</dt>
+                  <dd>{{ block.settings.definition }}</dd>
+                </div>
+              {%- endif -%}
+            {%- endfor -%}
+          </dl>
+        </div>
+      </details>
+    </section>
+
+    {%- comment -%} ---- The five chapters ---- {%- endcomment -%}
+    {%- for block in section.blocks -%}
+      {%- if block.type == 'chapter' -%}
+        <section class="kryo-su__ch" id="{{ block.settings.anchor }}"
+                 data-kryo-ch="{{ block.settings.anchor }}" {{ block.shopify_attributes }}>
+          <div class="kryo-su__wrap">
+            <p class="kryo-su__eyebrow">
+              <span class="kryo-su__chbadge">{{ block.settings.number }}</span>{{ section.settings.chapter_word }} {{ block.settings.number }} {{ section.settings.of_word }} 5
+              <span class="kryo-su__chdone" data-kryo-chdone hidden>{{ section.settings.marked }}</span>
+            </p>
+            <h2 class="kryo-su__h2" tabindex="-1">{{ block.settings.title }}</h2>
+            <p class="kryo-su__purpose">{{ block.settings.purpose }}</p>
+
+            {%- if block.settings.quick != blank -%}
+              <div class="kryo-su__quick">{{ block.settings.quick }}</div>
+            {%- endif -%}
+
+            {%- comment -%} Critical warnings sit OUTSIDE the accordion, always. {%- endcomment -%}
+            {%- if block.settings.critical != blank -%}
+              <div class="kryo-owner__note kryo-owner__note--critical">
+                <p class="kryo-owner__note__title">{{ section.settings.lbl_critical }}</p>
+                {{ block.settings.critical }}
               </div>
             {%- endif -%}
-          </div>
 
-          {%- if block.settings.instruction != blank -%}
-            <div class="kryo-su__body kryo-su__instr">{{ block.settings.instruction }}</div>
-          {%- endif -%}
-
-          {%- if block.settings.actions != blank -%}
-            <div class="kryo-su__acts">{{ block.settings.actions }}</div>
-          {%- endif -%}
-
-          {%- if block.settings.warning != blank -%}
-            <div class="kryo-owner__note kryo-owner__note--{{ block.settings.warning_level }}">
-              {%- if block.settings.warning_title != blank -%}
-                <p class="kryo-owner__note__title">{{ block.settings.warning_title }}</p>
-              {%- else -%}
-                <p class="kryo-owner__note__title">
-                  {%- case block.settings.warning_level -%}
-                    {%- when 'critical' -%}{{ section.settings.lbl_critical }}
-                    {%- when 'info' -%}{{ section.settings.lbl_info }}
-                    {%- else -%}{{ section.settings.lbl_caution }}
+            {%- comment -%} Media: full width, stacked, lazy below the first viewport. {%- endcomment -%}
+            {%- assign has_media = false -%}
+            {%- if block.settings.image_1 != blank or block.settings.slot_1 != blank -%}{%- assign has_media = true -%}{%- endif -%}
+            {%- if block.settings.image_2 != blank or block.settings.slot_2 != blank -%}{%- assign has_media = true -%}{%- endif -%}
+            {%- if block.settings.image_3 != blank or block.settings.slot_3 != blank -%}{%- assign has_media = true -%}{%- endif -%}
+            {%- if block.settings.image_4 != blank or block.settings.slot_4 != blank -%}{%- assign has_media = true -%}{%- endif -%}
+            {%- if has_media -%}
+              <div class="kryo-su__media">
+                {%- for i in (1..4) -%}
+                  {%- case i -%}
+                    {%- when 1 -%}{%- assign im = block.settings.image_1 -%}{%- assign ia = block.settings.alt_1 -%}{%- assign slot = block.settings.slot_1 -%}
+                    {%- when 2 -%}{%- assign im = block.settings.image_2 -%}{%- assign ia = block.settings.alt_2 -%}{%- assign slot = block.settings.slot_2 -%}
+                    {%- when 3 -%}{%- assign im = block.settings.image_3 -%}{%- assign ia = block.settings.alt_3 -%}{%- assign slot = block.settings.slot_3 -%}
+                    {%- when 4 -%}{%- assign im = block.settings.image_4 -%}{%- assign ia = block.settings.alt_4 -%}{%- assign slot = block.settings.slot_4 -%}
                   {%- endcase -%}
-                </p>
+                  {%- if im != blank -%}
+                    {%- assign im_alt = ia | default: block.settings.title -%}
+                    <button type="button" class="kryo-su__imgbtn" data-kryo-zoom
+                            data-src="{{ im | image_url: width: 1600 }}" aria-label="{{ section.settings.zoom_aria }}">
+                      {{ im | image_url: width: 1120
+                         | image_tag: loading: 'lazy', widths: '430,640,860,1120',
+                           sizes: '(min-width: 990px) 860px, 100vw', alt: im_alt, class: 'kryo-su__img' }}
+                      <span class="kryo-su__zoomhint" aria-hidden="true">{{ section.settings.zoom_hint }}</span>
+                    </button>
+                  {%- elsif slot != blank -%}
+                    <div class="kryo-owner__placeholder kryo-su__ph">
+                      <strong>IMAGE REQUIRED</strong>
+                      <span>{{ block.settings.title }}</span>
+                      <span>{{ slot }}</span>
+                    </div>
+                  {%- endif -%}
+                {%- endfor -%}
+              </div>
+            {%- endif -%}
+
+            {%- comment -%} Always-visible extra (e.g. the stop criteria). Never collapsed. {%- endcomment -%}
+            {%- if block.settings.always_visible != blank -%}
+              <div class="kryo-owner__note kryo-owner__note--{{ block.settings.always_level }}">
+                {%- if block.settings.always_title != blank -%}
+                  <p class="kryo-owner__note__title">{{ block.settings.always_title }}</p>
+                {%- endif -%}
+                {{ block.settings.always_visible }}
+              </div>
+            {%- endif -%}
+
+            {%- if block.settings.detail != blank -%}
+              <details class="kryo-su__acc" data-kryo-detail="{{ block.settings.anchor }}">
+                <summary><span>{{ section.settings.detail_label }}</span></summary>
+                <div class="kryo-su__accbody">{{ block.settings.detail }}</div>
+              </details>
+            {%- endif -%}
+
+            <div class="kryo-su__chfoot">
+              <button type="button" class="kryo-su__mark" data-kryo-mark="{{ block.settings.anchor }}">
+                {{ section.settings.mark_done }}
+              </button>
+              {%- if block.settings.next_anchor != blank -%}
+                <a class="kryo-su__nextlink" href="#{{ block.settings.next_anchor }}">
+                  {{ section.settings.next_word }} {{ block.settings.next_label }} <span aria-hidden="true">&#8594;</span>
+                </a>
               {%- endif -%}
-              {{ block.settings.warning }}
             </div>
-          {%- endif -%}
+          </div>
+        </section>
+      {%- endif -%}
+    {%- endfor -%}
 
-          {%- if block.settings.tip != blank -%}
-            <div class="kryo-owner__note kryo-owner__note--info">
-              <p class="kryo-owner__note__title">{{ section.settings.lbl_tip }}</p>
-              {{ block.settings.tip }}
-            </div>
-          {%- endif -%}
+    <section class="kryo-su__wrap kryo-su__end">
+      <div class="kryo-su__tick" data-kryo-endtick aria-hidden="true" hidden></div>
+      <h2 class="kryo-su__h2" data-kryo-endheading>{{ section.settings.end_heading }}</h2>
+      <p class="kryo-su__body" data-kryo-endbody>{{ section.settings.end_body }}</p>
+      <a class="kryo-su__opt kryo-su__opt--link" href="{{ section.settings.hub_url }}">{{ section.settings.end_cta }}</a>
+    </section>
+  </main>
 
-          {%- if block.settings.why != blank -%}
-            <details class="kryo-su__why">
-              <summary>{{ section.settings.why_label }}</summary>
-              <div class="kryo-su__body">{{ block.settings.why }}</div>
-            </details>
-          {%- endif -%}
-        </div>
-      </section>
-    {%- endif -%}
-  {%- endfor -%}
-
-  {%- comment -%} ===== CHAPTER COMPLETE — brief, seconds not an obstacle ===== {%- endcomment -%}
-  <section class="kryo-su__screen" data-kryo-screen="chapter" hidden>
-    <div class="kryo-su__wrap kryo-su__centre">
-      <div class="kryo-su__tick" aria-hidden="true"></div>
-      <h1 class="kryo-su__h1" tabindex="-1" data-kryo-ch-done></h1>
-      <p class="kryo-su__body" data-kryo-ch-next></p>
-    </div>
-  </section>
-
-  {%- comment -%} ===== COMPLETE ===== {%- endcomment -%}
-  <section class="kryo-su__screen" data-kryo-screen="done" hidden>
-    <div class="kryo-su__wrap kryo-su__centre">
-      <div class="kryo-su__tick" aria-hidden="true"></div>
-      <h1 class="kryo-su__h1" tabindex="-1">{{ section.settings.complete_heading }}</h1>
-      <p class="kryo-su__body">{{ section.settings.complete_body }}</p>
-    </div>
-  </section>
-
-  {%- comment -%} ===== REVIEW MODE — permanent owner reference ===== {%- endcomment -%}
-  <section class="kryo-su__screen" data-kryo-screen="review" hidden>
-    <div class="kryo-su__wrap">
-      <p class="kryo-su__eyebrow">{{ section.settings.start_eyebrow }}</p>
-      <h1 class="kryo-su__h1" tabindex="-1">{{ section.settings.review_heading }}</h1>
-      <p class="kryo-su__body">{{ section.settings.review_body }}</p>
-      <div class="kryo-su__cards" data-kryo-review-cards></div>
-      <a class="kryo-su__opt kryo-su__opt--link" style="margin-top:16px" href="{{ section.settings.hub_url }}">{{ section.settings.review_hub_link }}</a>
-    </div>
-  </section>
-
-  {%- comment -%} ===== ZONE 3 — sticky action bar ===== {%- endcomment -%}
-  <div class="kryo-su__bottom" data-kryo-bottom hidden>
-    <button type="button" class="kryo-su__back" data-kryo-back>
-      <span aria-hidden="true">&#8592;</span><span class="kryo-su__sr">{{ section.settings.back_label }}</span>
-    </button>
-    <div class="kryo-su__bottom__main">
-      <button type="button" class="kryo-su__cta" data-kryo-next>{{ section.settings.next_label }}</button>
-      <button type="button" class="kryo-su__alt" data-kryo-alt hidden>{{ section.settings.already_label }}</button>
-    </div>
-  </div>
-
-  {%- comment -%} ===== SHEETS ===== {%- endcomment -%}
+  {%- comment -%} ===== Sheets ===== {%- endcomment -%}
   <div class="kryo-su__sheet" data-kryo-sheet="nav" hidden>
     <div class="kryo-su__panel" role="dialog" aria-modal="true" aria-label="{{ section.settings.nav_heading }}">
       <div class="kryo-su__grab" aria-hidden="true"></div>
-      <h2 class="kryo-su__h2">{{ section.settings.nav_heading }}</h2>
-      <div data-kryo-nav-list></div>
-      <button type="button" class="kryo-su__alt kryo-su__alt--sheet" data-kryo-sheet-close>{{ section.settings.close_label }}</button>
+      <h2 class="kryo-su__h3">{{ section.settings.nav_heading }}</h2>
+      <a class="kryo-su__navrow" href="#overview" data-kryo-jump>{{ section.settings.overview_label }}</a>
+      {%- for block in section.blocks -%}
+        {%- if block.type == 'chapter' -%}
+          <a class="kryo-su__navrow" href="#{{ block.settings.anchor }}" data-kryo-jump
+             data-kryo-navstate="{{ block.settings.anchor }}">{{ block.settings.title }}</a>
+        {%- endif -%}
+      {%- endfor -%}
+      <button type="button" class="kryo-su__alt" data-kryo-sheet-close>{{ section.settings.close_label }}</button>
     </div>
   </div>
 
   <div class="kryo-su__sheet" data-kryo-sheet="help" hidden>
     <div class="kryo-su__panel" role="dialog" aria-modal="true" aria-label="{{ section.settings.help_heading }}">
       <div class="kryo-su__grab" aria-hidden="true"></div>
-      <h2 class="kryo-su__h2">{{ section.settings.help_heading }}</h2>
+      <h2 class="kryo-su__h3">{{ section.settings.help_heading }}</h2>
       <div class="kryo-su__opts">
         {%- assign topics = section.settings.help_topics | split: ',' -%}
         {%- for t in topics -%}
@@ -271,7 +270,7 @@
       </div>
       <p class="kryo-su__meta" data-kryo-help-ctx></p>
       <a class="kryo-su__opt kryo-su__opt--link" href="{{ section.settings.safety_url }}">{{ section.settings.help_safety }}</a>
-      <button type="button" class="kryo-su__alt kryo-su__alt--sheet" data-kryo-sheet-close>{{ section.settings.close_label }}</button>
+      <button type="button" class="kryo-su__alt" data-kryo-sheet-close>{{ section.settings.close_label }}</button>
     </div>
   </div>
 
@@ -282,123 +281,140 @@
 </div>
 
 {% style %}
-  /* Owner flow owns the screen. Storefront chrome is removed at runtime by JS as well;
-     these rules cover the common Dawn nodes before JS runs, avoiding a visible flash. */
-  .kryo-su { --bar:56px; --bot:84px; padding:0; }
-  .kryo-su__sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+  .kryo-su { --bar:56px; padding:0; }
+  .kryo-su__sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
 
-  /* --- ZONE 1a: owner header --- */
+  /* ---- Header ---- */
   .kryo-su__bar { position:sticky; top:0; z-index:40; height:var(--bar);
     display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 20px;
     background:var(--kryo-white); border-bottom:1px solid var(--kryo-border); }
   .kryo-su__brand { display:inline-flex; align-items:center; min-height:48px; min-width:48px; text-decoration:none; }
   .kryo-su__logo { height:20px; width:auto; display:block; }
   .kryo-su__wordmark { font:700 13px/1 var(--kryo-font-body); letter-spacing:.14em; color:var(--kryo-text); }
-  .kryo-su__help { min-height:48px; min-width:56px; padding:0 4px; border:0; background:none;
-    font:600 16px/1 var(--kryo-font-body); color:var(--kryo-text); cursor:pointer; text-align:right; }
+  .kryo-su__baractions { display:flex; align-items:center; gap:4px; }
+  .kryo-su__barbtn { min-height:48px; padding:0 10px; border:0; background:none; cursor:pointer;
+    font:600 15px/1 var(--kryo-font-body); color:var(--kryo-text-secondary); }
+  .kryo-su__barbtn--help { color:var(--kryo-text); }
 
-  /* --- ZONE 1b: chapter progress, tap to navigate --- */
-  /* align-items:stretch is not optional here — the UA stylesheet sets align-items:flex-start
-     on <button>, which collapsed the five chapter segments to a 16px sliver. */
-  .kryo-su__prog { position:sticky; top:var(--bar); z-index:39; width:100%; min-height:56px;
-    display:flex; flex-direction:column; justify-content:center; align-items:stretch;
-    gap:9px; padding:11px 20px;
-    background:var(--kryo-white); border:0; border-bottom:1px solid var(--kryo-border);
-    cursor:pointer; text-align:left; font-family:var(--kryo-font-body); }
-  .kryo-su__prog[hidden] { display:none; }
-  .kryo-su__prog__row { display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
-  .kryo-su__prog__label { font:700 11px/1.2 var(--kryo-font-body); letter-spacing:.12em;
-    text-transform:uppercase; color:var(--kryo-text); }
-  .kryo-su__prog__hint { font:600 11px/1.2 var(--kryo-font-body); letter-spacing:.06em;
-    text-transform:uppercase; color:var(--kryo-text-tertiary); flex:0 0 auto; }
-  .kryo-su__segs { display:flex; gap:4px; }
-  .kryo-su__seg { flex:1; height:4px; border-radius:999px; background:var(--kryo-border); overflow:hidden; }
-  .kryo-su__seg i { display:block; height:100%; width:0; border-radius:999px; background:var(--kryo-blue);
-    transition:width 220ms ease; }
-  .kryo-su__seg[data-state="done"] i { width:100% !important; }
-  .kryo-su__seg[data-state="current"] { box-shadow:0 0 0 1px var(--kryo-border-strong); }
-
-  /* --- ZONE 2: content --- */
-  .kryo-su__screen { display:none; }
-  .kryo-su__screen[data-active] { display:block; }
-  /* The sticky bar already says "UNBOX & POSITION · 1 OF 3"; repeating it in the step eyebrow
-     spends ~30px of the first screen saying nothing new. Kept in the markup for the no-JS
-     fallback, where there is no progress bar to carry the chapter. */
-  .kryo-su[data-js] .kryo-su__step .kryo-su__eyebrow { display:none; }
-  .kryo-su__wrap { padding:20px 20px calc(var(--bot) + 40px); max-width:640px; margin:0 auto; }
-  .kryo-su__centre { text-align:center; padding-top:64px; }
-  .kryo-su__eyebrow { font:700 11px/1.3 var(--kryo-font-body); letter-spacing:.12em; text-transform:uppercase;
+  /* ---- Layout ---- */
+  .kryo-su__wrap { padding:24px 20px; max-width:640px; margin:0 auto; }
+  .kryo-su__guide[hidden], .kryo-su__gate[hidden] { display:none; }
+  .kryo-su__ch { scroll-margin-top:calc(var(--bar) + 8px); border-top:1px solid var(--kryo-border); }
+  .kryo-su__overview { scroll-margin-top:calc(var(--bar) + 8px); }
+  .kryo-su__eyebrow { display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+    font:700 11px/1.3 var(--kryo-font-body); letter-spacing:.12em; text-transform:uppercase;
     color:var(--kryo-text-secondary); margin:0 0 10px; }
+  .kryo-su__chbadge { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px;
+    border-radius:999px; background:var(--kryo-ink); color:#fff; font-size:11px; letter-spacing:0; }
+  .kryo-su__chdone { color:var(--kryo-success); }
+  .kryo-su__chdone[hidden] { display:none; }
   .kryo-su__h1 { font-family:var(--kryo-font-heading); font-size:30px; line-height:1.12; font-weight:700;
-    letter-spacing:-.02em; color:var(--kryo-text); margin:0 0 18px; outline:none; }
-  /* The heading is focused programmatically so assistive tech announces the new step.
-     It is not an interactive control, so it must not paint a focus ring — every real
-     control below keeps one. */
-  .kryo-su__h1:focus, .kryo-su__h1:focus-visible { outline:none; }
-  .kryo-su__h2 { font-family:var(--kryo-font-heading); font-size:20px; line-height:1.2; font-weight:700;
-    color:var(--kryo-text); margin:0 0 14px; }
+    letter-spacing:-.02em; color:var(--kryo-text); margin:0 0 16px; }
+  .kryo-su__h2 { font-family:var(--kryo-font-heading); font-size:26px; line-height:1.15; font-weight:700;
+    letter-spacing:-.02em; color:var(--kryo-text); margin:0 0 10px; }
+  .kryo-su__h3 { font-family:var(--kryo-font-heading); font-size:20px; font-weight:700; margin:0 0 14px; }
+  .kryo-su__h1:focus, .kryo-su__h2:focus { outline:none; }
   .kryo-su__body { font-size:16px; line-height:1.5; color:var(--kryo-text-secondary); margin:0 0 16px; }
   .kryo-su__body p { margin:0 0 12px; font-size:16px; line-height:1.5; }
-  .kryo-su__body p:last-child { margin-bottom:0; }
-  .kryo-su__instr { color:var(--kryo-text); }
-  .kryo-su__acts { margin:0 0 18px; }
-  .kryo-su__acts ol, .kryo-su__acts ul { margin:0; padding-left:22px; }
-  .kryo-su__acts li { margin-bottom:10px; font-size:16px; line-height:1.5; color:var(--kryo-text); }
-  .kryo-su__meta { font-size:14px; line-height:1.45; color:var(--kryo-text-tertiary); margin:0 0 14px; }
-  /* Any inline link inside setup still has to be tappable with wet hands. */
-  .kryo-su__link { color:var(--kryo-blue); font-weight:600; display:inline-flex; align-items:center;
-    min-height:48px; }
-  .kryo-su__opt--link { color:var(--kryo-blue); margin-bottom:18px; }
-  .kryo-su__why { border-top:1px solid var(--kryo-border); padding-top:6px; margin-top:20px; }
-  .kryo-su__why summary { cursor:pointer; font:600 15px/1.4 var(--kryo-font-body); color:var(--kryo-text);
-    min-height:48px; display:flex; align-items:center; }
-  .kryo-su .kryo-owner__note { margin:0 0 16px; }
+  .kryo-su__purpose { font-size:16px; line-height:1.5; color:var(--kryo-text-secondary); margin:0 0 18px; }
+  .kryo-su__meta { font-size:14px; color:var(--kryo-text-tertiary); margin:0 0 14px; }
+  .kryo-su .kryo-owner__note { margin:0 0 18px; }
 
-  /* Instructional visual — 4:3, ahead of the copy, tap for fullscreen */
-  .kryo-su__vis { margin:0 0 18px; }
+  /* ---- Overview navigator ---- */
+  /* Numbers come from CSS counters, not a Liquid counter: the block list is mixed
+     (rules + parts + chapters) so forloop.index cannot be used, and a running assign
+     is fragile. The counter is always right regardless of block order. */
+  .kryo-su__toc { list-style:none; margin:0 0 22px; padding:0; counter-reset:kryotoc; }
+  .kryo-su__tocnum::before { counter-increment:kryotoc; content:counter(kryotoc); }
+  .kryo-su__tocrow { display:flex; align-items:center; gap:12px; min-height:56px; padding:10px 4px;
+    border-bottom:1px solid var(--kryo-border); text-decoration:none;
+    font:600 16px/1.3 var(--kryo-font-body); color:var(--kryo-text); }
+  .kryo-su__tocnum { flex:0 0 auto; width:26px; height:26px; border-radius:999px; background:var(--kryo-surface);
+    display:inline-flex; align-items:center; justify-content:center; font-size:12px; color:var(--kryo-text-secondary); }
+  .kryo-su__toctitle { flex:1; }
+  .kryo-su__tocstate { flex:0 0 auto; width:20px; height:20px; border-radius:999px;
+    display:inline-flex; align-items:center; justify-content:center; font-size:12px; color:#fff; }
+  .kryo-su__tocrow[data-state="done"] .kryo-su__tocstate { background:var(--kryo-success); }
+  .kryo-su__tocrow[data-state="done"] .kryo-su__tocstate::after { content:'\2713'; }
+  .kryo-su__tocrow[data-state="done"] .kryo-su__tocnum { background:var(--kryo-success-bg); color:var(--kryo-success); }
+  .kryo-su__cta--resume { margin:0 0 26px; }
+
+  /* ---- Don't miss these ---- */
+  .kryo-su__rules { background:var(--kryo-surface); border-radius:16px; padding:18px 18px 6px; margin:0 0 18px; }
+  .kryo-su__ruleshead { font:700 11px/1.2 var(--kryo-font-body); letter-spacing:.12em; text-transform:uppercase;
+    color:var(--kryo-text); margin:0 0 14px; }
+  .kryo-su__rulelist { list-style:none; margin:0; padding:0; counter-reset:kryorule; }
+  .kryo-su__rulenum::before { counter-increment:kryorule; content:counter(kryorule); }
+  .kryo-su__rulelist li { display:flex; gap:12px; margin:0 0 14px;
+    font-size:15px; line-height:1.45; color:var(--kryo-text-secondary); }
+  .kryo-su__rulelist strong { color:var(--kryo-text); font-weight:700; }
+  .kryo-su__rulenum { flex:0 0 auto; width:22px; height:22px; border-radius:999px; background:var(--kryo-blue);
+    color:#fff; display:inline-flex; align-items:center; justify-content:center; font:700 11px/1 var(--kryo-font-body); }
+
+  /* ---- Quick instructions ---- */
+  .kryo-su__quick ul, .kryo-su__quick ol { margin:0 0 18px; padding:0; list-style:none; }
+  .kryo-su__quick li { position:relative; padding:0 0 0 26px; margin:0 0 12px;
+    font-size:16px; line-height:1.5; color:var(--kryo-text); }
+  .kryo-su__quick li::before { content:''; position:absolute; left:4px; top:9px; width:7px; height:7px;
+    border-radius:999px; background:var(--kryo-blue); }
+  .kryo-su__quick p { font-size:16px; line-height:1.5; color:var(--kryo-text); margin:0 0 12px; }
+
+  /* ---- Media ---- */
+  .kryo-su__media { display:flex; flex-direction:column; gap:12px; margin:0 0 20px; }
   .kryo-su__imgbtn { position:relative; display:block; width:100%; padding:0; border:0; background:none;
-    cursor:zoom-in; border-radius:15px; overflow:hidden; }
-  /* Technical diagrams carry fine detail that is small at 350px. Fullscreen is undiscoverable
-     without an affordance, so say so on the image itself. */
+    cursor:zoom-in; border-radius:14px; overflow:hidden; }
+  .kryo-su__img { width:100%; height:auto; max-height:62vh; object-fit:contain; display:block;
+    background:var(--kryo-surface); border-radius:14px; }
+  .kryo-su__ph { width:100%; aspect-ratio:4/3; border-radius:14px; margin:0; }
   .kryo-su__zoomhint { position:absolute; right:10px; bottom:10px; padding:6px 10px; border-radius:999px;
     background:rgba(23,26,28,.72); color:#fff; font:600 11px/1 var(--kryo-font-body);
     letter-spacing:.04em; text-transform:uppercase; pointer-events:none; }
-  /* The instructional images are composed cards with text baked in, in mixed 4:5 and 4:3
-     ratios. A fixed 4:3 cover-crop would slice the copy off, so the image keeps its own
-     ratio and is bounded instead — capped so the written instruction below stays reachable. */
-  .kryo-su__img { width:100%; height:auto; max-height:58vh; object-fit:contain; display:block;
-    background:var(--kryo-surface); border-radius:15px; }
-  .kryo-su__ph { width:100%; aspect-ratio:4/3; border-radius:15px; margin:0; }
 
-  .kryo-su__chlist { list-style:none; margin:0 0 20px; padding:0; }
-  .kryo-su__chlist li { display:flex; align-items:center; gap:12px; padding:12px 0;
-    border-bottom:1px solid var(--kryo-border); font:600 16px/1.3 var(--kryo-font-body); color:var(--kryo-text); }
-  .kryo-su__chnum { flex:0 0 auto; width:24px; height:24px; border-radius:999px; background:var(--kryo-surface);
-    display:inline-flex; align-items:center; justify-content:center; font-size:12px; color:var(--kryo-text-secondary); }
+  /* ---- Accordions ---- */
+  .kryo-su__acc { border:1px solid var(--kryo-border); border-radius:14px; margin:0 0 20px; overflow:hidden; }
+  .kryo-su__acc summary { display:flex; align-items:center; justify-content:space-between; gap:12px;
+    min-height:56px; padding:0 16px; cursor:pointer; list-style:none;
+    font:600 16px/1.3 var(--kryo-font-body); color:var(--kryo-text); }
+  .kryo-su__acc summary::-webkit-details-marker { display:none; }
+  .kryo-su__acc summary::after { content:'+'; flex:0 0 auto; font-size:20px; color:var(--kryo-text-secondary); }
+  .kryo-su__acc[open] summary::after { content:'\2212'; }
+  .kryo-su__accbody { padding:4px 16px 18px; animation:kryoAccIn 200ms cubic-bezier(.2,.7,.3,1) both; }
+  @keyframes kryoAccIn { from { opacity:0; transform:translateY(-4px) } to { opacity:1; transform:none } }
+  .kryo-su__accbody p { font-size:15px; line-height:1.55; color:var(--kryo-text-secondary); margin:0 0 12px; }
+  .kryo-su__accbody ul, .kryo-su__accbody ol { margin:0 0 14px; padding-left:20px; }
+  .kryo-su__accbody li { font-size:15px; line-height:1.55; color:var(--kryo-text-secondary); margin-bottom:8px; }
+  .kryo-su__accbody strong { color:var(--kryo-text); }
+  .kryo-su__acc--parts { background:var(--kryo-white); }
+  .kryo-su__glossary { margin:0; }
+  .kryo-su__glossary div { padding:12px 0; border-bottom:1px solid var(--kryo-border); }
+  .kryo-su__glossary div:last-child { border-bottom:0; }
+  .kryo-su__glossary dt { font:700 15px/1.3 var(--kryo-font-body); color:var(--kryo-text); margin:0 0 4px; }
+  .kryo-su__glossary dd { margin:0; font-size:15px; line-height:1.5; color:var(--kryo-text-secondary); }
 
-  /* --- ZONE 3: sticky action bar --- */
-  .kryo-su__bottom { position:fixed; left:0; right:0; bottom:0; z-index:41; display:flex; gap:12px; align-items:center;
-    padding:12px 20px calc(12px + env(safe-area-inset-bottom));
-    background:var(--kryo-white); border-top:1px solid var(--kryo-border); }
-  .kryo-su__bottom[hidden] { display:none; }
-  .kryo-su__bottom__main { flex:1; display:flex; flex-direction:column; gap:6px; min-width:0; }
-  .kryo-su__back { flex:0 0 auto; width:56px; height:56px; border-radius:999px; font-size:18px;
-    border:1px solid var(--kryo-border-strong); background:var(--kryo-white); color:var(--kryo-text); cursor:pointer; }
-  .kryo-su__back[disabled] { opacity:.3; pointer-events:none; }
+  /* ---- Chapter footer ---- */
+  .kryo-su__chfoot { display:flex; flex-direction:column; gap:6px; }
+  .kryo-su__mark { width:100%; min-height:52px; border:1px solid var(--kryo-border-strong); border-radius:999px;
+    background:var(--kryo-white); color:var(--kryo-text); font:600 16px/1.2 var(--kryo-font-body); cursor:pointer;
+    transition:background 150ms ease, color 150ms ease, border-color 150ms ease; }
+  .kryo-su__mark[data-state="done"] { background:var(--kryo-success-bg); border-color:var(--kryo-success-bg);
+    color:var(--kryo-success); }
+  .kryo-su__nextlink { display:inline-flex; align-items:center; justify-content:center; gap:6px;
+    min-height:48px; text-decoration:none; font:600 15px/1 var(--kryo-font-body); color:var(--kryo-blue); }
+
   .kryo-su__cta { width:100%; min-height:56px; padding:0 18px; border:0; border-radius:999px;
     background:var(--kryo-ink); color:#fff; font:600 17px/1.2 var(--kryo-font-body); cursor:pointer;
     transition:transform 100ms ease, opacity 100ms ease; }
   .kryo-su__cta:active { transform:scale(.985); opacity:.9; }
   .kryo-su__alt { width:100%; min-height:48px; border:0; background:none; color:var(--kryo-text-secondary);
     font:600 15px/1 var(--kryo-font-body); cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
-  .kryo-su__alt[hidden] { display:none; }
-  .kryo-su__alt--sheet { margin-top:8px; }
-  .kryo-su__back:focus-visible, .kryo-su__cta:focus-visible, .kryo-su__alt:focus-visible,
-  .kryo-su__help:focus-visible, .kryo-su__prog:focus-visible, .kryo-su__opt:focus-visible,
-  .kryo-su__navrow:focus-visible, .kryo-su__card:focus-visible
-    { outline:2px solid var(--kryo-blue); outline-offset:2px; }
+  .kryo-su__end { text-align:center; border-top:1px solid var(--kryo-border); padding-bottom:56px; }
+  .kryo-su__tick { width:52px; height:52px; margin:0 auto 16px; border-radius:999px;
+    background:var(--kryo-success-bg); position:relative; }
+  .kryo-su__tick[hidden] { display:none; }
+  .kryo-su__tick::after { content:'\2713'; position:absolute; inset:0; display:flex; align-items:center;
+    justify-content:center; color:var(--kryo-success); font-size:24px; font-weight:700; }
 
-  /* --- Sheets --- */
+  /* ---- Sheets ---- */
   .kryo-su__sheet { position:fixed; inset:0; z-index:60; background:rgba(23,26,28,.5); display:flex; align-items:flex-end; }
   .kryo-su__sheet[hidden] { display:none; }
   .kryo-su__panel { background:var(--kryo-white); width:100%; max-height:86vh; overflow-y:auto;
@@ -406,25 +422,17 @@
     animation:kryoSheetIn 200ms cubic-bezier(.2,.7,.3,1) both; }
   @keyframes kryoSheetIn { from { transform:translateY(18px); opacity:0 } to { transform:none; opacity:1 } }
   .kryo-su__grab { width:38px; height:4px; border-radius:999px; background:var(--kryo-border); margin:0 auto 14px; }
-  .kryo-su__navch { font:700 11px/1.2 var(--kryo-font-body); letter-spacing:.1em; text-transform:uppercase;
-    color:var(--kryo-text-tertiary); margin:20px 0 2px; }
-  .kryo-su__navrow { display:flex; align-items:center; gap:12px; width:100%; min-height:52px; padding:13px 4px;
-    border:0; border-bottom:1px solid var(--kryo-border); background:none; text-align:left; cursor:pointer;
+  .kryo-su__navrow { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%;
+    min-height:56px; padding:12px 4px; border-bottom:1px solid var(--kryo-border); text-decoration:none;
     font:500 16px/1.3 var(--kryo-font-body); color:var(--kryo-text); }
-  .kryo-su__navrow[data-state="current"] { font-weight:700; }
-  .kryo-su__navdot { flex:0 0 auto; width:22px; height:22px; border-radius:999px; border:2px solid var(--kryo-border);
-    display:inline-flex; align-items:center; justify-content:center; font-size:12px; line-height:1; color:#fff; }
-  .kryo-su__navrow[data-state="done"] .kryo-su__navdot { background:var(--kryo-success); border-color:var(--kryo-success); }
-  .kryo-su__navrow[data-state="done"] .kryo-su__navdot::after { content:'\2713'; }
-  .kryo-su__navrow[data-state="current"] .kryo-su__navdot { background:var(--kryo-ink); border-color:var(--kryo-ink); }
-  .kryo-su__navrow[data-state="current"] .kryo-su__navdot::after { content:'\2022'; }
+  .kryo-su__navrow[data-state="done"]::after { content:'\2713'; color:var(--kryo-success); font-weight:700; }
   .kryo-su__opts { display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
   .kryo-su__opt { display:flex; align-items:center; min-height:52px; padding:0 16px; border:1px solid var(--kryo-border);
     border-radius:12px; background:var(--kryo-white); font:600 16px/1.2 var(--kryo-font-body);
     color:var(--kryo-text); text-align:left; text-decoration:none; cursor:pointer; }
+  .kryo-su__opt--link { color:var(--kryo-blue); margin-bottom:18px; }
   .kryo-su__opt:active { background:var(--kryo-surface); }
 
-  /* --- Fullscreen image --- */
   .kryo-su__zoom { position:fixed; inset:0; z-index:80; background:#0d0f10;
     display:flex; align-items:center; justify-content:center; padding:16px; }
   .kryo-su__zoom[hidden] { display:none; }
@@ -433,58 +441,37 @@
     width:48px; height:48px; border-radius:999px; border:0; background:rgba(255,255,255,.18);
     color:#fff; font-size:18px; cursor:pointer; }
 
-  /* --- Gate form --- */
+  /* ---- Gate form ---- */
   .kryo-su__f { display:block; margin:0 0 14px; }
   .kryo-su__f span { display:block; font:600 13px/1 var(--kryo-font-body); color:var(--kryo-text-secondary); margin-bottom:6px; }
   .kryo-su__f input { width:100%; min-height:52px; padding:12px 14px; font-size:16px; font-family:var(--kryo-font-body);
     background:var(--kryo-white); color:var(--kryo-text); border:1px solid var(--kryo-border-strong); border-radius:12px; }
-  .kryo-su__f input:focus-visible { outline:2px solid var(--kryo-blue); outline-offset:1px; }
-  .kryo-su__check { display:flex; gap:12px; align-items:flex-start; margin:0 0 14px; min-height:48px;
-    padding:4px 0; font-size:14px; line-height:1.5; color:var(--kryo-text-secondary); cursor:pointer; }
+  .kryo-su__check { display:flex; gap:12px; align-items:flex-start; margin:0 0 14px; min-height:48px; padding:4px 0;
+    font-size:14px; line-height:1.5; color:var(--kryo-text-secondary); cursor:pointer; }
   .kryo-su__check input { margin-top:2px; width:22px; height:22px; flex:0 0 auto; }
   .kryo-su__check[hidden] { display:none; }
-  .kryo-su__err { color:var(--kryo-danger); font-size:14px; font-weight:600; margin:8px 0 0; }
-  .kryo-su__wake { border-top:1px solid var(--kryo-border); padding-top:16px; margin-top:4px; }
+  .kryo-su__err { color:var(--kryo-danger); font-size:14px; font-weight:600; margin:8px 0 12px; }
 
-  /* --- Completion tick --- */
-  .kryo-su__tick { width:56px; height:56px; margin:0 auto 20px; border-radius:999px;
-    background:var(--kryo-success-bg); position:relative; }
-  .kryo-su__tick::after { content:'\2713'; position:absolute; inset:0; display:flex; align-items:center;
-    justify-content:center; color:var(--kryo-success); font-size:26px; font-weight:700;
-    animation:kryoTick 260ms cubic-bezier(.2,.7,.3,1) both; }
-  @keyframes kryoTick { from { transform:scale(.6); opacity:0 } to { transform:none; opacity:1 } }
+  .kryo-su__mark:focus-visible, .kryo-su__cta:focus-visible, .kryo-su__alt:focus-visible,
+  .kryo-su__barbtn:focus-visible, .kryo-su__opt:focus-visible, .kryo-su__navrow:focus-visible,
+  .kryo-su__tocrow:focus-visible, .kryo-su__acc summary:focus-visible, .kryo-su__f input:focus-visible
+    { outline:2px solid var(--kryo-blue); outline-offset:2px; }
 
-  .kryo-su__cards { display:flex; flex-direction:column; gap:10px; }
-  .kryo-su__card { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%;
-    min-height:64px; padding:14px 16px; border:1px solid var(--kryo-border); border-radius:14px;
-    background:var(--kryo-white); font:600 16px/1.3 var(--kryo-font-body); color:var(--kryo-text);
-    text-align:left; cursor:pointer; }
-  .kryo-su__card__meta { font-size:13px; font-weight:600; color:var(--kryo-text-tertiary); flex:0 0 auto; }
-
-  /* --- Motion: directional step transition --- */
-  .kryo-su__screen[data-active] { animation:kryoStepIn 200ms cubic-bezier(.2,.7,.3,1) both; }
-  .kryo-su[data-dir="back"] .kryo-su__screen[data-active] { animation-name:kryoStepBack; }
-  @keyframes kryoStepIn   { from { opacity:0; transform:translateX(12px) }  to { opacity:1; transform:none } }
-  @keyframes kryoStepBack { from { opacity:0; transform:translateX(-12px) } to { opacity:1; transform:none } }
   @media (prefers-reduced-motion: reduce) {
-    .kryo-su__screen[data-active], .kryo-su__panel, .kryo-su__tick::after { animation:none !important; }
-    .kryo-su__seg i { transition:none; }
+    .kryo-su__accbody, .kryo-su__panel { animation:none !important; }
     .kryo-su__cta:active { transform:none; }
   }
 
-  /* --- No-JS: never a blank page --- */
-  .kryo-su:not([data-js]) .kryo-su__step { display:block; }
-  .kryo-su:not([data-js]) .kryo-su__wrap { padding-bottom:32px; }
-  .kryo-su:not([data-js]) .kryo-su__prog,
-  .kryo-su:not([data-js]) .kryo-su__bottom { display:none !important; }
-
-  /* --- Desktop: same flow, wider measure. Never the basis for a decision. --- */
+  /* ---- Desktop: same content, wider measure. Mobile is the source of truth. ---- */
   @media (min-width:990px) {
-    .kryo-su__wrap { max-width:720px; padding-top:32px; }
-    .kryo-su__h1 { font-size:38px; }
-    .kryo-su__bar, .kryo-su__prog { padding-left:32px; padding-right:32px; }
-    .kryo-su__bottom { justify-content:center; padding-left:32px; padding-right:32px; }
-    .kryo-su__bottom__main { max-width:420px; }
+    .kryo-su__wrap { max-width:900px; padding:36px 32px; }
+    .kryo-su__bar { padding-left:32px; padding-right:32px; }
+    .kryo-su__h1 { font-size:40px; }
+    .kryo-su__h2 { font-size:30px; }
+    .kryo-su__media { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .kryo-su__media > *:only-child { grid-column:1 / -1; }
+    .kryo-su__chfoot { flex-direction:row; align-items:center; justify-content:space-between; }
+    .kryo-su__mark { width:auto; min-width:240px; }
     .kryo-su__sheet { align-items:center; justify-content:center; }
     .kryo-su__panel { max-width:520px; border-radius:20px; max-height:80vh; }
   }
@@ -494,41 +481,21 @@
 (function () {
   var root = document.querySelector('[data-kryo-setup]');
   if (!root) return;
-  root.setAttribute('data-js', '');
 
-  var API   = 'https://everest-calendar.vercel.app/api/marketing/sync/storefront-event';
-  var PKEY  = 'kryo_setup_progress_v1';
-  var AKEY  = 'kryo_safety_accepted_v1';
-  var WKEY  = 'kryo_wake_pref_v1';
-  var SVER  = root.getAttribute('data-safety-version') || '1';
-  var TVER  = root.getAttribute('data-terms-version') || '1';
-  var HUB   = root.getAttribute('data-hub') || '/pages/kryo-resources';
-  var WA    = root.getAttribute('data-wa') || '';
-  var CH    = (root.getAttribute('data-chapters') || '').split(',').map(function (s) { return s.trim(); });
+  var API  = 'https://everest-calendar.vercel.app/api/marketing/sync/storefront-event';
+  var PKEY = 'kryo_setup_progress_v1';
+  var AKEY = 'kryo_safety_accepted_v1';
+  var SVER = root.getAttribute('data-safety-version') || '1';
+  var TVER = root.getAttribute('data-terms-version') || '1';
+  var HUB  = root.getAttribute('data-hub') || '/pages/kryo-resources';
+  var WA   = root.getAttribute('data-wa') || '';
+  var LEGACY_TOTAL = parseInt(root.getAttribute('data-legacy-steps'), 10) || 24;
 
-  var steps  = [].slice.call(root.querySelectorAll('[data-kryo-step]'));
-  if (!steps.length) return;
-  var TOTALCH = CH.length || 5;
+  var gate  = root.querySelector('[data-kryo-gate]');
+  var guide = root.querySelector('[data-kryo-guide]');
+  var chapters = [].slice.call(root.querySelectorAll('[data-kryo-ch]'));
+  var ANCHORS = chapters.map(function (s) { return s.getAttribute('data-kryo-ch'); });
 
-  var screens = {};
-  ['gate', 'start', 'chapter', 'done', 'review'].forEach(function (k) {
-    screens[k] = root.querySelector('[data-kryo-screen="' + k + '"]');
-  });
-
-  var bottom  = root.querySelector('[data-kryo-bottom]');
-  var cta     = root.querySelector('[data-kryo-next]');
-  var altBtn  = root.querySelector('[data-kryo-alt]');
-  var backBtn = root.querySelector('[data-kryo-back]');
-  var progBtn = root.querySelector('[data-kryo-nav-open]');
-
-  var chOf   = steps.map(function (s) { return parseInt(s.getAttribute('data-chapter'), 10) || 1; });
-  var slugOf = steps.map(function (s, n) { return s.getAttribute('data-slug') || ('step-' + (n + 1)); });
-  var lockOf = steps.map(function (s) { return s.getAttribute('data-locked') === '1'; });
-  var firstOf = {}, countOf = {};
-  chOf.forEach(function (c, n) { if (firstOf[c] === undefined) firstOf[c] = n; countOf[c] = (countOf[c] || 0) + 1; });
-  function chName(c) { return CH[c - 1] || ('Chapter ' + c); }
-
-  // ---- storage helpers: corrupt state is treated as new, never thrown ----
   function lget(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function lset(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
   function jparse(s) { try { return JSON.parse(s); } catch (e) { return null; } }
@@ -550,285 +517,202 @@
     } catch (e) {}
   }
 
-  // ---- ONE canonical owner state. Every gate decision reads this, nothing else. ----
+  // ---- Progress, now chapter-level. Old step-level state is MIGRATED, never reset. ----
+  // The wizard's chapter boundaries were steps 0-2 / 3-7 / 8-10 / 11-15 / 16-23.
+  var LEGACY_LAST = [2, 7, 10, 15, 23];
+
+  function readProgress() {
+    var p = jparse(lget(PKEY)) || {};
+    var done = {};
+    if (p.chapters && typeof p.chapters === 'object') {
+      ANCHORS.forEach(function (a) { if (p.chapters[a]) done[a] = true; });
+    } else if (p.completedSteps || p.setupComplete) {
+      // Migrate: a chapter counts as done if the wizard had passed its last step.
+      var cs = parseInt(p.completedSteps, 10) || 0;
+      ANCHORS.forEach(function (a, i) { if (p.setupComplete || cs > LEGACY_LAST[i]) done[a] = true; });
+    }
+    return { done: done, setupComplete: !!p.setupComplete };
+  }
+
+  function writeProgress(done) {
+    var count = ANCHORS.filter(function (a) { return done[a]; }).length;
+    var complete = count >= ANCHORS.length;
+    var firstOpen = ANCHORS.length;
+    for (var i = 0; i < ANCHORS.length; i++) { if (!done[ANCHORS[i]]) { firstOpen = i; break; } }
+    lset(PKEY, JSON.stringify({
+      version: 2,
+      chapters: done,
+      setupComplete: complete,
+      // Legacy fields the owner hub still reads. Kept in sync so the hub needs no change.
+      currentChapter: Math.min(firstOpen + 1, ANCHORS.length),
+      completedSteps: Math.round((count / ANCHORS.length) * LEGACY_TOTAL)
+    }));
+  }
+
   function getKryoOwnerState() {
     var acc = jparse(lget(AKEY)) || null;
-    var prog = jparse(lget(PKEY)) || null;
     var accepted = !!(acc && acc.accepted_at);
+    var pr = readProgress();
     return {
       registered: !!(acc && acc.registered),
       safetyAccepted: accepted,
       safetyVersion: acc ? acc.safety_version : null,
       safetyCurrent: accepted && String(acc.safety_version) === String(SVER),
-      currentChapter: prog ? (parseInt(prog.currentChapter, 10) || 1) : 1,
-      currentStep: prog ? (parseInt(prog.currentStep, 10) || 0) : 0,
-      completedSteps: prog ? (parseInt(prog.completedSteps, 10) || 0) : 0,
-      setupComplete: !!(prog && prog.setupComplete)
+      chaptersComplete: pr.done,
+      setupComplete: pr.setupComplete
     };
   }
   window.getKryoOwnerState = getKryoOwnerState;
 
   var S = getKryoOwnerState();
-  var i = Math.min(Math.max(S.currentStep, 0), steps.length - 1);
-  var furthest = Math.min(Math.max(S.completedSteps, i), steps.length);
-  // Re-acknowledgement: they registered before, so never ask for their details again.
+  var done = S.chaptersComplete;
   var reAck = S.safetyAccepted && !S.safetyCurrent;
-  var view;
-  if (!S.safetyCurrent)      view = 'gate';
-  else if (S.setupComplete)  view = 'review';
-  else if (S.completedSteps > 0 || S.currentStep > 0) view = 'step';
-  else                       view = 'start';
 
-  function save(complete) {
-    lset(PKEY, JSON.stringify({
-      currentChapter: chOf[i], currentStep: i, completedSteps: furthest,
-      setupComplete: complete === undefined ? (view === 'done' || view === 'review') : !!complete
-    }));
-  }
-
-  // ---- Remove storefront distractions during active setup ----
+  // ---- Remove storefront distractions during setup ----
   function stripChrome() {
     try {
       [].forEach.call(document.querySelectorAll('[id^="shopify-section"]'), function (s) {
         if (!s.contains(root)) s.style.display = 'none';
       });
-      var noise = ['#chatway-container', 'chatway-widget', '#shopify-chat', '.announcement-bar',
-                   '#ProductRecommendations', '.footer', '.newsletter-form'];
-      noise.forEach(function (sel) {
-        [].forEach.call(document.querySelectorAll(sel), function (el) {
-          if (!el.contains(root)) el.style.display = 'none';
+      ['#chatway-container', 'chatway-widget', '#shopify-chat', '.announcement-bar', '.newsletter-form']
+        .forEach(function (sel) {
+          [].forEach.call(document.querySelectorAll(sel), function (el) {
+            if (!el.contains(root)) el.style.display = 'none';
+          });
         });
-      });
       document.body.style.background = '#fff';
     } catch (e) {}
   }
   stripChrome();
-  // Third-party widgets inject late; re-run a few times rather than observing forever.
-  var strips = 0, stripTimer = setInterval(function () {
-    stripChrome(); if (++strips > 8) clearInterval(stripTimer);
-  }, 700);
+  var n = 0, t = setInterval(function () { stripChrome(); if (++n > 8) clearInterval(t); }, 700);
 
-  // ---- Rendering ----
-  function showScreen(el) {
-    [].forEach.call(root.querySelectorAll('.kryo-su__screen'), function (s) {
-      if (s === el) { s.setAttribute('data-active', ''); s.hidden = false; }
-      else { s.removeAttribute('data-active'); s.hidden = true; }
-    });
-  }
-
-  function focusHeading(el) {
-    var h = el && el.querySelector('.kryo-su__h1');
-    if (h) { try { h.focus({ preventScroll: true }); } catch (e) { h.focus(); } }
-  }
-
-  function updateProgress() {
-    var c = chOf[i];
-    var within = i - firstOf[c] + 1;
-    var label = root.querySelector('[data-kryo-prog-label]');
-    if (label) label.textContent = chName(c).toUpperCase() + ' · ' + within + ' OF ' + countOf[c];
-    [].forEach.call(root.querySelectorAll('[data-seg]'), function (seg) {
-      var n = parseInt(seg.getAttribute('data-seg'), 10);
-      var start = firstOf[n], cnt = countOf[n] || 0;
-      var doneIn = start === undefined ? 0 : Math.max(0, Math.min(furthest - start, cnt));
-      var state = cnt && doneIn >= cnt ? 'done' : (n === c ? 'current' : 'todo');
-      seg.setAttribute('data-state', state);
-      // The chapter you are standing in fills by POSITION, so step 1 of 3 reads as a third
-      // rather than as an empty bar. Other chapters fill by what is actually complete.
-      var shown = (state === 'current') ? Math.max(doneIn, within) : doneIn;
-      var fill = seg.querySelector('i');
-      if (fill) fill.style.width = cnt ? Math.round((Math.min(shown, cnt) / cnt) * 100) + '%' : '0%';
-    });
-  }
-
-  function render(dir) {
-    root.setAttribute('data-dir', dir === 'back' ? 'back' : 'fwd');
-    progBtn.hidden = !(view === 'step' || view === 'chapter');
-    bottom.hidden = (view === 'review');
-
-    if (view === 'gate') {
-      showScreen(screens.gate);
-      var fields = root.querySelector('[data-kryo-gate-fields]');
-      var mk = root.querySelector('[data-kryo-gate-marketing]');
-      var reackBody = root.querySelector('[data-kryo-gate-reack]');
-      if (fields) fields.hidden = reAck;
-      if (mk) mk.hidden = reAck;
-      if (reackBody) reackBody.hidden = !reAck;
-      if (reAck) {
-        var h = root.querySelector('[data-kryo-gate-heading]');
-        if (h) h.textContent = root.getAttribute('data-reack-heading') || 'Safety information has been updated.';
+  // ---- Paint chapter state ----
+  function paint() {
+    var count = 0;
+    ANCHORS.forEach(function (a) {
+      var isDone = !!done[a];
+      if (isDone) count++;
+      var row = root.querySelector('[data-kryo-toc="' + a + '"]');
+      if (row) row.setAttribute('data-state', isDone ? 'done' : 'todo');
+      var nav = root.querySelector('[data-kryo-navstate="' + a + '"]');
+      if (nav) nav.setAttribute('data-state', isDone ? 'done' : 'todo');
+      var mark = root.querySelector('[data-kryo-mark="' + a + '"]');
+      if (mark) {
+        mark.setAttribute('data-state', isDone ? 'done' : 'todo');
+        mark.textContent = isDone
+          ? (root.getAttribute('data-marked') || 'Section complete')
+          : (root.getAttribute('data-mark-done') || 'Mark section complete');
       }
-      cta.textContent = reAck
-        ? (root.getAttribute('data-reack-cta') || 'I understand')
-        : (root.getAttribute('data-gate-cta') || 'Accept and begin');
-      altBtn.hidden = true;
-      backBtn.disabled = true;
-      focusHeading(screens.gate);
-      track('kryo_safety_gate_view', { reack: reAck });
-      return;
+      var sec = root.querySelector('[data-kryo-ch="' + a + '"]');
+      var badge = sec && sec.querySelector('[data-kryo-chdone]');
+      if (badge) badge.hidden = !isDone;
+    });
+
+    var resume = root.querySelector('[data-kryo-resume]');
+    var first = null;
+    for (var i = 0; i < ANCHORS.length; i++) { if (!done[ANCHORS[i]]) { first = ANCHORS[i]; break; } }
+    if (resume) {
+      if (count > 0 && first) {
+        resume.hidden = false;
+        resume.textContent = root.getAttribute('data-continue-label') || 'Continue setup';
+        resume.setAttribute('data-target', first);
+      } else { resume.hidden = true; }
     }
 
-    if (view === 'start') {
-      showScreen(screens.start);
-      cta.textContent = furthest > 0
-        ? (root.getAttribute('data-continue') || 'Continue setup')
-        : (root.getAttribute('data-begin') || 'Begin setup');
-      altBtn.hidden = true;
-      backBtn.disabled = true;
-      focusHeading(screens.start);
-      return;
+    var allDone = count >= ANCHORS.length;
+    var tick = root.querySelector('[data-kryo-endtick]');
+    if (tick) tick.hidden = !allDone;
+    var eh = root.querySelector('[data-kryo-endheading]');
+    var eb = root.querySelector('[data-kryo-endbody]');
+    if (allDone && eh && eb) {
+      eh.textContent = root.getAttribute('data-end-done-heading') || eh.textContent;
+      eb.textContent = root.getAttribute('data-end-done-body') || eb.textContent;
     }
-
-    if (view === 'review') {
-      showScreen(screens.review);
-      buildReview();
-      focusHeading(screens.review);
-      return;
-    }
-
-    if (view === 'done') {
-      showScreen(screens.done);
-      cta.textContent = root.getAttribute('data-done-cta') || 'Back to owner guide';
-      altBtn.hidden = false;
-      altBtn.textContent = root.getAttribute('data-done-alt') || 'Review first use';
-      backBtn.disabled = false;
-      focusHeading(screens.done);
-      save(true);
-      return;
-    }
-
-    if (view === 'chapter') {
-      showScreen(screens.chapter);
-      var c = chOf[i];
-      var dEl = root.querySelector('[data-kryo-ch-done]');
-      var nEl = root.querySelector('[data-kryo-ch-next]');
-      if (dEl) dEl.textContent = chName(c) + ' complete.';
-      if (nEl) nEl.textContent = c + 1 <= TOTALCH ? 'Next: ' + chName(c + 1) : '';
-      cta.textContent = root.getAttribute('data-chapter-cta') || 'Continue';
-      altBtn.hidden = true;
-      backBtn.disabled = false;
-      updateProgress();
-      focusHeading(screens.chapter);
-      return;
-    }
-
-    // ---- step ----
-    var st = steps[i];
-    showScreen(st);
-    cta.textContent = st.getAttribute('data-cta') || (root.getAttribute('data-next') || 'Next');
-    // "Already done" appears only on ordinary physical actions, never on comprehension screens.
-    altBtn.hidden = lockOf[i];
-    altBtn.textContent = root.getAttribute('data-already') || 'Already done';
-    backBtn.disabled = (i === 0);
-    updateProgress();
-    window.scrollTo(0, 0);
-    focusHeading(st);
-    var nxt = steps[i + 1];
-    if (nxt) { var im = nxt.querySelector('img'); if (im && im.currentSrc !== undefined) { var pre = new Image(); pre.src = im.getAttribute('src') || ''; } }
-    save(false);
-    track('kryo_setup_step_view', { chapter: chOf[i], step: i, slug: slugOf[i] });
   }
 
-  // ---- History: browser Back walks the setup, not out of it ----
-  function pushHistory(replace) {
-    try {
-      var hash = view === 'step' ? '#' + slugOf[i] : '#' + view;
-      var st = { kryo: 1, view: view, i: i };
-      if (replace || location.hash === hash) history.replaceState(st, '', hash);
-      else history.pushState(st, '', hash);
-    } catch (e) {}
+  // ---- Smooth scroll that clears the sticky header ----
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function scrollToAnchor(id, push) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var top = el.getBoundingClientRect().top + window.scrollY - 64;
+    window.scrollTo({ top: top, behavior: reduce ? 'auto' : 'smooth' });
+    // One history entry per jump — browser Back returns to where they were reading,
+    // it never walks back through twenty individual actions.
+    if (push) { try { history.pushState({ kryo: 1, a: id }, '', '#' + id); } catch (e) {} }
+    var h = el.querySelector('.kryo-su__h2, .kryo-su__h1');
+    if (h) { try { h.focus({ preventScroll: true }); } catch (e) {} }
+    track('kryo_setup_chapter_view', { chapter: id, via: 'jump' });
   }
 
-  function goto(nextView, nextIndex, dir) {
-    view = nextView;
-    if (typeof nextIndex === 'number') i = Math.min(Math.max(nextIndex, 0), steps.length - 1);
-    render(dir);
-    pushHistory(false);
+  // ---- Gate ----
+  function showGate() {
+    gate.hidden = false; guide.hidden = true;
+    var fields = root.querySelector('[data-kryo-gate-fields]');
+    var mk = root.querySelector('[data-kryo-gate-marketing]');
+    var rb = root.querySelector('[data-kryo-gate-reack]');
+    if (fields) fields.hidden = reAck;
+    if (mk) mk.hidden = reAck;
+    if (rb) rb.hidden = !reAck;
+    var submit = root.querySelector('[data-kryo-gate-submit]');
+    if (reAck) {
+      var h = root.querySelector('[data-kryo-gate-heading]');
+      if (h) h.textContent = root.getAttribute('data-reack-heading') || h.textContent;
+      if (submit) submit.textContent = root.getAttribute('data-reack-cta') || 'I understand';
+    }
+    track('kryo_safety_gate_view', { reack: reAck });
   }
 
-  window.addEventListener('popstate', function (e) {
-    var st = e.state;
-    if (st && st.kryo) { view = st.view; if (typeof st.i === 'number') i = st.i; render('back'); return; }
-    var h = (location.hash || '').replace('#', '');
-    var n = slugOf.indexOf(h);
-    if (n > -1) { var back = n < i; view = 'step'; i = n; render(back ? 'back' : 'fwd'); }
-  });
+  function showGuide(fromGate) {
+    gate.hidden = true; guide.hidden = false;
+    paint();
+    if (fromGate) { window.scrollTo(0, 0); track('kryo_setup_start', {}); }
+    var hash = (location.hash || '').replace('#', '');
+    if (hash && (hash === 'overview' || ANCHORS.indexOf(hash) > -1)) {
+      setTimeout(function () { scrollToAnchor(hash, false); }, 60);
+    }
+  }
 
-  // ---- Navigator sheet ----
-  function buildNav() {
-    var wrap = root.querySelector('[data-kryo-nav-list]');
-    if (!wrap) return;
-    wrap.innerHTML = '';
-    for (var c = 1; c <= TOTALCH; c++) {
-      if (firstOf[c] === undefined) continue;
-      var head = document.createElement('p');
-      head.className = 'kryo-su__navch';
-      head.textContent = chName(c);
-      wrap.appendChild(head);
-      for (var n = firstOf[c]; n < firstOf[c] + countOf[c]; n++) {
-        (function (n) {
-          var state = n < furthest ? 'done' : (n === i ? 'current' : 'todo');
-          var b = document.createElement('button');
-          b.type = 'button';
-          b.className = 'kryo-su__navrow';
-          b.setAttribute('data-state', state);
-          var dot = document.createElement('span');
-          dot.className = 'kryo-su__navdot';
-          var txt = document.createElement('span');
-          var h1 = steps[n].querySelector('.kryo-su__h1');
-          txt.textContent = h1 ? h1.textContent : ('Step ' + (n + 1));
-          var sr = document.createElement('span');
-          sr.className = 'kryo-su__sr';
-          sr.textContent = state === 'done' ? ' (completed)' : (state === 'current' ? ' (current step)' : ' (not started)');
-          b.appendChild(dot); b.appendChild(txt); b.appendChild(sr);
-          b.addEventListener('click', function () {
-            closeSheets();
-            var back = n < i;
-            if (n > furthest) furthest = n;
-            track('kryo_setup_jump', { from: i, to: n, chapter: chOf[n] });
-            goto('step', n, back ? 'back' : 'fwd');
-          });
-          wrap.appendChild(b);
-        })(n);
+  function acceptGate() {
+    var form = root.querySelector('[data-kryo-gate-form]');
+    var err = root.querySelector('[data-kryo-gate-err]');
+    var d = new FormData(form);
+    var nm = (d.get('name') || '').toString().trim();
+    var em = (d.get('email') || '').toString().trim();
+    var needDetails = !reAck;
+    var okEmail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em);
+    if (!d.get('accept') || (needDetails && (!nm || !okEmail))) {
+      if (err) {
+        err.hidden = false;
+        err.textContent = needDetails
+          ? (root.getAttribute('data-err-full') || 'Please add your name, a valid email address and tick the acknowledgement.')
+          : (root.getAttribute('data-err-ack') || 'Please tick the acknowledgement to continue.');
       }
+      return;
     }
+    if (err) err.hidden = true;
+    var prev = jparse(lget(AKEY)) || {};
+    // PII is deliberately not stored or sent to analytics; only that registration happened.
+    lset(AKEY, JSON.stringify({
+      registered: needDetails ? true : (prev.registered !== false),
+      accepted_at: new Date().toISOString(),
+      safety_version: SVER, terms_version: TVER,
+      marketing: reAck ? !!prev.marketing : !!d.get('marketing')
+    }));
+    track('kryo_safety_accept', { reack: reAck });
+    reAck = false;
+    showGuide(true);
   }
 
-  function buildReview() {
-    var wrap = root.querySelector('[data-kryo-review-cards]');
-    if (!wrap) return;
-    wrap.innerHTML = '';
-    for (var c = 1; c <= TOTALCH; c++) {
-      if (firstOf[c] === undefined) continue;
-      (function (c) {
-        var b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'kryo-su__card';
-        var t = document.createElement('span');
-        t.textContent = chName(c);
-        var m = document.createElement('span');
-        m.className = 'kryo-su__card__meta';
-        m.textContent = countOf[c] + ' steps';
-        b.appendChild(t); b.appendChild(m);
-        b.addEventListener('click', function () {
-          track('kryo_setup_review_chapter', { chapter: c });
-          goto('step', firstOf[c], 'fwd');
-        });
-        wrap.appendChild(b);
-      })(c);
-    }
-  }
-
+  // ---- Sheets ----
   var lastFocus = null;
   function openSheet(kind) {
     var s = root.querySelector('[data-kryo-sheet="' + kind + '"]');
     if (!s) return;
     lastFocus = document.activeElement;
-    if (kind === 'nav') buildNav();
     if (kind === 'help') {
       var ctx = root.querySelector('[data-kryo-help-ctx]');
-      if (ctx) ctx.textContent = view === 'step'
-        ? chName(chOf[i]) + ' · step ' + (i - firstOf[chOf[i]] + 1) + ' of ' + countOf[chOf[i]]
-        : '';
+      if (ctx) ctx.textContent = currentChapterTitle() || '';
     }
     s.hidden = false;
     document.body.style.overflow = 'hidden';
@@ -842,84 +726,38 @@
     if (open && lastFocus && lastFocus.focus) lastFocus.focus();
   }
 
-  // ---- Advance ----
-  function advance(skipped) {
-    if (view === 'gate') {
-      var form = root.querySelector('[data-kryo-gate-form]');
-      var err = root.querySelector('[data-kryo-gate-err]');
-      var d = new FormData(form);
-      var nm = (d.get('name') || '').toString().trim();
-      var em = (d.get('email') || '').toString().trim();
-      var needDetails = !reAck;
-      var okEmail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em);
-      if (!d.get('accept') || (needDetails && (!nm || !okEmail))) {
-        if (err) {
-          err.hidden = false;
-          err.textContent = needDetails
-            ? (root.getAttribute('data-err-full') || 'Please add your name, a valid email address and tick the acknowledgement.')
-            : (root.getAttribute('data-err-ack') || 'Please tick the acknowledgement to continue.');
-        }
-        return;
-      }
-      if (err) err.hidden = true;
-      var prev = jparse(lget(AKEY)) || {};
-      // PII is deliberately not stored or sent to analytics; only that registration happened.
-      lset(AKEY, JSON.stringify({
-        registered: needDetails ? true : (prev.registered !== false),
-        accepted_at: new Date().toISOString(),
-        safety_version: SVER, terms_version: TVER,
-        marketing: reAck ? !!prev.marketing : !!d.get('marketing')
-      }));
-      track('kryo_safety_accept', { reack: reAck, marketing: reAck ? !!prev.marketing : !!d.get('marketing') });
-      reAck = false;
-      var resume = getKryoOwnerState();
-      if (resume.setupComplete) { goto('review', i, 'fwd'); return; }
-      goto((furthest > 0 || i > 0) ? 'step' : 'start', i, 'fwd');
-      return;
-    }
-
-    if (view === 'start') { track('kryo_setup_start', { resumed: furthest > 0 }); goto('step', i, 'fwd'); return; }
-
-    if (view === 'chapter') {
-      var n = Math.min(i + 1, steps.length - 1);
-      if (n > furthest) furthest = n;
-      goto('step', n, 'fwd');
-      return;
-    }
-
-    if (view === 'done') { window.location.href = HUB; return; }
-
-    // step
-    track(skipped ? 'kryo_setup_step_skipped' : 'kryo_setup_step_complete', { chapter: chOf[i], step: i, slug: slugOf[i] });
-    if (i + 1 > furthest) furthest = i + 1;
-    if (i >= steps.length - 1) {
-      furthest = steps.length;
-      track('kryo_setup_complete', { steps: steps.length });
-      goto('done', i, 'fwd');
-      return;
-    }
-    if (chOf[i + 1] !== chOf[i]) { goto('chapter', i, 'fwd'); return; }
-    goto('step', i + 1, 'fwd');
+  // ---- Which chapter is the reader in (for support context + analytics) ----
+  var currentAnchor = 'overview';
+  function currentChapterTitle() {
+    var sec = root.querySelector('[data-kryo-ch="' + currentAnchor + '"]');
+    var h = sec && sec.querySelector('.kryo-su__h2');
+    return h ? h.textContent.trim() : '';
+  }
+  if ('IntersectionObserver' in window) {
+    var seen = {};
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        var a = e.target.getAttribute('data-kryo-ch');
+        if (!a) return;
+        currentAnchor = a;
+        if (!seen[a]) { seen[a] = 1; track('kryo_setup_chapter_view', { chapter: a, via: 'scroll' }); }
+      });
+    }, { rootMargin: '-64px 0px -70% 0px' });
+    chapters.forEach(function (s) { io.observe(s); });
   }
 
-  function goBack() {
-    if (view === 'done') { goto('step', steps.length - 1, 'back'); return; }
-    if (view === 'chapter') { goto('step', i, 'back'); return; }
-    if (view === 'step' && i > 0) { goto('step', i - 1, 'back'); return; }
-    if (view === 'step' && i === 0 && !bottom.hidden) { window.location.href = HUB; }
-  }
-
-  cta.addEventListener('click', function () { advance(false); });
-  altBtn.addEventListener('click', function () {
-    if (view === 'done') { goto('step', 0, 'back'); return; }
-    advance(true);
-  });
-  backBtn.addEventListener('click', goBack);
-  progBtn.addEventListener('click', function () { openSheet('nav'); });
+  // ---- Events ----
   root.querySelector('[data-kryo-help-open]').addEventListener('click', function () {
-    track('kryo_support_open', { surface: 'setup', chapter: chOf[i], step: i });
+    track('kryo_support_open', { surface: 'setup', chapter: currentAnchor });
     openSheet('help');
   });
+  root.querySelector('[data-kryo-nav-open]').addEventListener('click', function () { openSheet('nav'); });
+
+  var submitBtn = root.querySelector('[data-kryo-gate-submit]');
+  if (submitBtn) submitBtn.addEventListener('click', acceptGate);
+  var gateForm = root.querySelector('[data-kryo-gate-form]');
+  if (gateForm) gateForm.addEventListener('submit', function (e) { e.preventDefault(); acceptGate(); });
 
   root.addEventListener('click', function (e) {
     var t = e.target;
@@ -927,13 +765,33 @@
 
     if (t.closest('[data-kryo-sheet-close]') || t.classList.contains('kryo-su__sheet')) { closeSheets(); return; }
 
+    var jump = t.closest('[data-kryo-jump], [data-kryo-toc], .kryo-su__nextlink');
+    if (jump && jump.getAttribute('href')) {
+      e.preventDefault();
+      closeSheets();
+      scrollToAnchor(jump.getAttribute('href').replace('#', ''), true);
+      return;
+    }
+
+    var resume = t.closest('[data-kryo-resume]');
+    if (resume) { scrollToAnchor(resume.getAttribute('data-target'), true); return; }
+
+    var mark = t.closest('[data-kryo-mark]');
+    if (mark) {
+      var a = mark.getAttribute('data-kryo-mark');
+      done[a] = !done[a];
+      writeProgress(done);
+      paint();
+      track(done[a] ? 'kryo_setup_chapter_complete' : 'kryo_setup_chapter_reopen', { chapter: a });
+      if (ANCHORS.every(function (x) { return done[x]; })) track('kryo_setup_complete', { chapters: ANCHORS.length });
+      return;
+    }
+
     var topic = t.closest('[data-kryo-topic]');
     if (topic) {
       var name = topic.getAttribute('data-kryo-topic');
-      var where = view === 'step'
-        ? chName(chOf[i]) + ' — step ' + (i - firstOf[chOf[i]] + 1) + ' of ' + countOf[chOf[i]] + ' (' + slugOf[i] + ')'
-        : view;
-      track('kryo_whatsapp_support_click', { surface: 'setup', topic: name, chapter: chOf[i], step: i });
+      var where = currentChapterTitle() || 'Setup overview';
+      track('kryo_whatsapp_support_click', { surface: 'setup', topic: name, chapter: currentAnchor });
       if (WA) {
         var msg = encodeURIComponent('KRYO setup help — ' + name + '. I am on: ' + where + '.');
         window.open(WA + (WA.indexOf('?') > -1 ? '&' : '?') + 'text=' + msg, '_blank', 'noopener');
@@ -967,38 +825,12 @@
     closeSheets();
   });
 
-  // ---- Screen Wake Lock: feature detected, optional, never required ----
-  var wakeRow = root.querySelector('[data-kryo-wake-row]');
-  var wakeBox = root.querySelector('[data-kryo-wake]');
-  var lock = null;
-  if ('wakeLock' in navigator && wakeRow && wakeBox) {
-    wakeRow.hidden = false;
-    if (lget(WKEY) === '1') wakeBox.checked = true;
-    function requestLock() {
-      try {
-        navigator.wakeLock.request('screen').then(function (l) { lock = l; }, function () {});
-      } catch (e) {}
-    }
-    function releaseLock() { try { if (lock) { lock.release(); lock = null; } } catch (e) {} }
-    wakeBox.addEventListener('change', function () {
-      lset(WKEY, wakeBox.checked ? '1' : '0');
-      if (wakeBox.checked) requestLock(); else releaseLock();
-    });
-    document.addEventListener('visibilitychange', function () {
-      if (document.visibilityState === 'visible' && wakeBox.checked && !lock) requestLock();
-    });
-    if (wakeBox.checked) requestLock();
-  }
+  window.addEventListener('popstate', function (e) {
+    var a = e.state && e.state.kryo ? e.state.a : (location.hash || '').replace('#', '');
+    if (a && (a === 'overview' || ANCHORS.indexOf(a) > -1)) scrollToAnchor(a, false);
+  });
 
-  // ---- Deep link wins over saved position, but never over the gate ----
-  var hash = (location.hash || '').replace('#', '');
-  if (view !== 'gate' && hash) {
-    var idx = slugOf.indexOf(hash);
-    if (idx > -1) { view = 'step'; i = idx; if (i > furthest) furthest = i; }
-  }
-
-  render('fwd');
-  pushHistory(true);
+  if (!S.safetyCurrent) showGate(); else showGuide(false);
 })();
 </script>
 
@@ -1008,43 +840,50 @@
   "tag": "section",
   "settings": [
     { "type": "image_picker", "id": "logo", "label": "Everest Labs logo" },
-    { "type": "text", "id": "chapter_names", "label": "Chapter names (comma separated)",
-      "default": "Unbox & Position,Mount the Halo,Connect KRYO,Fill & Start,First Session" },
     { "type": "url", "id": "hub_url", "label": "Owner hub URL" },
     { "type": "url", "id": "safety_url", "label": "Safety page URL" },
     { "type": "url", "id": "whatsapp_url", "label": "WhatsApp support URL" },
+    { "type": "range", "id": "legacy_total_steps", "label": "Legacy step count (owner hub maths)",
+      "min": 5, "max": 40, "step": 1, "default": 24,
+      "info": "Keeps the owner hub's 'x of y steps' figure sensible now progress is chapter-level." },
 
-    { "type": "header", "content": "Owner header" },
-    { "type": "text", "id": "help_label", "label": "Help label", "default": "Help" },
+    { "type": "header", "content": "Header" },
+    { "type": "text", "id": "sections_label", "label": "Sections button", "default": "Sections" },
+    { "type": "text", "id": "help_label", "label": "Help button", "default": "Help" },
     { "type": "text", "id": "help_aria", "label": "Help accessible label", "default": "Get help with setup" },
-    { "type": "text", "id": "nav_hint", "label": "Progress hint", "default": "All steps" },
-    { "type": "text", "id": "nav_aria", "label": "Progress accessible label", "default": "Open the setup navigator" },
     { "type": "text", "id": "zoom_aria", "label": "Image accessible label", "default": "View this image full screen" },
     { "type": "text", "id": "zoom_hint", "label": "Image zoom hint", "default": "Tap to enlarge" },
 
-    { "type": "header", "content": "Buttons" },
-    { "type": "text", "id": "back_label", "label": "Back", "default": "Back" },
-    { "type": "text", "id": "next_label", "label": "Default next", "default": "Next" },
-    { "type": "text", "id": "already_label", "label": "Skip a physical step", "default": "Already done" },
-    { "type": "text", "id": "begin_label", "label": "Begin setup", "default": "Begin setup" },
-    { "type": "text", "id": "continue_label", "label": "Continue setup", "default": "Continue setup" },
-    { "type": "text", "id": "chapter_cta", "label": "Chapter complete", "default": "Continue" },
-    { "type": "text", "id": "close_label", "label": "Close", "default": "Close" },
-    { "type": "text", "id": "why_label", "label": "Why-this-matters", "default": "Why this matters" },
-
-    { "type": "header", "content": "Note labels" },
-    { "type": "text", "id": "lbl_critical", "label": "Critical label", "default": "Important" },
-    { "type": "text", "id": "lbl_caution", "label": "Caution label", "default": "Take care" },
-    { "type": "text", "id": "lbl_info", "label": "Information label", "default": "Good to know" },
-    { "type": "text", "id": "lbl_tip", "label": "Tip label", "default": "Tip" },
-
-    { "type": "header", "content": "Start screen" },
+    { "type": "header", "content": "Overview" },
     { "type": "text", "id": "start_eyebrow", "label": "Eyebrow", "default": "KRYO SETUP" },
-    { "type": "text", "id": "start_heading", "label": "Heading", "default": "Let's get KRYO running." },
-    { "type": "textarea", "id": "start_body", "label": "Body", "default": "We'll take you from unboxing to your first session in five short chapters." },
-    { "type": "text", "id": "start_duration", "label": "Duration", "default": "Around 15 minutes of hands-on setup" },
-    { "type": "text", "id": "wake_label", "label": "Wake-lock label", "default": "Keep screen awake" },
-    { "type": "text", "id": "wake_help", "label": "Wake-lock help", "default": "Stops your phone locking while you follow the setup." },
+    { "type": "text", "id": "start_heading", "label": "Heading", "default": "Set up KRYO in five parts." },
+    { "type": "textarea", "id": "start_body", "label": "Body", "default": "Scan the full setup below, or open any section for more detail." },
+    { "type": "text", "id": "continue_label", "label": "Returning owner button", "default": "Continue setup" },
+    { "type": "text", "id": "chapter_word", "label": "Chapter word", "default": "PART" },
+    { "type": "text", "id": "of_word", "label": "Of word", "default": "OF" },
+    { "type": "text", "id": "overview_label", "label": "Overview nav label", "default": "Overview" },
+    { "type": "text", "id": "next_word", "label": "Next-section prefix", "default": "Next:" },
+    { "type": "text", "id": "detail_label", "label": "Accordion label", "default": "Show detailed instructions" },
+    { "type": "text", "id": "lbl_critical", "label": "Critical note title", "default": "Important" },
+
+    { "type": "header", "content": "Don't miss these" },
+    { "type": "text", "id": "rules_heading", "label": "Heading", "default": "DON'T MISS THESE" },
+
+    { "type": "header", "content": "Know the parts" },
+    { "type": "text", "id": "parts_heading", "label": "Heading", "default": "Know the parts" },
+    { "type": "image_picker", "id": "parts_image", "label": "Parts image", "info": "Reuse the existing What's in the Box asset." },
+    { "type": "text", "id": "parts_image_alt", "label": "Parts image alt text" },
+
+    { "type": "header", "content": "Progress" },
+    { "type": "text", "id": "mark_done", "label": "Mark complete button", "default": "Mark section complete" },
+    { "type": "text", "id": "marked", "label": "Marked state", "default": "Section complete" },
+
+    { "type": "header", "content": "End of guide" },
+    { "type": "text", "id": "end_heading", "label": "Heading", "default": "That's the full setup." },
+    { "type": "textarea", "id": "end_body", "label": "Body", "default": "Come back to this page any time — it stays available as your owner reference." },
+    { "type": "text", "id": "end_done_heading", "label": "Heading once complete", "default": "You're ready." },
+    { "type": "textarea", "id": "end_done_body", "label": "Body once complete", "default": "Your KRYO is installed and you know how to begin using it safely. This page stays available as your owner reference." },
+    { "type": "text", "id": "end_cta", "label": "Link", "default": "Back to owner guide" },
 
     { "type": "header", "content": "Safety gate" },
     { "type": "text", "id": "safety_version", "label": "Safety version", "default": "KRYO-SAFETY-2026-08-01",
@@ -1068,50 +907,63 @@
     { "type": "text", "id": "err_ack", "label": "Error — missing acknowledgement", "default": "Please tick the acknowledgement to continue." },
 
     { "type": "header", "content": "Navigator and support" },
-    { "type": "text", "id": "nav_heading", "label": "Navigator heading", "default": "Setup navigator" },
+    { "type": "text", "id": "nav_heading", "label": "Navigator heading", "default": "Jump to a section" },
     { "type": "text", "id": "help_heading", "label": "Help heading", "default": "What do you need help with?" },
     { "type": "text", "id": "help_topics", "label": "Help topics (comma separated)",
       "default": "Installation,Rail mounting,No water flow,Leak,Power,Cooling,Other" },
     { "type": "text", "id": "help_safety", "label": "Safety link in help sheet", "default": "Read safety information" },
-
-    { "type": "header", "content": "Completion" },
-    { "type": "text", "id": "complete_heading", "label": "Heading", "default": "You're ready." },
-    { "type": "textarea", "id": "complete_body", "label": "Body", "default": "Your KRYO is installed and you know how to begin using it safely." },
-    { "type": "text", "id": "complete_cta", "label": "Primary button", "default": "Back to owner guide" },
-    { "type": "text", "id": "complete_cta_secondary", "label": "Secondary button", "default": "Review first use" },
-    { "type": "text", "id": "review_heading", "label": "Review heading", "default": "Setup complete" },
-    { "type": "textarea", "id": "review_body", "label": "Review body", "default": "What would you like to review?" },
-    { "type": "text", "id": "review_hub_link", "label": "Review hub link", "default": "Back to owner guide" }
+    { "type": "text", "id": "close_label", "label": "Close", "default": "Close" }
   ],
   "blocks": [
     {
-      "type": "setup_step",
-      "name": "Setup step",
+      "type": "rule",
+      "name": "Don't-miss rule",
       "settings": [
-        { "type": "checkbox", "id": "enabled", "label": "Enable step", "default": true },
-        { "type": "range", "id": "chapter", "label": "Chapter", "min": 1, "max": 5, "step": 1, "default": 1 },
-        { "type": "text", "id": "chapter_label", "label": "Chapter label" },
-        { "type": "text", "id": "title", "label": "Step title" },
-        { "type": "text", "id": "cta_label", "label": "Action button",
-          "info": "Name the physical action, e.g. 'Everything is here'. Blank uses 'Next'." },
-        { "type": "checkbox", "id": "allow_skip", "label": "Allow 'Already done'", "default": true,
-          "info": "Always off for Critical steps — comprehension screens cannot be skipped." },
-        { "type": "richtext", "id": "instruction", "label": "Instruction", "info": "40-90 words. Answer 'what do I do now?' first." },
-        { "type": "richtext", "id": "actions", "label": "Numbered actions" },
-        { "type": "image_picker", "id": "image", "label": "Image", "info": "4:3 crops best." },
-        { "type": "text", "id": "image_alt", "label": "Image alt text", "info": "Describe the instructional purpose, not the scene." },
-        { "type": "text", "id": "asset_id", "label": "Asset ID" },
-        { "type": "richtext", "id": "tip", "label": "Tip" },
-        { "type": "select", "id": "warning_level", "label": "Warning level",
+        { "type": "text", "id": "title", "label": "Title" },
+        { "type": "textarea", "id": "body", "label": "Body" }
+      ]
+    },
+    {
+      "type": "part",
+      "name": "Part (glossary)",
+      "settings": [
+        { "type": "text", "id": "term", "label": "Part name" },
+        { "type": "textarea", "id": "definition", "label": "What it is" }
+      ]
+    },
+    {
+      "type": "chapter",
+      "name": "Chapter",
+      "settings": [
+        { "type": "range", "id": "number", "label": "Part number", "min": 1, "max": 5, "step": 1, "default": 1 },
+        { "type": "text", "id": "anchor", "label": "Anchor id", "info": "position / mount / connect / fill / first-use" },
+        { "type": "text", "id": "title", "label": "Title" },
+        { "type": "textarea", "id": "purpose", "label": "One-sentence purpose" },
+        { "type": "richtext", "id": "quick", "label": "Quick instructions", "info": "3-5 bullets, always visible." },
+        { "type": "richtext", "id": "critical", "label": "Critical warning", "info": "Always visible. Never inside the accordion." },
+        { "type": "text", "id": "always_title", "label": "Second always-visible note title" },
+        { "type": "select", "id": "always_level", "label": "Second note level",
           "options": [
             { "value": "info", "label": "Information" },
             { "value": "caution", "label": "Caution" },
             { "value": "critical", "label": "Critical" }
-          ],
-          "default": "caution" },
-        { "type": "text", "id": "warning_title", "label": "Warning title" },
-        { "type": "richtext", "id": "warning", "label": "Warning" },
-        { "type": "richtext", "id": "why", "label": "Why this matters" }
+          ], "default": "caution" },
+        { "type": "richtext", "id": "always_visible", "label": "Second always-visible note", "info": "e.g. the stop criteria." },
+        { "type": "richtext", "id": "detail", "label": "Detailed instructions", "info": "Goes inside the accordion." },
+        { "type": "image_picker", "id": "image_1", "label": "Image 1" },
+        { "type": "text", "id": "alt_1", "label": "Image 1 alt" },
+        { "type": "text", "id": "slot_1", "label": "Image 1 expected filename" },
+        { "type": "image_picker", "id": "image_2", "label": "Image 2" },
+        { "type": "text", "id": "alt_2", "label": "Image 2 alt" },
+        { "type": "text", "id": "slot_2", "label": "Image 2 expected filename" },
+        { "type": "image_picker", "id": "image_3", "label": "Image 3" },
+        { "type": "text", "id": "alt_3", "label": "Image 3 alt" },
+        { "type": "text", "id": "slot_3", "label": "Image 3 expected filename" },
+        { "type": "image_picker", "id": "image_4", "label": "Image 4" },
+        { "type": "text", "id": "alt_4", "label": "Image 4 alt" },
+        { "type": "text", "id": "slot_4", "label": "Image 4 expected filename" },
+        { "type": "text", "id": "next_anchor", "label": "Next section anchor" },
+        { "type": "text", "id": "next_label", "label": "Next section label" }
       ]
     }
   ]

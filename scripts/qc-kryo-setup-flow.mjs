@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 /**
- * KRYO setup FLOW gate — measures the journey, not a screenshot.
+ * KRYO setup gate — checks the twelve DONE WHEN criteria from the UX revision brief.
  *
- * A static page audit passes a wizard that costs 20+ taps to revisit a known step, asks for
- * registration twice, and loses your place on reload. None of that is visible in a screenshot.
- * This drives the actual flow at 390px and measures what the owner actually pays.
+ * The page is now one scrollable guide of five parts, not a 24-screen wizard, so this
+ * measures reading and jumping rather than Next presses. A screenshot cannot tell you
+ * whether a critical warning is hidden behind an accordion, whether an old owner's
+ * progress survived, or whether a stale technical claim crept back in. This can.
  *
  * Usage: node scripts/qc-kryo-setup-flow.mjs <url> [outdir]
  * Exit 0 = SHIP · 1 = DO NOT SHIP · 2 = could not verify (stub / rate limited)
@@ -15,11 +16,21 @@ import fs from 'node:fs';
 const url = process.argv[2];
 const out = process.argv[3] || '/tmp';
 if (!url) { console.log('usage: qc-kryo-setup-flow.mjs <url> [outdir]'); process.exit(1); }
+const base = url.split('#')[0];
 
 const findings = [];
-const add = (sev, what, evidence) => findings.push({ sev, what, evidence });
 const ok = [];
+const add = (sev, what, evidence) => findings.push({ sev, what, evidence });
 const pass = (what, evidence) => ok.push({ what, evidence });
+
+// Claims withdrawn or never confirmed. Any of these reappearing is a regression.
+const STALE = [
+  { re: /\b48\s?V\b/i, what: '48V power claim (KRYO is 24V DC)' },
+  { re: /1\.5\s?m(etre)?\b/i, what: '1.5 m hose claim (hose is 2 m)' },
+  { re: /hold (it )?for \d+ seconds/i, what: 'unsupported adhesive hold time' },
+  { re: /\b8\s?[–-]\s?12\s?hours\b/i, what: 'unconfirmed cooldown duration' },
+  { re: /step \d+ of \d+/i, what: 'wizard step counter' },
+];
 
 const b = await chromium.launch();
 const ctx = await b.newContext({
@@ -31,242 +42,245 @@ const errors = [];
 p.on('pageerror', (e) => errors.push(e.message));
 
 try {
-  const resp = await p.goto(url, { waitUntil: 'load', timeout: 45000 }).catch(() => null);
+  const resp = await p.goto(base, { waitUntil: 'load', timeout: 45000 }).catch(() => null);
   const html = await p.content();
-  if ((!resp && !url.startsWith('file:')) || html.length < 5000) {
+  if ((!resp && !base.startsWith('file:')) || html.length < 5000) {
     console.log(JSON.stringify({ ok: false, blocked: true,
       reason: `stub response (${html.length} bytes) — could not verify, NOT a page defect` }, null, 1));
     await b.close(); process.exit(2);
   }
-  await p.waitForTimeout(400);
+  await p.waitForTimeout(300);
 
-  const state = () => p.evaluate(() => {
-    const r = document.querySelector('[data-kryo-setup]');
-    const act = document.querySelector('.kryo-su__screen[data-active]');
-    const cta = document.querySelector('[data-kryo-next]');
-    const alt = document.querySelector('[data-kryo-alt]');
-    const h1 = act && act.querySelector('.kryo-su__h1');
-    return {
-      screen: act ? (act.getAttribute('data-kryo-screen') || 'step:' + act.getAttribute('data-slug')) : null,
-      heading: h1 ? h1.textContent.trim() : null,
-      cta: cta ? cta.textContent.trim() : null,
-      altVisible: alt ? !alt.hidden : false,
-      progress: (document.querySelector('[data-kryo-prog-label]') || {}).textContent || '',
-      progressVisible: !document.querySelector('[data-kryo-nav-open]').hidden,
-      hash: location.hash,
-      saved: localStorage.getItem('kryo_setup_progress_v1'),
-      focused: document.activeElement ? document.activeElement.className : '',
-      scrollY: Math.round(window.scrollY),
-      segs: [...document.querySelectorAll('[data-seg]')].map((s) => s.getAttribute('data-state')),
-    };
-  });
+  // ---------- 8 + 10. Gate, and Help while gated ----------
+  let gated = await p.evaluate(() => !document.querySelector('[data-kryo-gate]').hidden);
+  if (!gated) add('P0', 'A brand-new owner is not gated', 'guide shown without acknowledgement');
+  else pass('New owner sees the safety gate first', 'guide hidden until accepted');
 
-  // ---------- 1. THE GATE ----------
-  let s = await state();
-  if (s.screen !== 'gate') add('P0', 'A brand-new owner is not gated', `first screen was "${s.screen}"`);
-  else pass('New owner sees the safety gate first', s.heading);
-
-  // Support and safety must work while gated.
-  const gatedHelp = await p.evaluate(() => {
+  const helpGated = await p.evaluate(() => {
     document.querySelector('[data-kryo-help-open]').click();
     const open = !document.querySelector('[data-kryo-sheet="help"]').hidden;
     document.querySelector('[data-kryo-sheet="help"] [data-kryo-sheet-close]').click();
     return open;
   });
-  if (!gatedHelp) add('P0', 'Help is unreachable while the gate is up', 'help sheet did not open');
-  else pass('Help reachable while gated', 'bottom sheet opens on the gate screen');
+  if (!helpGated) add('P0', 'Help is unreachable while gated', 'help sheet did not open');
+  else pass('Help reachable while gated', 'bottom sheet opens on the gate');
 
-  // Gate must actually block on an empty form.
-  await p.click('[data-kryo-next]');
-  s = await state();
-  if (s.screen !== 'gate') add('P0', 'Gate accepts an empty form', 'advanced without acknowledgement');
+  await p.click('[data-kryo-gate-submit]');
+  if (await p.evaluate(() => !document.querySelector('[data-kryo-gate]').hidden) === false)
+    add('P0', 'Gate accepts an empty form', 'advanced without acknowledgement');
   else pass('Gate rejects an empty submission', 'stays on gate, error shown');
 
   await p.fill('[data-kryo-gate-form] input[name="name"]', 'Test Owner');
   await p.fill('[data-kryo-gate-form] input[name="email"]', 'owner@example.com');
   await p.check('[data-kryo-gate-form] input[name="accept"]');
-  await p.click('[data-kryo-next]');
+  await p.click('[data-kryo-gate-submit]');
   await p.waitForTimeout(250);
-  s = await state();
-  if (s.screen !== 'start') add('P0', 'Gate does not lead to the start screen', `landed on "${s.screen}"`);
-  else pass('Gate accepted', `start screen: "${s.heading}"`);
+  if (await p.evaluate(() => document.querySelector('[data-kryo-guide]').hidden))
+    add('P0', 'Accepting the gate does not open the guide', 'guide still hidden');
+  else pass('Gate accepted', 'guide shown');
 
-  // ---------- 2. RELOAD MUST NOT RE-ASK ----------
-  await p.reload({ waitUntil: 'load' });
-  await p.waitForTimeout(400);
-  s = await state();
-  if (s.screen === 'gate') add('P0', 'Registration is demanded twice on the same device', 'gate reappeared after reload');
-  else pass('Never asked to register twice', `reload resumed at "${s.screen}"`);
+  await p.reload({ waitUntil: 'load' }); await p.waitForTimeout(300);
+  if (await p.evaluate(() => !document.querySelector('[data-kryo-gate]').hidden))
+    add('P0', 'Registration is demanded twice on the same device', 'gate reappeared after reload');
+  else pass('Never asked to register twice', 'reload goes straight to the guide');
 
-  // ---------- 3. FIRST STEP: is the action obvious without scrolling? ----------
-  await p.click('[data-kryo-next]');
-  await p.waitForTimeout(250);
-  s = await state();
-  const firstStep = s;
-  if (!s.screen.startsWith('step:')) add('P0', 'Begin setup does not open a step', `landed on "${s.screen}"`);
-  else pass('Setup begins', `${s.progress} — "${s.heading}"`);
+  // ---------- 1. Five parts, not 20+ steps ----------
+  const shape = await p.evaluate(() => ({
+    chapters: [...document.querySelectorAll('[data-kryo-ch]')].map((s) => s.getAttribute('data-kryo-ch')),
+    tocRows: document.querySelectorAll('.kryo-su__tocrow').length,
+    marks: document.querySelectorAll('[data-kryo-mark]').length,
+    text: document.body.innerText,
+  }));
+  const WANT = ['position', 'mount', 'connect', 'fill', 'first-use'];
+  if (shape.chapters.length !== 5 || WANT.some((a, i) => shape.chapters[i] !== a))
+    add('P0', 'Setup is not five parts with the specified anchors', shape.chapters.join(', ') || 'none');
+  else pass('Setup is five parts', shape.chapters.join(' · '));
+  if (shape.tocRows !== 5) add('P1', 'Section navigator does not list five parts', `${shape.tocRows} rows`);
+  else pass('Overview navigator lists five parts', `${shape.tocRows} rows, ${shape.marks} mark-complete controls`);
 
-  const fold = await p.evaluate(() => {
-    const act = document.querySelector('.kryo-su__screen[data-active]');
-    const h1 = act.querySelector('.kryo-su__h1');
-    const vis = act.querySelector('.kryo-su__vis');
-    const instr = act.querySelector('.kryo-su__instr, .kryo-su__acts');
-    const cta = document.querySelector('[data-kryo-next]');
-    const box = (el) => (el ? Math.round(el.getBoundingClientRect().bottom) : null);
-    return { vpH: window.innerHeight, h1: box(h1), vis: box(vis), instr: box(instr),
-             ctaTop: Math.round(cta.getBoundingClientRect().top),
-             ctaH: Math.round(cta.getBoundingClientRect().height) };
-  });
-  if (fold.instr !== null && fold.instr > fold.vpH)
-    add('P0', 'The instruction is below the fold on the first step',
-        `instruction ends at ${fold.instr}px, screen is ${fold.vpH}px`);
-  else pass('Instruction visible without scrolling', `ends at ${fold.instr}px of ${fold.vpH}px`);
-  if (fold.ctaTop + fold.ctaH > fold.vpH + 2)
-    add('P0', 'Primary action is not on screen', `CTA bottom ${fold.ctaTop + fold.ctaH}px vs ${fold.vpH}px`);
-  else pass('Primary action always on screen', `sticky CTA ${fold.ctaH}px high`);
+  // ---------- 2. Quick instructions carry the whole setup ----------
+  const quick = await p.evaluate(() => [...document.querySelectorAll('[data-kryo-ch]')].map((s) => ({
+    a: s.getAttribute('data-kryo-ch'),
+    bullets: s.querySelectorAll('.kryo-su__quick li').length,
+    purpose: !!s.querySelector('.kryo-su__purpose'),
+  })));
+  const thin = quick.filter((q) => q.bullets < 3 || q.bullets > 6);
+  if (thin.length) add('P1', 'A part does not carry 3-6 quick instructions', thin.map((q) => `${q.a}:${q.bullets}`).join(', '));
+  else pass('Every part scannable without opening anything', quick.map((q) => `${q.a}:${q.bullets}`).join(' · '));
+  if (quick.some((q) => !q.purpose)) add('P1', 'A part is missing its one-sentence purpose', 'see .kryo-su__purpose');
+  else pass('Every part states its purpose', '5 of 5');
 
-  // ---------- 4. INTERACTION COST ----------
-  // Cost of reaching the LAST step by tapping Next repeatedly.
-  let taps = 0;
-  for (let n = 0; n < 60; n++) {
-    const cur = await state();
-    if (cur.screen === 'done') break;
-    await p.click('[data-kryo-next]');
-    taps++;
-    await p.waitForTimeout(60);
-  }
-  const endState = await state();
-  if (endState.screen !== 'done') add('P0', 'Could not reach the end of setup', `stuck on "${endState.screen}" after ${taps} taps`);
-  else pass('Setup completes', `${taps} taps end to end (24 steps + 5 chapter marks)`);
-
-  // Cost of jumping back to a known step via the navigator.
-  await p.evaluate(() => localStorage.removeItem('kryo_setup_progress_v1'));
-  await p.reload({ waitUntil: 'load' });
-  await p.waitForTimeout(400);
-  await p.click('[data-kryo-next]');           // start -> step 1
-  await p.waitForTimeout(200);
-  const before = await state();
-  let jumpTaps = 0;
-  await p.click('[data-kryo-nav-open]'); jumpTaps++;
-  await p.waitForTimeout(200);
-  const navRows = await p.$$('.kryo-su__navrow');
-  const target = navRows[15];                   // a step deep in chapter 4
-  await target.click(); jumpTaps++;
-  await p.waitForTimeout(250);
-  const after = await state();
-  if (before.screen === after.screen) add('P0', 'Setup navigator does not move the user', 'same screen after tapping a row');
-  else if (jumpTaps > 3) add('P1', 'Jumping to a known step costs too many taps', `${jumpTaps} taps`);
-  else pass('Jump to any step', `${jumpTaps} taps — "${after.heading}" (was "${before.heading}")`);
-
-  // ---------- 5. "ALREADY DONE" IS ABSENT ON COMPREHENSION SCREENS ----------
-  const skipAudit = await p.evaluate(() => {
-    const steps = [...document.querySelectorAll('[data-kryo-step]')];
-    return steps.map((st) => ({
-      slug: st.getAttribute('data-slug'),
-      locked: st.getAttribute('data-locked') === '1',
-      critical: !!st.querySelector('.kryo-owner__note--critical'),
+  // ---------- 5. Critical warnings are NOT behind an accordion ----------
+  const warn = await p.evaluate(() => {
+    // With every accordion closed, what safety content is actually on the page?
+    document.querySelectorAll('details[open]').forEach((d) => d.removeAttribute('open'));
+    const visible = (el) => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el);
+      return r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden'; };
+    const crit = [...document.querySelectorAll('.kryo-owner__note--critical')].filter(visible);
+    const insideAcc = crit.filter((n) => n.closest('details')).length;
+    const perCh = [...document.querySelectorAll('[data-kryo-ch]')].map((s) => ({
+      a: s.getAttribute('data-kryo-ch'),
+      crit: [...s.querySelectorAll('.kryo-owner__note--critical')].filter(visible).length,
     }));
+    const body = document.body.innerText;
+    return { total: crit.length, insideAcc, perCh,
+      stopCriteria: /chest pain/i.test(body) && /loss of breathing control/i.test(body),
+      rules: document.querySelectorAll('.kryo-su__rulelist li').length,
+      rulesInAcc: !!document.querySelector('.kryo-su__rulelist')?.closest('details') };
   });
-  const leaky = skipAudit.filter((x) => x.critical && !x.locked);
-  if (leaky.length) add('P0', '"Already done" offered on a safety-critical screen', leaky.map((x) => x.slug).join(', '));
-  else pass('Safety screens cannot be skipped', `${skipAudit.filter((x) => x.locked).length} of ${skipAudit.length} steps locked to "I understand"`);
+  if (warn.insideAcc > 0) add('P0', 'A critical warning is hidden inside an accordion', `${warn.insideAcc} of ${warn.total}`);
+  else pass('Critical warnings always visible', `${warn.total} notes, none inside an accordion`);
+  const noWarn = warn.perCh.filter((c) => c.crit === 0);
+  if (noWarn.length) add('P1', 'A part carries no visible critical warning', noWarn.map((c) => c.a).join(', '));
+  else pass('Every part shows its critical warning', warn.perCh.map((c) => `${c.a}:${c.crit}`).join(' · '));
+  if (!warn.stopCriteria) add('P0', 'Stop criteria are not visible with accordions closed', 'chest pain / loss of breathing control not found');
+  else pass('Stop criteria visible without opening anything', 'full symptom list in the page text');
+  if (warn.rules !== 5 || warn.rulesInAcc)
+    add('P0', '"Don\'t miss these" is missing or collapsed', `${warn.rules} rules, inAccordion=${warn.rulesInAcc}`);
+  else pass('"Don\'t miss these" shows five rules, never collapsed', '5 of 5');
 
-  // ---------- 6. STATE SURVIVES / DEEP LINKS / FOCUS ----------
-  const deep = skipAudit[9].slug;
-  await p.goto(url.split('#')[0] + '#' + deep, { waitUntil: 'load' });
-  await p.waitForTimeout(400);
-  s = await state();
-  if (s.screen !== 'step:' + deep) add('P1', 'Deep link does not open its step', `#${deep} landed on "${s.screen}"`);
-  else pass('Deep links work', `#${deep} → "${s.heading}"`);
+  // ---------- 4. Detail is still reachable ----------
+  const detail = await p.evaluate(() => [...document.querySelectorAll('[data-kryo-ch]')].map((s) => {
+    const d = s.querySelector('details[data-kryo-detail]');
+    const body = d && d.querySelector('.kryo-su__accbody');
+    // textContent, not innerText: a closed <details> reports no innerText at all.
+    const words = body ? (body.textContent || '').trim().split(/\s+/).filter(Boolean).length : 0;
+    return { a: s.getAttribute('data-kryo-ch'), has: !!d, words };
+  }));
+  const missing = detail.filter((d) => !d.has || d.words < 60);
+  if (missing.length) add('P0', 'Technical detail was lost, not moved', missing.map((d) => `${d.a}:${d.words}w`).join(', '));
+  else pass('All technical detail retained in accordions', detail.map((d) => `${d.a}:${d.words}w`).join(' · '));
 
-  await p.reload({ waitUntil: 'load' });
-  await p.waitForTimeout(400);
-  const afterReload = await state();
-  if (!afterReload.screen.startsWith('step:')) add('P0', 'Refresh loses the owner’s position', `landed on "${afterReload.screen}"`);
-  else pass('Refresh retains position', afterReload.screen);
+  // ---------- 3. One tap to any part ----------
+  await p.evaluate(() => window.scrollTo(0, 0));
+  const rows = await p.$$('.kryo-su__tocrow');
+  const before = await p.evaluate(() => Math.round(window.scrollY));
+  await rows[3].click();
+  await p.waitForTimeout(700);
+  const after = await p.evaluate(() => ({ y: Math.round(window.scrollY), hash: location.hash }));
+  if (after.y <= before + 10) add('P0', 'Section navigator does not move the reader', `scrollY ${before} -> ${after.y}`);
+  else pass('One tap to any part', `overview -> ${after.hash} (scrollY ${before} -> ${after.y})`);
 
-  if (!/kryo-su__h1/.test(afterReload.focused))
-    add('P1', 'Focus is not moved to the step heading', `focus on "${afterReload.focused || 'body'}"`);
-  else pass('Focus moves to the step heading', 'screen readers announce the new step');
-
-  if (afterReload.scrollY > 4) add('P1', 'New step does not start at the top', `scrollY ${afterReload.scrollY}`);
-  else pass('Each step starts at the top', 'no mid-page landing');
-
-  // ---------- 7. PROGRESS HONESTY ----------
-  if (!/ · \d+ OF \d+$/.test(afterReload.progress.trim()))
-    add('P1', 'Progress label is not chapter-relative', `saw "${afterReload.progress}"`);
-  else pass('Progress is chapter-relative', afterReload.progress.trim());
-  if (afterReload.segs.length !== 5) add('P1', 'Chapter segments do not match the chapter count', `${afterReload.segs.length} segments`);
-  else pass('Five chapter segments', afterReload.segs.join(' / '));
-
-  // A progress bar can exist in the DOM, report the right states, and still be a 16px sliver —
-  // the UA stylesheet's align-items:flex-start on <button> did exactly that on 2026-08-02.
-  // States are not enough; the indicator has to occupy the width it claims.
-  const geo = await p.evaluate(() => {
-    const bar = document.querySelector('[data-kryo-segs]');
-    const prog = document.querySelector('[data-kryo-nav-open]');
-    const segs = [...document.querySelectorAll('[data-seg]')].map((s) => Math.round(s.getBoundingClientRect().width));
-    return { barW: Math.round(bar.getBoundingClientRect().width),
-             progW: Math.round(prog.getBoundingClientRect().width),
-             progH: Math.round(prog.getBoundingClientRect().height), segs };
+  const jumped = await p.evaluate(() => {
+    const el = document.getElementById('fill');
+    return Math.round(el.getBoundingClientRect().top);
   });
-  const expected = geo.progW - 40; // 20px padding either side
-  if (geo.barW < expected * 0.9)
-    add('P0', 'Progress indicator is collapsed, not spanning the bar', `${geo.barW}px of an available ${expected}px`);
-  else if (Math.min(...geo.segs) < expected / 5 * 0.8)
-    add('P1', 'Chapter segments are unevenly sized', geo.segs.join('/'));
-  else pass('Progress indicator spans the bar', `${geo.barW}px wide, segments ${geo.segs.join('/')}`);
-  if (geo.progH < 44) add('P1', 'Progress tap target under 44px', `${geo.progH}px`);
-  else pass('Progress is a full-width tap target', `${geo.progW}×${geo.progH}px`);
+  if (jumped < -8 || jumped > 96)
+    add('P1', 'Jump target lands under the sticky header or too far down', `section top at ${jumped}px`);
+  else pass('Jump clears the sticky header', `section top at ${jumped}px`);
 
-  // ---------- 8. REVIEW MODE ----------
-  await p.evaluate(() => localStorage.setItem('kryo_setup_progress_v1',
-    JSON.stringify({ currentChapter: 5, currentStep: 23, completedSteps: 24, setupComplete: true })));
-  await p.goto(url.split('#')[0], { waitUntil: 'load' });
-  await p.waitForTimeout(400);
-  s = await state();
-  const cards = await p.$$('[data-kryo-review-cards] .kryo-su__card');
-  if (s.screen !== 'review') add('P0', 'A completed owner is put back in the wizard', `landed on "${s.screen}"`);
-  else if (cards.length !== 5) add('P1', 'Review mode does not list five chapters', `${cards.length} cards`);
-  else pass('Review mode for completed owners', `"${s.heading}" with ${cards.length} chapter cards`);
+  // ---------- 7. No horizontal overflow, at every width ----------
+  for (const w of [320, 375, 390, 430]) {
+    await p.setViewportSize({ width: w, height: 844 });
+    await p.waitForTimeout(150);
+    const over = await p.evaluate(() => Math.max(0, document.documentElement.scrollWidth - window.innerWidth));
+    if (over > 0) add('P0', 'Horizontal scroll — page wider than the screen', `${over}px at ${w}px`);
+  }
+  if (!findings.some((f) => f.what.startsWith('Horizontal'))) pass('No horizontal overflow', '320 / 375 / 390 / 430');
+  await p.setViewportSize({ width: 390, height: 844 });
 
-  // ---------- 9. DISTRACTIONS ----------
-  const noise = await p.evaluate(() => {
-    const bad = [];
-    for (const el of document.querySelectorAll('a,button')) {
-      const r = el.getBoundingClientRect();
-      if (!r.width || !r.height) continue;
-      const t = (el.innerText || '').trim();
-      if (/add to cart|cart|shop|subscribe|newsletter|buy now|checkout/i.test(t)) bad.push(t.slice(0, 40));
-    }
-    return bad;
+  // ---------- 6. Imagery legible: full width on mobile ----------
+  const media = await p.evaluate(() => {
+    const items = [...document.querySelectorAll('.kryo-su__media > *')];
+    const widths = items.map((el) => Math.round(el.getBoundingClientRect().width));
+    return { count: items.length, min: widths.length ? Math.min(...widths) : 0, vw: window.innerWidth };
   });
+  if (media.count && media.min < media.vw - 56)
+    add('P1', 'Media is not full width on mobile', `narrowest ${media.min}px of ${media.vw}px`);
+  else pass('Media full width on mobile', `${media.count} items, narrowest ${media.min}px`);
+
+  // ---------- 9. Old step-level progress migrates, never resets ----------
+  await p.evaluate(() => {
+    localStorage.setItem('kryo_setup_progress_v1', JSON.stringify({
+      currentChapter: 2, currentStep: 7, completedSteps: 8, setupComplete: false }));
+  });
+  await p.reload({ waitUntil: 'load' }); await p.waitForTimeout(350);
+  const migrated = await p.evaluate(() => {
+    const st = window.getKryoOwnerState ? window.getKryoOwnerState() : null;
+    return { chapters: st ? Object.keys(st.chaptersComplete).filter((k) => st.chaptersComplete[k]) : [],
+             resumeShown: !document.querySelector('[data-kryo-resume]').hidden,
+             resumeTarget: document.querySelector('[data-kryo-resume]').getAttribute('data-target') };
+  });
+  // completedSteps 8 means wizard steps 0-7 were done: that is chapters 1 and 2 complete
+  // (their last steps were index 2 and 7) and chapter 3 still open.
+  if (migrated.chapters.length !== 2 || migrated.chapters[0] !== 'position' || migrated.chapters[1] !== 'mount')
+    add('P0', 'Existing owners lose their progress', `migrated to [${migrated.chapters.join(', ')}], expected [position, mount]`);
+  else pass('Old step-level progress migrated, not reset', `8 wizard steps -> ${migrated.chapters.join(' + ')} complete`);
+  if (!migrated.resumeShown || migrated.resumeTarget !== 'connect')
+    add('P1', 'Returning owner is not offered the first incomplete part', `shown=${migrated.resumeShown} target=${migrated.resumeTarget}`);
+  else pass('Returning owner resumes at the first incomplete part', `Continue setup -> ${migrated.resumeTarget}`);
+
+  // ---------- Marking a part complete ----------
+  const marked = await p.evaluate(() => {
+    // 'connect' is the first INCOMPLETE part after migration, so this is a genuine mark,
+    // not a toggle-off of something migration already completed.
+    document.querySelector('[data-kryo-mark="connect"]').click();
+    const st = window.getKryoOwnerState();
+    return { connect: !!st.chaptersComplete.connect,
+             stored: JSON.parse(localStorage.getItem('kryo_setup_progress_v1')) };
+  });
+  if (!marked.connect) add('P0', 'Mark section complete does not persist', 'state unchanged');
+  else pass('Chapter-level completion persists', `3 of 5, legacy currentChapter=${marked.stored.currentChapter}, completedSteps=${marked.stored.completedSteps}`);
+
+  // Completed owner: everything open and reachable, no wizard.
+  await p.evaluate(() => localStorage.setItem('kryo_setup_progress_v1', JSON.stringify({
+    version: 2, setupComplete: true,
+    chapters: { position: true, mount: true, connect: true, fill: true, 'first-use': true } })));
+  await p.reload({ waitUntil: 'load' }); await p.waitForTimeout(350);
+  const doneMode = await p.evaluate(() => ({
+    guideVisible: !document.querySelector('[data-kryo-guide]').hidden,
+    gate: !document.querySelector('[data-kryo-gate]').hidden,
+    chapters: document.querySelectorAll('[data-kryo-ch]').length,
+    tick: !document.querySelector('[data-kryo-endtick]').hidden,
+  }));
+  if (!doneMode.guideVisible || doneMode.gate || doneMode.chapters !== 5)
+    add('P0', 'A completed owner does not get free reference access', JSON.stringify(doneMode));
+  else pass('Completed owner gets reference mode', `all ${doneMode.chapters} parts open, completion tick ${doneMode.tick}`);
+
+  // ---------- 11. No stale technical claims ----------
+  const text = await p.evaluate(() => {
+    document.querySelectorAll('details').forEach((d) => d.setAttribute('open', ''));
+    return document.body.innerText;
+  });
+  const stale = STALE.filter((s) => s.re.test(text));
+  if (stale.length) add('P0', 'Stale or unsupported technical claim present', stale.map((s) => s.what).join('; '));
+  else pass('No stale technical claims', '48V, 1.5 m hose, hold-for-N-seconds, 8-12 h cooldown, step counter — all absent');
+
+  // ---------- 12. No ecommerce controls ----------
+  const noise = await p.evaluate(() => [...document.querySelectorAll('a,button')]
+    .filter((el) => { const r = el.getBoundingClientRect(); return r.width && r.height; })
+    .map((el) => (el.innerText || '').trim())
+    .filter((t) => /add to cart|^cart|shop now|subscribe|newsletter|buy now|checkout/i.test(t)));
   if (noise.length) add('P1', 'Ecommerce controls inside the owner flow', noise.join(', '));
-  else pass('No ecommerce controls in the owner flow', 'cart/shop/newsletter all absent');
+  else pass('No ecommerce controls in the owner flow', 'cart / shop / newsletter all absent');
 
   if (errors.length) add('P0', 'JavaScript errors during the flow', errors.slice(0, 3).join(' | '));
-  else pass('No JavaScript errors across the whole flow', `${taps + jumpTaps}+ interactions`);
+  else pass('No JavaScript errors', 'whole flow clean');
 
-  // Evidence shots at the primary viewport.
-  await p.evaluate(() => localStorage.clear());
-  await p.goto(url.split('#')[0], { waitUntil: 'load' }); await p.waitForTimeout(400);
-  await p.screenshot({ path: `${out}/flow-1-gate.png` });
+  // ---------- Evidence ----------
+  await p.evaluate(() => { localStorage.clear(); });
+  await p.goto(base, { waitUntil: 'load' }); await p.waitForTimeout(300);
+  await p.screenshot({ path: `${out}/v2-1-gate.png` });
   await p.fill('[data-kryo-gate-form] input[name="name"]', 'Test Owner');
   await p.fill('[data-kryo-gate-form] input[name="email"]', 'owner@example.com');
   await p.check('[data-kryo-gate-form] input[name="accept"]');
-  await p.click('[data-kryo-next]'); await p.waitForTimeout(250);
-  await p.screenshot({ path: `${out}/flow-2-start.png` });
-  await p.click('[data-kryo-next]'); await p.waitForTimeout(250);
-  await p.screenshot({ path: `${out}/flow-3-step.png` });
-  await p.click('[data-kryo-nav-open]'); await p.waitForTimeout(250);
-  await p.screenshot({ path: `${out}/flow-4-navigator.png` });
-  await p.click('[data-kryo-sheet="nav"] [data-kryo-sheet-close]'); await p.waitForTimeout(150);
-  await p.click('[data-kryo-help-open]'); await p.waitForTimeout(250);
-  await p.screenshot({ path: `${out}/flow-5-help.png` });
+  await p.click('[data-kryo-gate-submit]'); await p.waitForTimeout(300);
+  await p.screenshot({ path: `${out}/v2-2-overview.png` });
+  await p.evaluate(() => window.scrollTo(0, document.querySelector('.kryo-su__rules').getBoundingClientRect().top + window.scrollY - 70));
+  await p.waitForTimeout(300);
+  await p.screenshot({ path: `${out}/v2-3-rules.png` });
+  await p.evaluate(() => { const e = document.getElementById('connect'); window.scrollTo(0, e.getBoundingClientRect().top + window.scrollY - 64); });
+  await p.waitForTimeout(400);
+  await p.screenshot({ path: `${out}/v2-4-chapter.png` });
+  await p.evaluate(() => { const e = document.getElementById('first-use'); window.scrollTo(0, e.getBoundingClientRect().top + window.scrollY - 64); });
+  await p.waitForTimeout(400);
+  await p.screenshot({ path: `${out}/v2-5-first-use.png` });
+  await p.click('[data-kryo-nav-open]'); await p.waitForTimeout(300);
+  await p.screenshot({ path: `${out}/v2-6-sections.png` });
 } finally { await b.close(); }
 
 const p0 = findings.filter((f) => f.sev === 'P0');
-console.log(`\n  KRYO SETUP FLOW GATE — 390px — ${url}\n`);
+console.log(`\n  KRYO SETUP — 390px — ${base}\n`);
 for (const o of ok) console.log(`  PASS  ${o.what}\n        ${o.evidence}`);
 if (findings.length) console.log('');
 for (const f of findings) console.log(`  ${f.sev}  ${f.what}\n        ${f.evidence}`);

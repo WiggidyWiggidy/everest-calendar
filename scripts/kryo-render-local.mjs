@@ -84,6 +84,9 @@ const F = {
     return `<img src="${F.escape(v)}" ${attr}>`;
   },
   times: (v, n) => Number(v) * Number(n),
+  plus: (v, n) => Number(v || 0) + Number(n),
+  minus: (v, n) => Number(v || 0) - Number(n),
+  append: (v, n) => String(v ?? '') + String(n ?? ''),
 };
 
 function resolve(expr, scope) {
@@ -214,6 +217,7 @@ function branches(toks, start, sepWords, endWords) {
   return { seps, end: toks.length };
 }
 
+let ROOT = null;
 function render(toks, scope, from = 0, stopAt = null, until = null) {
   let out = '', i = from;
   while (i < toks.length && (until === null || i < until)) {
@@ -233,7 +237,10 @@ function render(toks, scope, from = 0, stopAt = null, until = null) {
     }
     if (word === 'assign') {
       const m = /^assign\s+([a-z_0-9]+)\s*=\s*([\s\S]+)$/.exec(tag);
-      if (m) scope[m[1]] = evalExpr(m[2], scope);
+      // Liquid assigns into the template's global scope, so a counter inside a {% for %}
+      // accumulates. Writing to the loop's child scope reset it every iteration and made
+      // every numbered badge render as its initial value.
+      if (m) ROOT[m[1]] = evalExpr(m[2], scope);
       i++; continue;
     }
     // Branches are LOCATED first and only the taken one is rendered. Rendering an untaken
@@ -269,7 +276,14 @@ function render(toks, scope, from = 0, stopAt = null, until = null) {
     }
     if (word === 'for') {
       const m = /^for\s+([a-z_0-9]+)\s+in\s+([\s\S]+)$/.exec(tag);
-      const list = m ? evalExpr(m[2], scope) : [];
+      let list = [];
+      if (m) {
+        const range = /^\((.+?)\.\.(.+?)\)$/.exec(m[2].trim());
+        if (range) {
+          const a = Number(evalExpr(range[1], scope)), b2 = Number(evalExpr(range[2], scope));
+          for (let v = a; v <= b2; v++) list.push(v);
+        } else list = evalExpr(m[2], scope);
+      }
       const arr = Array.isArray(list) ? list : [];
       const { end } = branches(toks, i + 1, [], ['endfor']);
       arr.forEach((item, n) => {
@@ -291,6 +305,7 @@ function skipTo(toks, i, endWord) {
 }
 
 const scope = { section, settings: {} };
+ROOT = scope;
 const body = render(tokenize(raw), scope).out;
 
 fs.mkdirSync(path.dirname(outPath), { recursive: true });

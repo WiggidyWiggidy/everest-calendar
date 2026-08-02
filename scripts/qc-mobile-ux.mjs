@@ -73,6 +73,9 @@ try {
       const primIn = prim.map(el => { const r = el.getBoundingClientRect();
         return { text: (el.innerText || '').trim().slice(0, 24), top: Math.round(r.top),
                  inView: r.top >= 0 && r.bottom <= vpH, bottomThird: r.top > vpH * 0.66,
+                 // A consent/registration action belongs AFTER the text it consents to.
+                 // Requiring it above the fold would be wrong, so it is judged separately.
+                 inForm: !!el.closest('form'),
                  h: Math.round(r.height) }; });
 
       // Instruction visible on first screen?
@@ -113,9 +116,11 @@ try {
       add('P0', 'Instruction is below the fold — user cannot see what to do', `first instruction at ${m.firstInstruction}px, viewport ${m.vpH}px`, vp.w);
     if (m.h1Top !== null && m.h1Top > m.vpH * 0.35)
       add('P1', 'Too much chrome before the heading', `h1 at ${m.h1Top}px = ${Math.round(100 * m.h1Top / m.vpH)}% of viewport`, vp.w);
-    const reachable = m.primIn.filter(x => x.inView);
-    if (m.primIn.length && !reachable.length)
-      add('P0', 'Primary action requires scrolling to find', `${m.primIn.length} candidates, none in viewport`, vp.w);
+    // Form submits are excluded: on a consent screen the button must follow the text.
+    const actions = m.primIn.filter(x => !x.inForm);
+    const reachable = actions.filter(x => x.inView);
+    if (actions.length && !reachable.length)
+      add('P0', 'Primary action requires scrolling to find', `${actions.length} candidates, none in viewport`, vp.w);
     const shortBtn = m.primIn.find(x => x.h && x.h < 54);
     if (shortBtn) add('P1', `Primary button under 54px high: "${shortBtn.text}"`, `${shortBtn.h}px`, vp.w);
     if (m.noise.length) add('P1', 'Ecommerce distractions inside an operating interface', m.noise.join(', '), vp.w);
