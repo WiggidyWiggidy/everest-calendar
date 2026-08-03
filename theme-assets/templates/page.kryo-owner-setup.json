@@ -3,6 +3,100 @@
     "kryo_owner_setup": {
       "type": "kryo-owner-setup",
       "blocks": {
+        "chapter_0": {
+          "type": "chapter",
+          "settings": {
+            "number": 1,
+            "anchor": "whats-in-the-box",
+            "nav_label": "In the box",
+            "title": "What's in the box",
+            "purpose": "Identify every part before the instructions refer to it.",
+            "image_1": "shopify://shop_images/kryo-whats-in-the-box.webp",
+            "alt_1": "Every KRYO component laid out: the cooling unit, Halo, hose, mounting rail, sliding connector, seals, PSU and fill plug",
+            "next_anchor": "position",
+            "next_label": "Position & plan"
+          }
+        },
+        "q_box_01": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "whats-in-the-box",
+            "text": "KRYO",
+            "detail": "<p>The cooling unit. It holds the water, chills it and pumps it to the Halo.</p>"
+          }
+        },
+        "q_box_02": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "whats-in-the-box",
+            "text": "Halo",
+            "detail": "<p>The ring-shaped shower head that mounts on the rail above you.</p>"
+          }
+        },
+        "q_box_03": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "whats-in-the-box",
+            "text": "Halo flow adjuster",
+            "detail": "<p>The control on the Halo that opens and closes the water flow. Keep it closed until you are ready to start.</p>"
+          }
+        },
+        "q_box_04": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "whats-in-the-box",
+            "text": "2 m hose",
+            "detail": "<p>Carries water between KRYO and the Halo. A rubber seal sits inside each fitting.</p>"
+          }
+        },
+        "q_box_05": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "whats-in-the-box",
+            "text": "Mounting rail",
+            "detail": "<p>The vertical adhesive rail that fixes to the wall and carries the Halo.</p>"
+          }
+        },
+        "q_box_06": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "whats-in-the-box",
+            "text": "Sliding height connector",
+            "detail": "<p>The height-adjustable carrier that slides inside the rail and holds the Halo.</p>"
+          }
+        },
+        "q_box_07": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "whats-in-the-box",
+            "text": "PSU / power supply",
+            "detail": "<p>Converts the wall supply to 24V DC for KRYO. It must stay dry.</p>"
+          }
+        },
+        "q_box_08": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "whats-in-the-box",
+            "text": "Fill plug",
+            "detail": "<p>Closes the fill opening on top of KRYO after you add water.</p>"
+          }
+        },
+        "q_box_09": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "whats-in-the-box",
+            "text": "Rubber seals",
+            "detail": "<p>Small but essential. One sits flat inside each threaded water fitting.</p>"
+          }
+        },
+        "q_box_10": {
+          "type": "instruction",
+          "settings": {
+            "chapter": "whats-in-the-box",
+            "text": "Phillips screwdriver",
+            "detail": "<p>Supplied for removing and refitting the rail end cap.</p>"
+          }
+        },
         "rule_01": {
           "type": "rule",
           "settings": {
@@ -38,62 +132,6 @@
             "body": "For the first session, start with the water across the upper back and shoulders, not the face or chest."
           }
         },
-        "part_01": {
-          "type": "part",
-          "settings": {
-            "term": "Halo",
-            "definition": "The ring-shaped shower head that mounts on the rail above you. It spreads cold water across the shoulders and upper body."
-          }
-        },
-        "part_02": {
-          "type": "part",
-          "settings": {
-            "term": "Flow adjuster",
-            "definition": "The control on the Halo that opens and closes water flow. Keep it closed until you are ready to start."
-          }
-        },
-        "part_03": {
-          "type": "part",
-          "settings": {
-            "term": "Mounting rail",
-            "definition": "The vertical adhesive rail that fixes to the wall and carries the Halo."
-          }
-        },
-        "part_04": {
-          "type": "part",
-          "settings": {
-            "term": "Sliding connector",
-            "definition": "The height-adjustable carrier that slides inside the rail and holds the Halo."
-          }
-        },
-        "part_05": {
-          "type": "part",
-          "settings": {
-            "term": "2 metre hose",
-            "definition": "Carries water between KRYO and the Halo. A rubber seal sits inside each fitting."
-          }
-        },
-        "part_06": {
-          "type": "part",
-          "settings": {
-            "term": "PSU",
-            "definition": "The power supply that converts the UAE wall supply to 24V DC for KRYO. It must stay dry."
-          }
-        },
-        "part_07": {
-          "type": "part",
-          "settings": {
-            "term": "Fill opening and plug",
-            "definition": "The opening on top of KRYO where you add water, and the plug that closes it."
-          }
-        },
-        "part_08": {
-          "type": "part",
-          "settings": {
-            "term": "KRYO water-flow control",
-            "definition": "The control on KRYO that starts and stops circulation to the Halo."
-          }
-        },
         "chapter_1": {
           "type": "chapter",
           "settings": {
@@ -105,7 +143,7 @@
             "next_anchor": "mount",
             "next_label": "Mount the Halo",
             "alt_1": "KRYO upright on a level floor with the rear airflow area kept clear",
-            "number": 1,
+            "number": 2,
             "nav_label": "Position",
             "image_1": "shopify://shop_images/kryo-position-airflow.webp"
           }
@@ -181,7 +219,7 @@
             "next_anchor": "connect",
             "next_label": "Connect",
             "alt_1": "Pressing the mounting rail firmly and evenly onto the prepared wall",
-            "number": 2,
+            "number": 3,
             "nav_label": "Mount",
             "image_1": "shopify://shop_images/kryo-mount-rail.webp"
           }
@@ -199,7 +237,10 @@
           "settings": {
             "chapter": "mount",
             "text": "Remove one rail end cap and insert the sliding connector.",
-            "detail": "<p>Use the supplied screwdriver, then slide the height-adjustable connector into the rail.</p>"
+            "detail": "<p>Use the supplied screwdriver, then slide the height-adjustable connector into the rail.</p>",
+            "image": "shopify://shop_images/kryo-mount-endcap-allen-key.webp",
+            "image_alt": "Loosening the rail end cap screw with the supplied allen key",
+            "image_src": "https://cdn.shopify.com/s/files/1/0718/0550/1748/files/kryo-mount-endcap-allen-key.webp?v=1785687404"
           }
         },
         "q_mount_03": {
@@ -207,7 +248,10 @@
           "settings": {
             "chapter": "mount",
             "text": "Confirm the slider moves, then refit the end cap.",
-            "detail": "<p>Press the button and check the connector moves freely along the rail before anything goes on the wall. Tighten the end-cap screw without overtightening.</p>"
+            "detail": "<p>Press the button and check the connector moves freely along the rail before anything goes on the wall. Tighten the end-cap screw without overtightening.</p>",
+            "image": "shopify://shop_images/kryo-mount-sliding-connector.webp",
+            "image_alt": "Sliding the height-adjustable connector into the open end of the rail",
+            "image_src": "https://cdn.shopify.com/s/files/1/0718/0550/1748/files/kryo-mount-sliding-connector.webp?v=1785687406"
           }
         },
         "q_mount_04": {
@@ -247,7 +291,7 @@
             "next_anchor": "fill",
             "next_label": "Fill & start",
             "alt_1": "Attaching the hose to the Halo flow adjuster, hand-tight only",
-            "number": 3,
+            "number": 4,
             "nav_label": "Connect",
             "image_1": "shopify://shop_images/kryo-connect-hose-to-halo.webp"
           }
@@ -290,10 +334,8 @@
           "type": "instruction",
           "settings": {
             "chapter": "connect",
-            "text": "Connect the 24V DC lead to the PSU, then the PSU to a mains outlet.",
-            "detail": "<p>Keep KRYO switched off and dry your hands first. Place the PSU and its connection outside the splash zone and route cables away from water and foot traffic.</p>",
-            "image": "shopify://shop_images/kryo-connect-power-outlet.webp",
-            "image_alt": "Connecting the PSU to a suitable dry mains outlet away from splash"
+            "text": "Connect KRYO's 24V DC lead to the supplied PSU, then connect the PSU to a suitable mains outlet in a dry area.",
+            "detail": "<p>Keep KRYO switched off and dry your hands first. Place the PSU and its connection outside the splash zone and route cables away from water and foot traffic.</p>"
           }
         },
         "chapter_4": {
@@ -307,11 +349,9 @@
             "next_anchor": "first-use",
             "next_label": "First session",
             "alt_1": "Opening the fill plug on top of KRYO to add water",
-            "alt_2": "Switching KRYO on once water has been added",
-            "number": 4,
+            "number": 5,
             "nav_label": "Fill & start",
             "image_1": "shopify://shop_images/kryo-fill-cap.png",
-            "image_2": "shopify://shop_images/kryo-fill-power-on.webp",
             "always_title": "Normal noise",
             "always_level": "info",
             "always_visible": "<p>You may hear the internal pressurising pump while KRYO is operating. This is normal.</p>"
@@ -346,7 +386,9 @@
           "settings": {
             "chapter": "fill",
             "text": "Switch KRYO on.",
-            "detail": "<p>Confirm the internal light turns on.</p>"
+            "detail": "<p>Confirm the internal light turns on.</p>",
+            "image": "shopify://shop_images/kryo-fill-power-on.webp",
+            "image_alt": "Switching KRYO on once water has been added"
           }
         },
         "q_fill_05": {
@@ -411,7 +453,7 @@
             "always_level": "critical",
             "always_visible": "<ul><li>Chest pain, pressure or tightness</li><li>Severe breathlessness</li><li>Dizziness or faintness</li><li>Confusion</li><li>Loss of coordination</li><li>Uncontrolled shivering</li><li>Racing or irregular heartbeat</li><li>Panic or loss of breathing control</li></ul>",
             "alt_1": "First session position: stand with your back to the Halo so the first water hits the upper back and shoulders, never the face or chest",
-            "number": 5,
+            "number": 6,
             "nav_label": "First session",
             "image_1": "shopify://shop_images/kryo-first-use-critical.webp"
           }
@@ -450,19 +492,22 @@
         }
       },
       "block_order": [
+        "chapter_0",
+        "q_box_01",
+        "q_box_02",
+        "q_box_03",
+        "q_box_04",
+        "q_box_05",
+        "q_box_06",
+        "q_box_07",
+        "q_box_08",
+        "q_box_09",
+        "q_box_10",
         "rule_01",
         "rule_02",
         "rule_03",
         "rule_04",
         "rule_05",
-        "part_01",
-        "part_02",
-        "part_03",
-        "part_04",
-        "part_05",
-        "part_06",
-        "part_07",
-        "part_08",
         "chapter_1",
         "q_position_01",
         "q_position_02",
@@ -505,8 +550,6 @@
         "hub_url": "/pages/kryo-resources",
         "safety_url": "/pages/kryo-safety",
         "whatsapp_url": "https://wa.me/447724709585",
-        "parts_image": "shopify://shop_images/kryo-whats-in-the-box.webp",
-        "parts_image_alt": "Every KRYO component laid out for identification: KRYO, hose, Halo, rail, sliding connector, seals, PSU and fill plug",
         "logo": "shopify://shop_images/Copy_of_Blue_White_Simple_Initial_E_Letter_Negative_Space_Logo_410_x_205px_450_x_250px_600_x_200px_4.png"
       }
     }

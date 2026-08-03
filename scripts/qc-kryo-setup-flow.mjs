@@ -91,12 +91,12 @@ try {
     marks: document.querySelectorAll('[data-kryo-mark]').length,
     text: document.body.innerText,
   }));
-  const WANT = ['position', 'mount', 'connect', 'fill', 'first-use'];
-  if (shape.chapters.length !== 5 || WANT.some((a, i) => shape.chapters[i] !== a))
-    add('P0', 'Setup is not five parts with the specified anchors', shape.chapters.join(', ') || 'none');
-  else pass('Setup is five parts', shape.chapters.join(' · '));
-  if (shape.tocRows !== 5) add('P1', 'Section navigator does not list five parts', `${shape.tocRows} rows`);
-  else pass('Overview navigator lists five parts', `${shape.tocRows} rows, ${shape.marks} mark-complete controls`);
+  const WANT = ['whats-in-the-box', 'position', 'mount', 'connect', 'fill', 'first-use'];
+  if (shape.chapters.length !== WANT.length || WANT.some((a, i) => shape.chapters[i] !== a))
+    add('P0', 'Setup parts are missing or out of order', shape.chapters.join(', ') || 'none');
+  else pass(`Setup is ${WANT.length} parts, in order`, shape.chapters.join(' · '));
+  if (shape.tocRows !== WANT.length) add('P1', 'Section navigator does not list every part', `${shape.tocRows} rows`);
+  else pass('Overview navigator lists every part', `${shape.tocRows} rows, ${shape.marks} mark-complete controls`);
 
   // ---------- 2. Quick instructions carry the whole setup ----------
   const quick = await p.evaluate(() => {
@@ -154,7 +154,8 @@ try {
   });
   if (warn.insideAcc > 0) add('P0', 'A critical warning is hidden inside an accordion', `${warn.insideAcc} of ${warn.total}`);
   else pass('Critical warnings always visible', `${warn.total} notes, none inside an accordion`);
-  const noWarn = warn.perCh.filter((c) => c.crit === 0);
+  // "What's in the box" is identification only — nothing there is hazardous.
+  const noWarn = warn.perCh.filter((c) => c.crit === 0 && c.a !== 'whats-in-the-box');
   if (noWarn.length) add('P1', 'A part carries no visible critical warning', noWarn.map((c) => c.a).join(', '));
   else pass('Every part shows its critical warning', warn.perCh.map((c) => `${c.a}:${c.crit}`).join(' · '));
   if (!warn.stopCriteria) add('P0', 'Stop criteria are not visible with accordions closed', 'chest pain / loss of breathing control not found');
@@ -171,7 +172,7 @@ try {
     const words = body ? (body.textContent || '').trim().split(/\s+/).filter(Boolean).length : 0;
     return { a: s.getAttribute('data-kryo-ch'), has: !!d, words };
   }));
-  const missing = detail.filter((d) => !d.has || d.words < 60);
+  const missing = detail.filter((d) => d.a !== 'whats-in-the-box' && (!d.has || d.words < 60));
   if (missing.length) add('P0', 'Technical detail was lost, not moved', missing.map((d) => `${d.a}:${d.words}w`).join(', '));
   else pass('All technical detail retained in accordions', detail.map((d) => `${d.a}:${d.words}w`).join(' · '));
 
@@ -194,9 +195,9 @@ try {
         return r ? r.scrollWidth > r.clientWidth : false; })(),
     };
   });
-  if (bar.anchors.length !== 5 || WANT.some((a, i) => bar.anchors[i] !== a))
-    add('P0', 'Sticky bar does not carry the five section links', bar.anchors.join(', ') || 'none');
-  else pass('Five section links in the sticky bar', bar.labels.join(' · '));
+  if (bar.anchors.length !== WANT.length || WANT.some((a, i) => bar.anchors[i] !== a))
+    add('P0', 'Sticky bar does not carry every section link', bar.anchors.join(', ') || 'none');
+  else pass(`${WANT.length} section links in the sticky bar`, bar.labels.join(' · '));
   if (bar.sticky !== 'sticky') add('P0', 'Section links are not sticky', `position: ${bar.sticky}`);
   else pass('Section links stay on screen', `sticky header ${bar.headH}px${bar.rowScrollable ? ', row scrolls' : ''}`);
   if (bar.minH < 40) add('P1', 'Section link tap target too small', `${bar.minH}px high`);
@@ -207,30 +208,37 @@ try {
 
   // ---------- 3. One tap to any part ----------
   await p.evaluate(() => window.scrollTo(0, 0));
-  const rows = await p.$$('.kryo-su__tocrow');
+  // Target by anchor, never by index: adding a chapter shifted rows[3] from fill to connect
+  // while the assertion below still measured #fill, reporting a 1587px miss that never happened.
+  const JUMP = 'fill';
   const before = await p.evaluate(() => Math.round(window.scrollY));
-  await rows[3].click();
+  await p.click(`.kryo-su__tocrow[href="#${JUMP}"]`);
   // Wait for smooth scrolling to actually settle rather than guessing a duration —
   // the page grew with 25 images and a fixed 700ms measured mid-animation.
+  // Require movement BEFORE stability: polling started while scrollY was still 0, so four
+  // identical zero readings counted as "settled" before the smooth scroll had begun.
   await p.waitForFunction(() => {
-    if (window.__ky === undefined) { window.__ky = -1; window.__kyN = 0; }
+    if (window.__ky === undefined) { window.__ky = -1; window.__kyN = 0; window.__kyMoved = false; }
     const y = Math.round(window.scrollY);
+    if (y > 0) window.__kyMoved = true;
     if (y === window.__ky) { window.__kyN++; } else { window.__ky = y; window.__kyN = 0; }
-    return window.__kyN > 3;
-  }, null, { timeout: 8000 }).catch(() => {});
-  await p.evaluate(() => { delete window.__ky; delete window.__kyN; });
+    return window.__kyMoved && window.__kyN > 4;
+    // polling: 100 => five identical readings is 500ms of genuine stability. rAF polling
+    // caught brief plateaus mid-animation and measured a scroll that had not finished.
+  }, null, { polling: 100, timeout: 12000 }).catch(() => {});
+  await p.evaluate(() => { delete window.__ky; delete window.__kyN; delete window.__kyMoved; });
   const after = await p.evaluate(() => ({ y: Math.round(window.scrollY), hash: location.hash }));
   if (after.y <= before + 10) add('P0', 'Section navigator does not move the reader', `scrollY ${before} -> ${after.y}`);
   else pass('One tap to any part', `overview -> ${after.hash} (scrollY ${before} -> ${after.y})`);
 
   // Tolerance is derived from the header actually rendered, not a fixed number — the
   // header is now two rows and a hardcoded 96px threshold flagged correct behaviour.
-  const jumped = await p.evaluate(() => {
-    const el = document.getElementById('fill');
+  const jumped = await p.evaluate((a) => {
+    const el = document.getElementById(a);
     const head = document.querySelector('.kryo-su__bar');
     return { top: Math.round(el.getBoundingClientRect().top),
              head: head ? Math.round(head.getBoundingClientRect().height) : 0 };
-  });
+  }, JUMP);
   if (jumped.top < jumped.head - 8 || jumped.top > jumped.head + 48)
     add('P1', 'Jump target lands under the sticky header or too far down',
         `section top at ${jumped.top}px, header is ${jumped.head}px`);
@@ -270,8 +278,9 @@ try {
   });
   // completedSteps 8 means wizard steps 0-7 were done: that is chapters 1 and 2 complete
   // (their last steps were index 2 and 7) and chapter 3 still open.
-  if (migrated.chapters.length !== 2 || migrated.chapters[0] !== 'position' || migrated.chapters[1] !== 'mount')
-    add('P0', 'Existing owners lose their progress', `migrated to [${migrated.chapters.join(', ')}], expected [position, mount]`);
+  const wantMigrated = ['whats-in-the-box', 'position', 'mount'];
+  if (wantMigrated.some((a) => !migrated.chapters.includes(a)) || migrated.chapters.length !== wantMigrated.length)
+    add('P0', 'Existing owners lose their progress', `migrated to [${migrated.chapters.join(', ')}], expected [${wantMigrated.join(', ')}]`);
   else pass('Old step-level progress migrated, not reset', `8 wizard steps -> ${migrated.chapters.join(' + ')} complete`);
   if (!migrated.resumeShown || migrated.resumeTarget !== 'connect')
     add('P1', 'Returning owner is not offered the first incomplete part', `shown=${migrated.resumeShown} target=${migrated.resumeTarget}`);
@@ -292,7 +301,7 @@ try {
   // Completed owner: everything open and reachable, no wizard.
   await p.evaluate(() => localStorage.setItem('kryo_setup_progress_v1', JSON.stringify({
     version: 2, setupComplete: true,
-    chapters: { position: true, mount: true, connect: true, fill: true, 'first-use': true } })));
+    chapters: { 'whats-in-the-box': true, position: true, mount: true, connect: true, fill: true, 'first-use': true } })));
   await p.reload({ waitUntil: 'load' }); await p.waitForTimeout(350);
   const doneMode = await p.evaluate(() => ({
     guideVisible: !document.querySelector('[data-kryo-guide]').hidden,
@@ -300,7 +309,7 @@ try {
     chapters: document.querySelectorAll('[data-kryo-ch]').length,
     tick: !document.querySelector('[data-kryo-endtick]').hidden,
   }));
-  if (!doneMode.guideVisible || doneMode.gate || doneMode.chapters !== 5)
+  if (!doneMode.guideVisible || doneMode.gate || doneMode.chapters !== WANT.length)
     add('P0', 'A completed owner does not get free reference access', JSON.stringify(doneMode));
   else pass('Completed owner gets reference mode', `all ${doneMode.chapters} parts open, completion tick ${doneMode.tick}`);
 

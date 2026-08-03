@@ -134,7 +134,15 @@
         </ol>
       </div>
 
-      {%- comment -%} ---- Know the parts — collapsed ---- {%- endcomment -%}
+      {%- comment -%}
+        Know the parts — only rendered if it still has content. The components are now
+        identified in the first chapter, so this accordion is empty and stays hidden.
+      {%- endcomment -%}
+      {%- assign has_parts = false -%}
+      {%- for pb in section.blocks -%}
+        {%- if pb.type == 'part' -%}{%- assign has_parts = true -%}{%- endif -%}
+      {%- endfor -%}
+      {%- if has_parts or section.settings.parts_image != blank -%}
       <details class="kryo-su__acc kryo-su__acc--parts">
         <summary><span>{{ section.settings.parts_heading }}</span></summary>
         <div class="kryo-su__accbody">
@@ -164,16 +172,21 @@
           </dl>
         </div>
       </details>
+      {%- endif -%}
     </section>
 
-    {%- comment -%} ---- The five chapters ---- {%- endcomment -%}
+    {%- comment -%} ---- The chapters ---- {%- endcomment -%}
+    {%- assign chapter_total = 0 -%}
+    {%- for cb in section.blocks -%}
+      {%- if cb.type == 'chapter' -%}{%- assign chapter_total = chapter_total | plus: 1 -%}{%- endif -%}
+    {%- endfor -%}
     {%- for block in section.blocks -%}
       {%- if block.type == 'chapter' -%}
         <section class="kryo-su__ch" id="{{ block.settings.anchor }}"
                  data-kryo-ch="{{ block.settings.anchor }}" {{ block.shopify_attributes }}>
           <div class="kryo-su__wrap">
             <p class="kryo-su__eyebrow">
-              <span class="kryo-su__chbadge">{{ block.settings.number }}</span>{{ section.settings.chapter_word }} {{ block.settings.number }} {{ section.settings.of_word }} 5
+              <span class="kryo-su__chbadge">{{ block.settings.number }}</span>{{ section.settings.chapter_word }} {{ block.settings.number }} {{ section.settings.of_word }} {{ chapter_total }}
               <span class="kryo-su__chdone" data-kryo-chdone hidden>{{ section.settings.marked }}</span>
             </p>
             <h2 class="kryo-su__h2" tabindex="-1">{{ block.settings.title }}</h2>
@@ -234,8 +247,20 @@
               <div class="kryo-su__quick">
                 {%- for ib in section.blocks -%}
                   {%- if ib.type == 'instruction' and ib.settings.chapter == ch_anchor -%}
+                    {%- comment -%}
+                      A newly uploaded file can exist in Files while the storefront has not yet
+                      indexed its shopify://shop_images reference — image_url then returns nil and
+                      the picture silently disappears. image_src is a direct-URL fallback for that.
+                    {%- endcomment -%}
+                    {%- assign qsrc = '' -%}
+                    {%- if ib.settings.image != blank -%}
+                      {%- assign qsrc = ib.settings.image | image_url: width: 1200 -%}
+                    {%- endif -%}
+                    {%- if qsrc == blank and ib.settings.image_src != blank -%}
+                      {%- assign qsrc = ib.settings.image_src -%}
+                    {%- endif -%}
                     {%- assign has_detail = false -%}
-                    {%- if ib.settings.detail != blank or ib.settings.image != blank or ib.settings.slot != blank -%}
+                    {%- if ib.settings.detail != blank or qsrc != blank or ib.settings.slot != blank -%}
                       {%- assign has_detail = true -%}
                     {%- endif -%}
                     {%- if has_detail -%}
@@ -250,17 +275,12 @@
                             Image before the explanation. loading="lazy" means a closed row
                             costs nothing — the file is only fetched once the row is opened.
                           {%- endcomment -%}
-                          {%- if ib.settings.image != blank -%}
+                          {%- if qsrc != blank -%}
                             {%- assign qa_alt = ib.settings.image_alt | default: ib.settings.text -%}
                             <button type="button" class="kryo-su__imgbtn kryo-su__qaimg" data-kryo-zoom
-                                    data-src="{{ ib.settings.image | image_url: width: 1600 }}"
-                                    aria-label="{{ section.settings.zoom_aria }}">
-                              {%- assign qim = ib.settings.image -%}
-                            <img src="{{ qim | image_url: width: 1200 }}"
-     srcset="{{ qim | image_url: width: 430 }} 430w, {{ qim | image_url: width: 860 }} 860w, {{ qim | image_url: width: 1200 }} 1200w"
-     sizes="(min-width: 990px) 860px, 100vw"
-     alt="{{ qa_alt | escape }}" class="kryo-su__img"
-     width="{{ qim.width }}" height="{{ qim.height }}" loading="lazy" decoding="async">
+                                    data-src="{{ qsrc }}" aria-label="{{ section.settings.zoom_aria }}">
+                              <img src="{{ qsrc }}" alt="{{ qa_alt | escape }}" class="kryo-su__img"
+                                   loading="lazy" decoding="async">
                               <span class="kryo-su__zoomhint" aria-hidden="true">{{ section.settings.zoom_hint }}</span>
                             </button>
                           {%- elsif ib.settings.slot != blank -%}
@@ -691,7 +711,10 @@
 
   // ---- Progress, now chapter-level. Old step-level state is MIGRATED, never reset. ----
   // The wizard's chapter boundaries were steps 0-2 / 3-7 / 8-10 / 11-15 / 16-23.
-  var LEGACY_LAST = [2, 7, 10, 15, 23];
+  // Keyed by anchor, not by position: adding "What's in the box" as the first chapter shifted
+  // every index and silently mis-migrated existing owners. Anchors not listed here had no
+  // equivalent in the wizard and count as done once the owner has any progress at all.
+  var LEGACY_LAST = { position: 2, mount: 7, connect: 10, fill: 15, 'first-use': 23 };
 
   function readProgress() {
     var p = jparse(lget(PKEY)) || {};
@@ -701,7 +724,10 @@
     } else if (p.completedSteps || p.setupComplete) {
       // Migrate: a chapter counts as done if the wizard had passed its last step.
       var cs = parseInt(p.completedSteps, 10) || 0;
-      ANCHORS.forEach(function (a, i) { if (p.setupComplete || cs > LEGACY_LAST[i]) done[a] = true; });
+      ANCHORS.forEach(function (a) {
+        var last = LEGACY_LAST[a];
+        if (p.setupComplete || (last === undefined ? cs > 0 : cs > last)) done[a] = true;
+      });
     }
     return { done: done, setupComplete: !!p.setupComplete };
   }
@@ -1137,6 +1163,8 @@
           "info": "Shown inside the expanded row, above the explanation. Tap to enlarge." },
         { "type": "text", "id": "image_alt", "label": "Image alt text",
           "info": "Describe the instructional purpose. Falls back to the instruction text." },
+        { "type": "text", "id": "image_src", "label": "Direct image URL (fallback)",
+          "info": "Only needed if a freshly uploaded image has not resolved yet." },
         { "type": "text", "id": "slot", "label": "Expected image filename",
           "info": "Optional. Shows a labelled placeholder until the image is added." }
       ]
@@ -1145,7 +1173,7 @@
       "type": "chapter",
       "name": "Chapter",
       "settings": [
-        { "type": "range", "id": "number", "label": "Part number", "min": 1, "max": 5, "step": 1, "default": 1 },
+        { "type": "range", "id": "number", "label": "Part number", "min": 1, "max": 10, "step": 1, "default": 1 },
         { "type": "text", "id": "anchor", "label": "Anchor id", "info": "position / mount / connect / fill / first-use" },
         { "type": "text", "id": "nav_label", "label": "Sticky-bar label", "info": "Short. Falls back to the title." },
         { "type": "text", "id": "title", "label": "Title" },
