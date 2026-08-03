@@ -293,11 +293,14 @@
                           {{ ib.settings.detail }}
                         </div>
                       </details>
-                    {%- else -%}
+                    {%- elsif ib.settings.text != blank -%}
                       <p class="kryo-su__qa kryo-su__qa--plain" {{ ib.shopify_attributes }}>
                         <span class="kryo-su__qadot" aria-hidden="true"></span>
                         <span class="kryo-su__qatext">{{ ib.settings.text }}</span>
                       </p>
+                    {%- endif -%}
+                    {%- if ib.settings.checklist != blank -%}
+                      <div class="kryo-su__qacheck">{{ ib.settings.checklist }}</div>
                     {%- endif -%}
                   {%- endif -%}
                 {%- endfor -%}
@@ -520,6 +523,13 @@
     transition:transform 180ms cubic-bezier(.2,.7,.3,1); }
   .kryo-su__qamark::after { transform:rotate(90deg); }
   .kryo-su__qa[open] .kryo-su__qamark::after { transform:rotate(0deg); }
+  .kryo-su__qacheck { padding:0 0 16px 19px; }
+  .kryo-su__qacheck ul { list-style:none; margin:0; padding:0; }
+  .kryo-su__qacheck li { position:relative; padding:0 0 0 24px; margin:0 0 8px;
+    font-size:15px; line-height:1.45; color:var(--kryo-text); }
+  .kryo-su__qacheck li::before { content:'\2713'; position:absolute; left:0; top:0;
+    color:var(--kryo-blue-strong); font-weight:700; }
+  .kryo-su__qacheck p { font-size:15px; line-height:1.5; color:var(--kryo-text); margin:0 0 8px; }
   .kryo-su__qabody { padding:0 0 18px 19px; animation:kryoAccIn 200ms cubic-bezier(.2,.7,.3,1) both; }
   .kryo-su__qaimg { margin:0 0 12px; border-radius:12px; }
   /* Media inside a dropdown must still be full width on mobile. The panel's own
@@ -1157,6 +1167,8 @@
         { "type": "text", "id": "chapter", "label": "Belongs to part",
           "info": "Must match the part's anchor id: position / mount / connect / fill / first-use" },
         { "type": "text", "id": "text", "label": "Instruction", "info": "Always visible. One short line." },
+        { "type": "richtext", "id": "checklist", "label": "Always-visible checklist (optional)",
+          "info": "Renders under the instruction, never collapsed. For checks that must be read." },
         { "type": "richtext", "id": "detail", "label": "Explanation (optional)",
           "info": "Leave blank for a plain line. Add text or an image and the row becomes expandable." },
         { "type": "image_picker", "id": "image", "label": "Image (optional)",
