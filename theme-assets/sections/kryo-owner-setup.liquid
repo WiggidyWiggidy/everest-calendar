@@ -120,6 +120,11 @@
               aria-label="{{ section.settings.help_aria }}">{{ section.settings.help_label_long }}</button>
 
       {%- comment -%} ---- Don't miss these — never collapsed ---- {%- endcomment -%}
+      {%- assign has_rules = false -%}
+      {%- for rb in section.blocks -%}
+        {%- if rb.type == 'rule' -%}{%- assign has_rules = true -%}{%- endif -%}
+      {%- endfor -%}
+      {%- if has_rules -%}
       <div class="kryo-su__rules">
         <p class="kryo-su__ruleshead">{{ section.settings.rules_heading }}</p>
         <ol class="kryo-su__rulelist">
@@ -133,6 +138,7 @@
           {%- endfor -%}
         </ol>
       </div>
+      {%- endif -%}
 
       {%- comment -%}
         Know the parts — only rendered if it still has content. The components are now
@@ -724,7 +730,7 @@
   // Keyed by anchor, not by position: adding "What's in the box" as the first chapter shifted
   // every index and silently mis-migrated existing owners. Anchors not listed here had no
   // equivalent in the wizard and count as done once the owner has any progress at all.
-  var LEGACY_LAST = { position: 2, mount: 7, connect: 10, fill: 15, 'first-use': 23 };
+  var LEGACY_LAST = { position: 7, connect: 10, fill: 15, 'first-use': 23 };
 
   function readProgress() {
     var p = jparse(lget(PKEY)) || {};

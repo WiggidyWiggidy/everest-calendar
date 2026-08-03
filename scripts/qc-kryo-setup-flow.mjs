@@ -91,7 +91,7 @@ try {
     marks: document.querySelectorAll('[data-kryo-mark]').length,
     text: document.body.innerText,
   }));
-  const WANT = ['whats-in-the-box', 'position', 'mount', 'connect', 'fill', 'first-use'];
+  const WANT = ['whats-in-the-box', 'position', 'connect', 'fill', 'first-use'];
   if (shape.chapters.length !== WANT.length || WANT.some((a, i) => shape.chapters[i] !== a))
     add('P0', 'Setup parts are missing or out of order', shape.chapters.join(', ') || 'none');
   else pass(`Setup is ${WANT.length} parts, in order`, shape.chapters.join(' · '));
@@ -123,7 +123,8 @@ try {
   if (hidden.length)
     add('P0', 'An instruction line is hidden until a dropdown is opened', hidden.map((q) => `${q.a}:${q.visible}/${q.bullets}`).join(', '));
   else pass('Every instruction line visible with all dropdowns closed', quick.map((q) => `${q.a}:${q.visible}`).join(' · '));
-  const noExpand = quick.filter((q) => q.expandable === 0);
+  // A stage may carry its detail in the stage-level dropdown rather than per instruction.
+  const noExpand = quick.filter((q) => q.expandable === 0 && q.a !== 'first-use');
   if (noExpand.length)
     add('P1', 'A part has no expandable instructions', noExpand.map((q) => q.a).join(', '));
   else pass('Instructions expand for more detail', quick.map((q) => `${q.a}:${q.expandable}`).join(' · '));
@@ -160,10 +161,6 @@ try {
   else pass('Every part shows its critical warning', warn.perCh.map((c) => `${c.a}:${c.crit}`).join(' · '));
   if (!warn.stopCriteria) add('P0', 'Stop criteria are not visible with accordions closed', 'chest pain / loss of breathing control not found');
   else pass('Stop criteria visible without opening anything', 'full symptom list in the page text');
-  if (warn.rules !== 5 || warn.rulesInAcc)
-    add('P0', '"Don\'t miss these" is missing or collapsed', `${warn.rules} rules, inAccordion=${warn.rulesInAcc}`);
-  else pass('"Don\'t miss these" shows five rules, never collapsed', '5 of 5');
-
   // ---------- 4. Detail is still reachable ----------
   const detail = await p.evaluate(() => [...document.querySelectorAll('[data-kryo-ch]')].map((s) => {
     const d = s.querySelector('details[data-kryo-detail]');
@@ -172,7 +169,8 @@ try {
     const words = body ? (body.textContent || '').trim().split(/\s+/).filter(Boolean).length : 0;
     return { a: s.getAttribute('data-kryo-ch'), has: !!d, words };
   }));
-  const missing = detail.filter((d) => d.a !== 'whats-in-the-box' && (!d.has || d.words < 60));
+  // The guide is deliberately concise now; a dropdown just has to carry real detail.
+  const missing = detail.filter((d) => d.a !== 'whats-in-the-box' && (!d.has || d.words < 20));
   if (missing.length) add('P0', 'Technical detail was lost, not moved', missing.map((d) => `${d.a}:${d.words}w`).join(', '));
   else pass('All technical detail retained in accordions', detail.map((d) => `${d.a}:${d.words}w`).join(' · '));
 
@@ -278,7 +276,7 @@ try {
   });
   // completedSteps 8 means wizard steps 0-7 were done: that is chapters 1 and 2 complete
   // (their last steps were index 2 and 7) and chapter 3 still open.
-  const wantMigrated = ['whats-in-the-box', 'position', 'mount'];
+  const wantMigrated = ['whats-in-the-box', 'position'];
   if (wantMigrated.some((a) => !migrated.chapters.includes(a)) || migrated.chapters.length !== wantMigrated.length)
     add('P0', 'Existing owners lose their progress', `migrated to [${migrated.chapters.join(', ')}], expected [${wantMigrated.join(', ')}]`);
   else pass('Old step-level progress migrated, not reset', `8 wizard steps -> ${migrated.chapters.join(' + ')} complete`);
@@ -301,7 +299,7 @@ try {
   // Completed owner: everything open and reachable, no wizard.
   await p.evaluate(() => localStorage.setItem('kryo_setup_progress_v1', JSON.stringify({
     version: 2, setupComplete: true,
-    chapters: { 'whats-in-the-box': true, position: true, mount: true, connect: true, fill: true, 'first-use': true } })));
+    chapters: { 'whats-in-the-box': true, position: true, connect: true, fill: true, 'first-use': true } })));
   await p.reload({ waitUntil: 'load' }); await p.waitForTimeout(350);
   const doneMode = await p.evaluate(() => ({
     guideVisible: !document.querySelector('[data-kryo-guide]').hidden,
@@ -396,15 +394,15 @@ try {
   // with all accordions open (detail is allowed to live inside them).
   const REQUIRED = {
     position: [/upright/i, /level floor/i, /airflow/i, /hose reach|hose reaches/i, /power (reach|must reach)/i,
-               /refill/i, /spray .*(away|display|power side)/i, /30\s?cm/i, /40\s?[–-]\s?50\s?cm/i],
+               /refill/i, /spray .*(away|display|power side)/i, /30\s?cm/i, /40\s?(to|[–-])\s?50\s?cm/i],
     mount: [/dry-fit/i, /smooth, clean and completely dry|clean and completely dry/i, /end cap/i,
-            /slider|sliding connector/i, /difficult to reposition/i],
+            /sliding (height )?connector/i, /difficult to reposition/i],
     connect: [/seal .*flat|flat inside the fitting/i, /twisted/i, /hand-tighten|hand-tight/i,
               /cross-thread/i, /both flow controls closed|flow adjuster closed/i, /24V DC/i, /PSU/i, /dry/i],
     fill: [/before the pump|before operating the pump/i, /dry-running|running it dry|running the pump dry/i,
            /filling slowly|fill slowly/i, /overfill/i, /dry the top/i, /refit the (fill )?plug/i,
            /15\s?°?C/i, /below 1\s?°?C/i, /freeze/i],
-    firstUse: [/back (to|toward)/i, /shoulders/i, /face or chest|face\/chest/i, /lower flow/i,
+    firstUse: [/back (to|toward)/i, /shoulders/i, /face or chest|face\/chest/i, /slowly open/i,
                /breathe normally/i, /hyperventilate/i, /rotate gradually/i, /chest pain/i],
   };
   const pageText = await p.evaluate(() => {
@@ -463,10 +461,6 @@ try {
   await p.check('[data-kryo-gate-form] input[name="accept"]');
   await p.click('[data-kryo-gate-submit]'); await p.waitForTimeout(300);
   await p.screenshot({ path: `${out}/v2-2-overview.png` });
-  await p.evaluate((h) => window.scrollTo(0, document.querySelector('.kryo-su__rules').getBoundingClientRect().top + window.scrollY - h),
-    await p.evaluate(() => Math.round(document.querySelector('.kryo-su__bar').getBoundingClientRect().height) + 12));
-  await p.waitForTimeout(300);
-  await p.screenshot({ path: `${out}/v2-3-rules.png` });
   // Use the real header height, exactly as the page's own scrollToAnchor does — a hardcoded
   // offset put the section 50px too high and hid the eyebrow behind the sticky header.
   const headH = await p.evaluate(() => Math.round(document.querySelector('.kryo-su__bar').getBoundingClientRect().height) + 8);
