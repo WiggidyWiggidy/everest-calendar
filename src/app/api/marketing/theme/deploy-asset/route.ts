@@ -34,6 +34,8 @@ const ALLOWED_EXACT_KEYS = [
   'layout/theme.liquid',
   'snippets/everest-attribution-pixel.liquid',
   'snippets/everest-kryo2-quality-pixel.liquid',
+  'templates/cart.json',
+  'config/settings_data.json',
 ];
 
 function isAllowedKey(key: string): boolean {
