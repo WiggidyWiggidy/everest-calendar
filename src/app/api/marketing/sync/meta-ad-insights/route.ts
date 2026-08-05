@@ -296,7 +296,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    for (const [date, account] of accountByDate) {
+    for (const [date, account] of Array.from(accountByDate.entries())) {
       const { error: summaryErr } = await supabase
         .from('marketing_metrics_daily')
         .upsert({
