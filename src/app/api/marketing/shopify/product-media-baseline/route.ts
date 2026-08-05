@@ -10,6 +10,7 @@ const SHOPIFY_API_VERSION = '2026-07';
 const KRYO_PRODUCT_ID = 'gid://shopify/Product/9334472311092';
 
 type Action = 'add_reorder' | 'remove_restore';
+type UserError = { field?: string[] | null; message: string };
 
 interface MediaMutationRequest {
   action: Action;
@@ -27,12 +28,21 @@ interface MediaNode {
   image?: { url?: string | null } | null;
 }
 
-async function gql(
+interface ProductMediaData {
+  product: { id: string; media: { nodes: MediaNode[] } } | null;
+}
+
+interface SourceMediaData { nodes: Array<MediaNode | null> }
+interface FileUpdateData { fileUpdate: { files: Array<{ id: string; fileStatus?: string | null }>; userErrors: UserError[] } }
+interface ReorderMediaData { productReorderMedia: { job?: { id: string; done: boolean } | null; mediaUserErrors: UserError[] } }
+interface GqlEnvelope<T> { data?: T; errors?: unknown[] }
+
+async function gql<T>(
   storeUrl: string,
   token: string,
   query: string,
   variables: Record<string, unknown>,
-): Promise<any> {
+): Promise<T> {
   const res = await fetch(`https://${storeUrl}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`, {
     method: 'POST',
     headers: {
@@ -42,10 +52,10 @@ async function gql(
     body: JSON.stringify({ query, variables }),
   });
   const text = await res.text();
-  let payload: any;
-  try { payload = JSON.parse(text); }
+  let payload: GqlEnvelope<T>;
+  try { payload = JSON.parse(text) as GqlEnvelope<T>; }
   catch { throw new Error(`Shopify GQL ${res.status}: ${text.slice(0, 500)}`); }
-  if (!res.ok || payload.errors?.length) {
+  if (!res.ok || payload.errors?.length || !payload.data) {
     throw new Error(`Shopify GQL ${res.status}: ${JSON.stringify(payload.errors ?? payload).slice(0, 800)}`);
   }
   return payload.data;
@@ -60,10 +70,7 @@ const PRODUCT_MEDIA_QUERY = `
           id
           alt
           status
-          ... on MediaImage {
-            fileStatus
-            image { url }
-          }
+          ... on MediaImage { fileStatus image { url } }
         }
       }
     }
@@ -73,11 +80,7 @@ const PRODUCT_MEDIA_QUERY = `
 const SOURCE_MEDIA_QUERY = `
   query SourceMedia($ids: [ID!]!) {
     nodes(ids: $ids) {
-      ... on MediaImage {
-        id
-        fileStatus
-        image { url }
-      }
+      ... on MediaImage { id fileStatus image { url } }
     }
   }
 `;
@@ -113,17 +116,12 @@ function sameSet(a: string[], b: string[]): boolean {
 }
 
 async function readMedia(storeUrl: string, token: string): Promise<MediaNode[]> {
-  const data = await gql(storeUrl, token, PRODUCT_MEDIA_QUERY, { id: KRYO_PRODUCT_ID });
+  const data = await gql<ProductMediaData>(storeUrl, token, PRODUCT_MEDIA_QUERY, { id: KRYO_PRODUCT_ID });
   if (!data.product) throw new Error('KRYO product not found');
   return data.product.media?.nodes ?? [];
 }
 
-async function waitForOrder(
-  storeUrl: string,
-  token: string,
-  expected: string[],
-  timeoutMs = 30000,
-): Promise<MediaNode[]> {
+async function waitForOrder(storeUrl: string, token: string, expected: string[], timeoutMs = 30000): Promise<MediaNode[]> {
   const started = Date.now();
   let last: MediaNode[] = [];
   while (Date.now() - started < timeoutMs) {
@@ -134,12 +132,7 @@ async function waitForOrder(
   throw new Error(`Media order verification timed out. Expected ${JSON.stringify(expected)}, observed ${JSON.stringify(last.map((x) => x.id))}`);
 }
 
-async function waitForSet(
-  storeUrl: string,
-  token: string,
-  expected: string[],
-  timeoutMs = 30000,
-): Promise<MediaNode[]> {
+async function waitForSet(storeUrl: string, token: string, expected: string[], timeoutMs = 30000): Promise<MediaNode[]> {
   const started = Date.now();
   let last: MediaNode[] = [];
   while (Date.now() - started < timeoutMs) {
@@ -165,37 +158,22 @@ function calculateMoves(current: string[], desired: string[]) {
   return moves;
 }
 
-async function updateReferences(
-  storeUrl: string,
-  token: string,
-  fileIds: string[],
-  mode: 'add' | 'remove',
-) {
+async function updateReferences(storeUrl: string, token: string, fileIds: string[], mode: 'add' | 'remove') {
   if (!fileIds.length) return;
   const files = fileIds.map((id) => ({
     id,
-    ...(mode === 'add'
-      ? { referencesToAdd: [KRYO_PRODUCT_ID] }
-      : { referencesToRemove: [KRYO_PRODUCT_ID] }),
+    ...(mode === 'add' ? { referencesToAdd: [KRYO_PRODUCT_ID] } : { referencesToRemove: [KRYO_PRODUCT_ID] }),
   }));
-  const data = await gql(storeUrl, token, FILE_UPDATE_MUTATION, { files });
+  const data = await gql<FileUpdateData>(storeUrl, token, FILE_UPDATE_MUTATION, { files });
   if (data.fileUpdate.userErrors?.length) {
     throw new Error(`fileUpdate ${mode} errors: ${JSON.stringify(data.fileUpdate.userErrors)}`);
   }
 }
 
-async function reorder(
-  storeUrl: string,
-  token: string,
-  current: string[],
-  desired: string[],
-) {
+async function reorder(storeUrl: string, token: string, current: string[], desired: string[]) {
   const moves = calculateMoves(current, desired);
   if (!moves.length) return;
-  const data = await gql(storeUrl, token, REORDER_MEDIA_MUTATION, {
-    id: KRYO_PRODUCT_ID,
-    moves,
-  });
+  const data = await gql<ReorderMediaData>(storeUrl, token, REORDER_MEDIA_MUTATION, { id: KRYO_PRODUCT_ID, moves });
   if (data.productReorderMedia.mediaUserErrors?.length) {
     throw new Error(`productReorderMedia errors: ${JSON.stringify(data.productReorderMedia.mediaUserErrors)}`);
   }
@@ -220,41 +198,25 @@ function validateBody(body: MediaMutationRequest): string | null {
 }
 
 export async function GET(req: NextRequest) {
-  if (req.headers.get('x-sync-secret') !== process.env.MARKETING_SYNC_SECRET) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (req.headers.get('x-sync-secret') !== process.env.MARKETING_SYNC_SECRET) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const productId = req.nextUrl.searchParams.get('product_id');
-  if (productId !== KRYO_PRODUCT_ID) {
-    return NextResponse.json({ error: `product_id must be ${KRYO_PRODUCT_ID}` }, { status: 422 });
-  }
+  if (productId !== KRYO_PRODUCT_ID) return NextResponse.json({ error: `product_id must be ${KRYO_PRODUCT_ID}` }, { status: 422 });
   try {
     const token = await getShopifyToken();
     const storeUrl = getShopifyStoreUrl();
     const media = await readMedia(storeUrl, token);
-    return NextResponse.json({
-      product_id: KRYO_PRODUCT_ID,
-      media: media.map((m) => ({
-        id: m.id,
-        alt: m.alt ?? null,
-        status: m.status ?? null,
-        file_status: m.fileStatus ?? null,
-        url: m.image?.url ?? null,
-      })),
-    });
+    return NextResponse.json({ product_id: KRYO_PRODUCT_ID, media: media.map((m) => ({ id: m.id, alt: m.alt ?? null, status: m.status ?? null, file_status: m.fileStatus ?? null, url: m.image?.url ?? null })) });
   } catch (error) {
     return NextResponse.json({ error: String((error as Error).message ?? error) }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
-  if (req.headers.get('x-sync-secret') !== process.env.MARKETING_SYNC_SECRET) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (req.headers.get('x-sync-secret') !== process.env.MARKETING_SYNC_SECRET) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   let body: MediaMutationRequest;
-  try { body = await req.json(); }
+  try { body = await req.json() as MediaMutationRequest; }
   catch { return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 }); }
-
   const invalid = validateBody(body);
   if (invalid) return NextResponse.json({ error: invalid }, { status: 422 });
 
@@ -264,23 +226,17 @@ export async function POST(req: NextRequest) {
     const before = await readMedia(storeUrl, token);
     const beforeIds = before.map((x) => x.id);
     if (!sameArray(beforeIds, body.expected_before_ids)) {
-      return NextResponse.json({
-        error: 'PRECONDITION_DRIFT',
-        expected_before_ids: body.expected_before_ids,
-        observed_before_ids: beforeIds,
-      }, { status: 409 });
+      return NextResponse.json({ error: 'PRECONDITION_DRIFT', expected_before_ids: body.expected_before_ids, observed_before_ids: beforeIds }, { status: 409 });
     }
 
     if (body.action === 'add_reorder') {
-      const source = await gql(storeUrl, token, SOURCE_MEDIA_QUERY, { ids: body.file_ids });
-      const sourceNodes: MediaNode[] = source.nodes ?? [];
+      const source = await gql<SourceMediaData>(storeUrl, token, SOURCE_MEDIA_QUERY, { ids: body.file_ids });
+      const sourceNodes = (source.nodes ?? []).filter((node): node is MediaNode => node !== null);
       const missingOrUnready = body.file_ids.filter((id) => {
-        const node = sourceNodes.find((n) => n?.id === id);
+        const node = sourceNodes.find((n) => n.id === id);
         return !node || node.fileStatus !== 'READY' || !node.image?.url;
       });
-      if (missingOrUnready.length) {
-        return NextResponse.json({ error: 'Source media missing or not READY', media_ids: missingOrUnready }, { status: 422 });
-      }
+      if (missingOrUnready.length) return NextResponse.json({ error: 'Source media missing or not READY', media_ids: missingOrUnready }, { status: 422 });
 
       let added = false;
       try {
@@ -289,41 +245,26 @@ export async function POST(req: NextRequest) {
         const attached = await waitForSet(storeUrl, token, body.desired_order);
         await reorder(storeUrl, token, attached.map((x) => x.id), body.desired_order);
         const after = await waitForOrder(storeUrl, token, body.desired_order);
-        return NextResponse.json({
-          success: true,
-          action: body.action,
-          before_ids: beforeIds,
-          after: after.map((m) => ({ id: m.id, url: m.image?.url ?? null })),
-        });
+        return NextResponse.json({ success: true, action: body.action, before_ids: beforeIds, after: after.map((m) => ({ id: m.id, url: m.image?.url ?? null })) });
       } catch (error) {
         if (added) {
           try {
             await updateReferences(storeUrl, token, body.file_ids, 'remove');
             await waitForOrder(storeUrl, token, body.expected_before_ids);
           } catch (rollbackError) {
-            return NextResponse.json({
-              error: 'MEDIA_ROLLBACK_FAILED',
-              cause: String((error as Error).message ?? error),
-              rollback_error: String((rollbackError as Error).message ?? rollbackError),
-            }, { status: 500 });
+            return NextResponse.json({ error: 'MEDIA_ROLLBACK_FAILED', cause: String((error as Error).message ?? error), rollback_error: String((rollbackError as Error).message ?? rollbackError) }, { status: 500 });
           }
         }
         throw error;
       }
     }
 
-    // remove_restore
     let removed = false;
     try {
       await updateReferences(storeUrl, token, body.file_ids, 'remove');
       removed = true;
       const after = await waitForOrder(storeUrl, token, body.desired_order);
-      return NextResponse.json({
-        success: true,
-        action: body.action,
-        before_ids: beforeIds,
-        after: after.map((m) => ({ id: m.id, url: m.image?.url ?? null })),
-      });
+      return NextResponse.json({ success: true, action: body.action, before_ids: beforeIds, after: after.map((m) => ({ id: m.id, url: m.image?.url ?? null })) });
     } catch (error) {
       if (removed) {
         try {
@@ -332,11 +273,7 @@ export async function POST(req: NextRequest) {
           await reorder(storeUrl, token, attached.map((x) => x.id), body.expected_before_ids);
           await waitForOrder(storeUrl, token, body.expected_before_ids);
         } catch (rollbackError) {
-          return NextResponse.json({
-            error: 'MEDIA_ROLLBACK_FAILED',
-            cause: String((error as Error).message ?? error),
-            rollback_error: String((rollbackError as Error).message ?? rollbackError),
-          }, { status: 500 });
+          return NextResponse.json({ error: 'MEDIA_ROLLBACK_FAILED', cause: String((error as Error).message ?? error), rollback_error: String((rollbackError as Error).message ?? rollbackError) }, { status: 500 });
         }
       }
       throw error;
