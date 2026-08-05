@@ -65,7 +65,24 @@ function parseMcpToolPayload(payload: unknown): InsightsPayload {
   if (!result) throw new Error('Pipeboard MCP response missing result');
 
   const structured = result.structuredContent;
-  if (structured && typeof structured === 'object') return structured as InsightsPayload;
+  if (structured && typeof structured === 'object') {
+    const structuredRecord = structured as Record<string, unknown>;
+    if (Array.isArray(structuredRecord.data) || structuredRecord.error) {
+      return structuredRecord as InsightsPayload;
+    }
+
+    const wrapped = structuredRecord.result;
+    if (typeof wrapped === 'string') {
+      try {
+        return JSON.parse(wrapped) as InsightsPayload;
+      } catch {
+        // Fall through to normal content parsing.
+      }
+    }
+    if (wrapped && typeof wrapped === 'object') {
+      return wrapped as InsightsPayload;
+    }
+  }
 
   const content = result.content;
   if (Array.isArray(content)) {
