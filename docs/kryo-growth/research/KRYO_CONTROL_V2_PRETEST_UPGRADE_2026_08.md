@@ -1,235 +1,197 @@
 # KRYO Control v2 — High-Confidence Pre-Test Upgrade — August 2026
 
-**Status:** execution source of truth for the next baseline upgrade to `/products/kryo2` before any major landing-page split test.
+**Status:** research source of truth for the immediate non-experiment baseline upgrade to `/products/kryo2`.
 
-**Goal:** improve the commercial quality of the proven control using changes with strong research support and low downside, while preserving the buying mechanics that produced the historical ~10% LPV→ATC control benchmark.
+**Execution source of truth:** `marketing/baseline-changes/KRYO-BASELINE-20260806-01-CONTROL-V2.md`
 
-## 1. Principle
+**Operating protocol:** `docs/kryo-growth/operations/KRYO_BASELINE_CHANGE_PROTOCOL.md`
 
-Do not spend weeks A/B testing obvious hygiene improvements.
+## 1. Decision
 
-**Ship high-confidence baseline improvements. Test only high-uncertainty, high-upside commercial hypotheses.**
+The first Control v2 release contains only four high-confidence changes:
 
-The failed `/products/kryo2_` challenger is evidence that KRYO should not simultaneously change choice architecture, purchase flow, urgency, social proof, media, assisted sales and fulfilment timing.
+1. truthful current-allocation / next-dispatch scarcity;
+2. stronger product tangibility using the existing what's-in-the-box / front / side assets;
+3. the existing specific tester testimonial block;
+4. 30-day trial + free Dubai delivery/returns repeated at the purchase decision.
 
-Control v2 therefore upgrades trust/tangibility/reassurance while preserving the proven direct-buy architecture.
+This release deliberately does **not** add WhatsApp, exit intent, new ad messaging, model choice, scroll-to-buy, or any other purchase-path change.
 
-## 2. Live commerce truth at time of research
+Why: this is a regression-controlled baseline release, not an experiment. We want to improve credibility and information quality while preserving the buying architecture that historically generated approximately 10% LPV→ATC.
+
+## 2. Live state researched for the frozen task
+
+At freeze time:
 
 - winning product: `/products/kryo2`
+- product ID: `9334472311092`
+- winning variant: `49131658805556`
 - one sellable variant
-- winning variant ID: `49131658805556`
-- current Shopify inventory observed: **7 units**
-- inventory policy: DENY
-- product currently available for sale
+- inventory observed: `7`
+- product available for sale
+- live template: `templates/product.kryo-2-2-track-cta2.json`
+- existing recurring urgency included `OFFER ENDS FRIDAY`
+- hero remained `Step in tired. Step out switched on.`
+- hero/sticky CTA used direct Add to Cart to the winner variant
+- Downpay remained `50% today. Balance before dispatch.`
 
-Any stock-count copy must be reread from Shopify immediately before deployment and updated after sales so scarcity remains truthful.
+The frozen task contains exact preconditions. If live state differs, Codex must stop; the research operator issues a revised manifest.
 
-## 3. Keep unchanged
+## 3. Preserve the proven purchase architecture
 
-Do **not** change:
+Do not change in this release:
 
 - one-model architecture;
-- AED 3,990 Dubai selling price / current offer unless separately approved;
-- direct hero Add to Cart → cart;
-- direct sticky Add to Cart → cart;
-- Purchase CTA hierarchy;
-- Downpay 50% deposit path;
-- 30-day risk-free trial;
+- AED 3,990 offer/pricing;
+- hero headline/subheadline/image;
+- direct hero Add to Cart;
+- direct sticky Add to Cart;
+- Downpay;
+- 30-day trial policy;
 - Performance Flow Upgrade;
-- free-upgrade cart popup;
-- cart/checkout flow;
-- core lower-page KRYO education;
-- Meta Purchase optimisation.
+- cart upgrade popup;
+- checkout;
+- Chatway / WhatsApp;
+- Meta/tracking/attribution;
+- unrelated lower-page content.
 
-## 4. High-confidence live changes
+The failed `/products/kryo2_` challenger changed too many high-impact variables simultaneously. It therefore cannot tell us which positive additions were outweighed by which negative purchase-friction changes.
 
-### Change A — truthful allocation scarcity
+## 4. Change A — truthful allocation + dispatch scarcity
 
-Remove recurring generic urgency such as:
+Remove recurring generic deadline language such as:
 
-- `OFFER ENDS FRIDAY`
+`OFFER ENDS FRIDAY`
 
-Replace with current operational truth.
+For the frozen 7-unit state and planned two-week dispatch cadence, the approved research direction is to communicate:
 
-At research time Shopify shows 7 sellable units, therefore a truthful example is:
+- current August allocation remaining;
+- exact next dispatch date;
+- no fake resetting deadline.
 
-> **7 OF 10 AUGUST DUBAI ALLOCATIONS REMAIN**
+The frozen task currently uses:
 
-If the dispatch date is operationally confirmed, display it separately as an explicit date.
+`AUGUST DUBAI ALLOCATION · 7 OF 10 REMAIN · NEXT DISPATCH 15 AUGUST`
 
-Do not use a date or stock count simply because it existed on `kryo2_`.
+and consistent shorter versions in sticky/hero locations.
 
-**Reason:** availability scarcity is more defensible and more credible than permanently resetting deadline language. Research/case evidence also suggests generic urgency can hurt while availability scarcity can help.
+The inventory `7` is a deployment precondition, not a value Codex may update itself.
 
-### Change B — stronger product gallery
+**Research rationale:** truthful availability/time scarcity gives a real downside to waiting without eroding trust through permanently resetting urgency.
 
-Bring the existing challenger assets into the winner's main product media/gallery:
+## 5. Change B — stronger product tangibility
+
+Approved existing assets:
 
 - `kryo-whats-in-the-box.webp`
 - `kryo-front-view.webp`
 - `kryo-side-view.webp`
 
-Do not add a separate long gallery section purely to repeat the same information.
+The intended final gallery keeps the proven current first image, then introduces the three tangible product assets, then preserves the remaining current winner images.
 
-**Reason:** users need immediate tangible evidence of what the AED 3,990 system physically includes. Baymard treats included-accessory imagery as decision-relevant when accessories are a meaningful part of value.
+This answers purchase-critical questions without adding a new decision step:
 
-### Change C — tester/customer proof
+- what arrives;
+- what the unit actually looks like;
+- how substantial the complete system is.
 
-Bring the existing `kryo2_` testimonial block into the winner:
+Important Shopify implementation detail: product gallery media is product-scoped, not template-scoped. Therefore it is frozen for owner review but is not attached to the live winner during the alternate-template review phase. It is attached/reordered only after explicit approval.
 
-- source block: `ai_gen_block_5edb068_GqHjBY`
-- source template: `templates/product.kryo2_.json`
+## 6. Change C — specific tester proof
 
-Preferred placement:
+Use the existing testimonial block already built on `kryo2_`:
 
-> directly after `What makes KRYO different?` and before the comparison / deeper evaluation sections.
+`ai_gen_block_5edb068_GqHjBY`
 
-Requirements:
+Placement:
 
-- keep quotes specific;
-- do not imply the founder is an independent customer;
-- label people transparently as customer / tester / founder where applicable;
-- use real imagery when available.
+immediately after `What makes KRYO different?`
 
-**Reason:** KRYO is a novel high-ticket product with limited existing social proof. On-site DTC testimonials are not enough to create full trust, but specific authentic user proof is a clear improvement over none.
+The exact block content is embedded in the frozen task so Codex does not need to inspect or copy the challenger page.
 
-### Change D — purchase reassurance next to ATC
+Reason: KRYO is a novel high-ticket physical product. Specific usage testimony is a clear trust improvement over effectively no useful social proof, although on-site testimonials do not replace future independent review/creator proof.
 
-Near the main purchase controls, add one concise line:
+## 7. Change D — purchase reassurance near ATC
 
-> **30-day risk-free trial · Free Dubai delivery & returns**
+Repeat the already-valid operational promises directly in the buy area:
 
-Do not create another large trust section.
+`30 Day Risk-free Trial · Free Dubai Delivery & Returns`
 
-Only include warranty language if the exact warranty is operationally confirmed.
+Do not add a second large trust section.
 
-**Reason:** Eight Sleep and Plunge repeat trial/delivery/returns/warranty at the buy decision; Baymard specifically finds shipping information is more likely to be seen when placed near the Buy section.
+Reason: the information already exists on the page, but category leaders and product-page UX research support surfacing delivery/risk information where the purchase decision occurs.
 
-### Change E — assisted-sale WhatsApp, subordinate to purchase
+## 8. Why WhatsApp is not Release 1
 
-Replace/refine the generic lower expert-chat path into a single persistent WhatsApp specialist route.
+Assisted WhatsApp sales remains strategically valuable for KRYO because buyers take multiple sessions and high-ticket products often need human reassurance.
 
-Preferred buy-area wording:
+However WhatsApp creates an alternate conversion path. It can lower same-session ATC while increasing assisted revenue. That makes it qualitatively different from the four trust/information upgrades above.
 
-> **Questions about fit, setup or delivery? WhatsApp a KRYO specialist.**
+Therefore:
 
-Hierarchy:
+- do not add or alter WhatsApp in the first Control v2 baseline release;
+- keep the existing Chatway untouched;
+- evaluate a subordinate WhatsApp specialist release separately after the baseline is stable and WhatsApp attribution can be measured;
+- exit intent remains a later experiment.
 
-- Add to Cart remains the dominant button.
-- WhatsApp is a tertiary text link, not an equal-weight button.
+See `KRYO_ASSISTED_CONVERSION_WHATSAPP_AND_EXIT_INTENT_2026_08.md`.
 
-Optional one lower-page repeat after setup/FAQ:
+## 9. Planning expectation
 
-> **Still unsure whether KRYO fits your bathroom? Check fit and current Dubai availability on WhatsApp.**
+External research cannot prove an exact KRYO uplift in advance. These are planning priors, not guarantees.
 
-Do not reproduce the challenger pattern of hero + midpage + buybox + cart WhatsApp CTAs.
+Historical winner:
 
-**Reason:** high-ticket competitors provide sales specialists, academic ecommerce evidence supports live assistance, and WhatsApp gives KRYO a persistent multi-session conversation thread. The risk is not the channel; the risk is letting the channel compete with checkout.
+- LPV→ATC ≈ `10%`
+- LPV→purchase ≈ `0.64%` in the historical dataset
 
-## 5. Do not ship yet
+For the combined four-change baseline package, a reasonable directional planning range remains:
 
-### Exit-intent popup
+- LPV→ATC approximately `11.5–12.5%`, central ~`12%`;
+- mature LPV→purchase approximately `0.7–0.9%`, central ~`0.8%`, if traffic quality is comparable.
 
-Do not include in Control v2.
+Do not sum individual hypothetical uplifts and do not attribute post-release improvement to one component.
 
-Create later as a dedicated assisted-conversion experiment once baseline WhatsApp tracking exists.
+## 10. Release and monitoring model
 
-Suggested future treatment:
+This is **not** an A/B test.
 
-> `Not ready to order? Check fit and current August availability with a KRYO specialist.`
+Workflow:
 
-Trigger only after meaningful engagement and exit behaviour; suppress after ATC/WhatsApp; never show on checkout.
+research live state → freeze exact manifest → Codex builds alternate-template review → owner visually approves → exact approved artifact deploys → product media attaches → live reread → timestamp → regression monitoring → keep/revert.
 
-### Three models
+Use only post-deployment traffic from the recorded UTC timestamp.
 
-Do not import Standard / Pro / Studio choice architecture.
+Typical monitoring gates frozen into the task:
 
-### Scroll-to-buy
+- ~25 clean paid LPVs: technical/regression checkpoint;
+- ~50 clean LPVs: directional intent checkpoint;
+- ~100 clean LPVs or 3–5 days: keep/investigate/revert checkpoint.
 
-Do not replace direct Add to Cart with `Select Model & Order` / scroll-to-selector.
+Historical ~10% LPV→ATC is the anchor. A persistent `<6%` around 100 clean LPVs, with no compensating downstream outcome and traffic-side causes ruled out, is the current rollback trigger.
 
-### Multiple WhatsApp CTAs
+Do not use Meta cost metrics unless same-day Meta data is directly readable or proven fresh.
 
-Do not import the challenger's multiple price-lock / availability calls to action.
+## 11. Next actions after Control v2 stabilises
 
-### Longer fulfilment promise
+These are separate experiments/releases, not part of this task:
 
-Use the shortest truthful operational dispatch date. Do not deliberately extend it as a CRO test.
+1. same-ad-set pre-frame discovery, led by Morning Grogginess / Morning Purpose;
+2. truthful next-dispatch deadline creative near real cutoffs;
+3. mechanism/education creative and real demonstration proof;
+4. subordinate WhatsApp specialist path with assisted-revenue measurement;
+5. exit-intent → WhatsApp only after baseline assistance is measurable;
+6. matched landing-page split test only after a pre-frame earns commercial signal.
 
-## 6. Research-informed planning expectation
+## 12. Sources
 
-No external research can prove an exact KRYO uplift before deployment. The figures below are planning priors, not guaranteed effects.
-
-Historical winner benchmark:
-
-- LPV→ATC ≈ 10%
-- LPV→purchase ≈ 0.64% in the historical winning dataset
-
-For the Control v2 package (scarcity + stronger gallery + authentic proof + buy-area reassurance + subordinate expert support), a reasonable planning prior is:
-
-- **LPV→ATC:** approximately 11.5–12.5%
-- central planning case: ~12%
-- **LPV→purchase:** approximately 0.7–0.9% after purchase lag matures
-- central planning case: ~0.8%
-
-The additions overlap, so individual uplift estimates must not be summed.
-
-The WhatsApp path may reduce pure ATC rate for a small subset while increasing eventual assisted revenue. Therefore final evaluation must include assisted sales, not only same-session ATC.
-
-## 7. Ad changes before a major split test
-
-Do not split the historical winning ad set solely to test copy.
-
-After Meta/Supabase measurement is healthy:
-
-1. keep the historical winning `Winner | Plunge is Dead` ad active and unchanged;
-2. add **one** Morning Purpose challenger inside the same Purchase-optimised winning ad set;
-3. preserve proven visual assets initially;
-4. make all challenger copy coherent around the morning problem / `Step in tired. Step out switched on`;
-5. point it initially to Control v2, whose hero already matches the morning outcome reasonably well;
-6. compare ad-level cost/LPV, cost/ATC, LPV→ATC, checkout and mature purchase economics;
-7. only build a dedicated matched Morning landing-page treatment once the pre-frame earns enough delivery / promising intent economics to justify it.
-
-This is **performance discovery**, not a randomized split test.
-
-## 8. Major split-test candidate after pre-frame discovery
-
-If Morning Purpose performs well inside the winning ad set, the next major landing-page treatment should change only the first ~20–25% of Control v2:
-
-- explicit eyebrow: `THE COLD IMMERSION SYSTEM BUILT FOR SHARPER MORNINGS`
-- keep: `Step in tired. Step out switched on.`
-- explicitly explain mechanism: KRYO chills its own water and delivers controlled cold through the Halo
-- three-step mechanism summary
-- short `Your day starts before your body feels ready` relevance section
-- then rejoin the identical Control v2 page
-
-Control and treatment would share:
-
-- testimonials;
-- gallery;
-- price;
-- allocation;
-- trial / shipping / returns;
-- WhatsApp support hierarchy;
-- direct ATC;
-- cart popup;
-- checkout.
-
-That isolates a much larger question: **does a matched morning-purpose acquisition + first-page comprehension package materially outperform the anti-plunge/category-disruption funnel?**
-
-## 9. Sources
-
-See companion research notes:
+Companion research notes:
 
 - `KRYO_META_CREATIVE_TESTING_AND_MULTIVISIT_FUNNEL_2026_08.md`
+- `KRYO_PREFRAME_EXPERIMENT_MATRIX_AND_KILL_RULES_2026_08.md`
+- `KRYO_FORTNIGHTLY_DISPATCH_URGENCY_SYSTEM_2026_08.md`
+- `KRYO_FUNNEL_DIAGNOSIS_AND_EXPERIMENT_PRIORITY_2026_08.md`
 - `KRYO_PREMIUM_PDP_BENCHMARK_EIGHTSLEEP_PLUNGE_2026_08.md`
 - `KRYO_ASSISTED_CONVERSION_WHATSAPP_AND_EXIT_INTENT_2026_08.md`
 
-## 10. Approval / implementation rule
-
-This file specifies the intended commercial changes. Codex should only implement after the exact live theme values/assets/placement are re-read and the named change set is approved.
-
-Execution remains:
-
-**read live → exact bounded write → live reread → PASS/FAIL**.
+Implementation is governed by the baseline protocol and frozen task, not by Codex interpretation of this research note.
