@@ -8,3 +8,12 @@ interrupt_message = true
 # Project subagents live in .codex/agents/*.toml when present.
 # Keep the primary Codex thread as the KRYO Growth Operator.
 # Use parallel agents for independent analysis/review; serialize write-heavy implementation.
+
+[mcp_servers.meta-ads-pipeboard]
+url = "https://meta-ads.mcp.pipeboard.co/"
+bearer_token_env_var = "PIPEBOARD_API_TOKEN"
+enabled = true
+required = false
+default_tools_approval_mode = "writes"
+startup_timeout_sec = 15
+tool_timeout_sec = 60
