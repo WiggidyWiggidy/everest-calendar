@@ -6,6 +6,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getShopifyToken, getShopifyStoreUrl } from '@/lib/shopify-auth';
 
+const SHOPIFY_API_VERSION = '2026-07';
+
 interface ShopifyVariant {
   id?: number;
   title?: string;
@@ -62,8 +64,8 @@ export async function GET(req: NextRequest) {
 
   const fields = 'id,title,handle,status,template_suffix,body_html,vendor,tags,images,variants';
   const url = handle
-    ? `https://${storeUrl}/admin/api/2024-10/products.json?handle=${encodeURIComponent(handle)}&fields=${fields}`
-    : `https://${storeUrl}/admin/api/2024-10/products/${id}.json?fields=${fields}`;
+    ? `https://${storeUrl}/admin/api/${SHOPIFY_API_VERSION}/products.json?handle=${encodeURIComponent(handle)}&fields=${fields}`
+    : `https://${storeUrl}/admin/api/${SHOPIFY_API_VERSION}/products/${id}.json?fields=${fields}`;
 
   const res = await fetch(url, {
     headers: { 'X-Shopify-Access-Token': token, 'Content-Type': 'application/json' },
