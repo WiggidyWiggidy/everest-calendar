@@ -75,9 +75,31 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  const appId = process.env.META_APP_ID;
+  const appSecret = process.env.META_APP_SECRET;
+  let appCredentialsOk = false;
+  let appCredentialError: string | null = null;
+
+  if (appId && appSecret) {
+    const appToken = `${appId}|${appSecret}`;
+    try {
+      const url = new URL('https://graph.facebook.com/v25.0/app');
+      url.searchParams.set('fields', 'id,name');
+      url.searchParams.set('access_token', appToken);
+      const res = await fetch(url.toString(), { cache: 'no-store' });
+      appCredentialsOk = res.ok;
+      if (!res.ok) appCredentialError = sanitise(await res.text(), appToken);
+    } catch (error) {
+      appCredentialError = sanitise(String(error), appToken);
+    }
+  }
+
   return NextResponse.json({
     related_env_names: relatedEnvNames,
     account_id_configured: Boolean(META_ACCOUNT_ID),
+    app_credentials_configured: Boolean(appId && appSecret),
+    app_credentials_ok: appCredentialsOk,
+    app_credentials_error: appCredentialError,
     token_checks: checks,
   });
 }
