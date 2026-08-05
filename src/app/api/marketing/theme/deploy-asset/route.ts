@@ -1,6 +1,5 @@
 // /api/marketing/theme/deploy-asset
-// PUTs a single asset (Liquid section or JSON template) to the live Shopify theme.
-// Strictly additive: rejects any key not under sections/kryo-* or templates/product.kryo-*.
+// PUTs a single allowed asset to the Shopify theme.
 // Skill-mode auth via x-sync-secret.
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -8,6 +7,7 @@ import { getShopifyToken, getShopifyStoreUrl } from '@/lib/shopify-auth';
 import { createClient } from '@supabase/supabase-js';
 import { auditLog } from '@/lib/marketing-safety';
 
+const SHOPIFY_API_VERSION = '2026-07';
 const TOM_USER_ID = '174f2dff-7a96-464c-a919-b473c328d531';
 
 function authSkill(request: NextRequest): boolean {
@@ -48,27 +48,18 @@ export async function POST(request: NextRequest) {
   }
 
   let body: DeployRequest;
-  try {
-    body = (await request.json()) as DeployRequest;
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-  }
+  try { body = (await request.json()) as DeployRequest; }
+  catch { return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 }); }
 
-  if (!body.theme_id || typeof body.theme_id !== 'number') {
-    return NextResponse.json({ error: 'theme_id (number) required' }, { status: 400 });
-  }
-  if (!body.key || typeof body.key !== 'string') {
-    return NextResponse.json({ error: 'key (string) required' }, { status: 400 });
-  }
+  if (!body.theme_id || typeof body.theme_id !== 'number') return NextResponse.json({ error: 'theme_id (number) required' }, { status: 400 });
+  if (!body.key || typeof body.key !== 'string') return NextResponse.json({ error: 'key (string) required' }, { status: 400 });
   if (!isAllowedKey(body.key)) {
     return NextResponse.json({
-      error: 'Refused: key must be the attribution pixel or start with sections/kryo-, sections/_kryo-, or templates/product.kryo-',
-      detail: `Got: "${body.key}". This route is strictly additive to protect existing theme files.`,
+      error: 'Refused: key must be an explicitly allowed theme asset',
+      detail: `Got: "${body.key}".`,
     }, { status: 422 });
   }
-  if (typeof body.value !== 'string' || body.value.length === 0) {
-    return NextResponse.json({ error: 'value (non-empty string) required' }, { status: 400 });
-  }
+  if (typeof body.value !== 'string' || body.value.length === 0) return NextResponse.json({ error: 'value (non-empty string) required' }, { status: 400 });
 
   let shopifyUrl: string;
   let shopifyToken: string;
@@ -79,10 +70,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
   }
 
-  // Read prior asset for rollback context
   let priorValue: string | null = null;
   const priorRes = await fetch(
-    `https://${shopifyUrl}/admin/api/2025-04/themes/${body.theme_id}/assets.json?asset[key]=${encodeURIComponent(body.key)}`,
+    `https://${shopifyUrl}/admin/api/${SHOPIFY_API_VERSION}/themes/${body.theme_id}/assets.json?asset[key]=${encodeURIComponent(body.key)}`,
     { headers: { 'X-Shopify-Access-Token': shopifyToken } },
   );
   if (priorRes.ok) {
@@ -91,7 +81,7 @@ export async function POST(request: NextRequest) {
   }
 
   const putRes = await fetch(
-    `https://${shopifyUrl}/admin/api/2025-04/themes/${body.theme_id}/assets.json`,
+    `https://${shopifyUrl}/admin/api/${SHOPIFY_API_VERSION}/themes/${body.theme_id}/assets.json`,
     {
       method: 'PUT',
       headers: {
@@ -104,7 +94,7 @@ export async function POST(request: NextRequest) {
 
   const putText = await putRes.text();
   let putPayload: unknown = null;
-  try { putPayload = JSON.parse(putText); } catch { /* not JSON */ }
+  try { putPayload = JSON.parse(putText); } catch { /* non-JSON Shopify response */ }
 
   if (!putRes.ok) {
     return NextResponse.json({
@@ -112,14 +102,13 @@ export async function POST(request: NextRequest) {
       key: body.key,
       detail: putPayload ?? putText.slice(0, 800),
       hint: putRes.status === 403
-        ? 'Likely missing write_themes scope. Add via Partner Dashboard → app → Configuration → Additional scopes.'
+        ? 'Missing write_themes permission or Shopify theme-write eligibility.'
         : putRes.status === 422
-        ? 'Liquid syntax error or invalid JSON. See response detail for line/column.'
+        ? 'Invalid Liquid/JSON theme asset. See response detail.'
         : undefined,
     }, { status: putRes.status });
   }
 
-  // Audit log
   try {
     const sb = svcClient();
     await auditLog(
