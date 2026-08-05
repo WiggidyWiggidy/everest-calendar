@@ -1,277 +1,211 @@
 # KRYO Baseline Change Protocol
 
-**Purpose:** repeatable operating procedure for high-confidence, non-experiment storefront changes such as factual corrections, broken UX fixes, trust/reassurance improvements, and other changes where the expected downside is low enough that a simultaneous split test is not justified.
+**Purpose:** repeatable operating procedure for high-confidence, non-experiment storefront changes such as factual corrections, broken UX fixes, missing purchase-critical reassurance/proof, and other changes where a simultaneous A/B test is not justified.
 
-**Not for:** new positioning, new offers, new funnels, major CTA architecture, new product choices, or any change where causal learning is the main goal. Those go through the experiment workflow.
+**Not for:** new positioning, major CTA/funnel architecture, new offers, new product-choice architecture, or changes where causal learning is the objective. Those use the experiment workflow.
 
-## Core operating model
+## Core model
 
-**Research operator decides. Codex executes. Owner approves. Data decides keep/revert.**
+**Research operator decides. Deterministic executor executes. Owner approves. Data decides keep/revert.**
 
-Codex must never be asked to discover the marketing answer during this workflow.
+Codex is not the marketing planner and is not the API orchestrator.
 
-The research operator must complete all live reads, research, prioritisation, copy, asset selection, placement, expected effect, monitoring window, and rollback criteria before freezing the task.
+The research layer must complete all live reads, research, prioritisation, copy, IDs, assets, placement, preconditions, rollback and monitoring rules before a task becomes executable.
 
-Codex receives a frozen manifest and performs deterministic implementation only.
+## Three sources of truth
 
-This follows the repository-as-system-of-record / progressive-disclosure pattern: stable doctrine lives here, exact changing values live in one task manifest, and the Codex invocation stays very short.
+1. Stable lifecycle/safety doctrine: this file.
+2. Mechanical execution: `scripts/kryo-baseline-change.mjs`.
+3. Exact release state/intent: one frozen JSON file under `marketing/baseline-changes/`.
 
-## Baseline change vs experiment
-
-Use this protocol only when all are true:
-
-1. The current state has an identifiable deficiency, bug, stale/fake factual statement, missing purchase-critical information, or clear trust/usability gap.
-2. The proposed change has strong directional evidence or fixes objective correctness.
-3. It preserves the main commercial hypothesis and purchase mechanics unless the defect itself is in those mechanics.
-4. We do not need isolated causal attribution to the individual change.
-5. A clean rollback is possible.
-
-If any are false, route to the KRYO experiment process instead.
-
-## Roles
-
-### Research operator
-
-Before Codex runs:
-
-- read current Shopify/Supabase/Meta state as relevant;
-- identify exact target resources and immutable IDs;
-- snapshot current values and timestamps;
-- decide every old → new value;
-- select exact assets and order;
-- define allowed mutation surfaces;
-- define forbidden changes;
-- define preview method;
-- define precondition/drift checks;
-- define approval gate;
-- define live verification checks;
-- define monitoring metrics, sample/time gates, and rollback rule;
-- freeze one task manifest.
-
-The research operator resolves drift. Codex does not.
-
-### Codex executor
-
-Codex:
-
-- reads only the named Skill and named frozen manifest plus the exact implementation surfaces named by them;
-- does not research marketing, competitors, copy, CRO, Shopify docs, or alternative implementations;
-- does not broaden scope;
-- does not refactor or clean unrelated code;
-- stops on any precondition mismatch;
-- never infers owner approval;
-- executes exact approved bytes/operations after approval;
-- verifies every write by rereading the changed live resource.
-
-### Owner
-
-The owner visually reviews the prepared preview/review packet and explicitly approves or rejects it.
-
-### Measurement operator
-
-After live deployment, evaluate only data after the recorded deployment timestamp. Keep or revert using the frozen monitoring rules. A baseline release is a regression-controlled release, not a causal A/B test.
+Codex should run the executor against the frozen JSON. It should not reproduce the workflow from prose.
 
 ## Lifecycle
 
 `DRAFT_RESEARCH`
 → `FROZEN_FOR_REVIEW_BUILD`
 → `REVIEW_READY`
-→ `APPROVED`
-→ `LIVE_DEPLOYING`
+→ `OWNER_APPROVED`
 → `LIVE_VERIFIED`
 → `MONITORING`
-→ `KEPT` or `REVERTED`
+→ `KEPT` or `ROLLBACK_VERIFIED`
 
-No state may be skipped.
+No production mutation before explicit owner approval.
 
-## Frozen task manifest requirements
+## Baseline release eligibility
 
-Every task must contain:
+Use this protocol only when all are true:
 
-- unique task ID;
-- task class = `BASELINE_CHANGE`;
-- current status;
-- research/freeze timestamp;
-- product/theme/template identifiers;
-- source snapshot timestamp/version;
-- exact precondition sentinels;
-- exact review target;
-- exact preview URL;
-- exact JSON/text operations;
-- exact assets and desired order;
-- explicitly allowed resources;
-- explicitly forbidden resources/behaviours;
-- review acceptance checklist;
-- approval gate;
-- exact production operation;
-- rollback snapshot requirements;
-- live verification checklist;
-- monitoring start definition;
-- keep/investigate/revert rules.
+1. The current state has an identifiable deficiency, stale/false statement, missing purchase-critical information, bug or clear trust/usability gap.
+2. Directional evidence is strong enough that the change does not need its own split test.
+3. The main commercial hypothesis and proven purchase mechanics remain intact.
+4. Isolated causal attribution to each bundled hygiene change is not required.
+5. Exact rollback is possible.
 
-No placeholders may remain when status becomes `FROZEN_FOR_REVIEW_BUILD`.
+If any are false, use the KRYO experiment process.
 
-## Drift rule
+## Research operator responsibilities
 
-A frozen task is valid only for the live state it was researched against.
+Before freezing the JSON task:
 
-Before REVIEW_BUILD and again before DEPLOY_APPROVED, Codex checks every manifest precondition.
+- read current Shopify state directly;
+- read Supabase/Meta when performance claims require them;
+- record immutable product/theme/template/media IDs;
+- record exact source template checksum and dependency checksums;
+- record inventory if scarcity copy depends on it;
+- decide every old → new value;
+- select exact existing media IDs/URLs/order;
+- define protected sentinels for purchase architecture;
+- define the private preview URL;
+- define exact owner approval token;
+- define persistent rollback template key;
+- define post-release monitoring gates and rollback trigger;
+- verify any required execution route is deployed before asking Codex to run.
 
-If any sentinel differs, Codex must output:
+No placeholders may remain in a frozen JSON task.
 
-`PRECONDITION_DRIFT`
+## Codex responsibilities
 
-followed only by the mismatched fields and observed values, then stop.
+Codex:
 
-Codex must not update copy, counts, dates, IDs, paths, or implementation to accommodate drift. The research operator rereads live state and issues a new manifest revision.
+- fetches `origin/main` without modifying the user's working tree;
+- materialises only the deterministic executor and named frozen JSON task into a temporary directory;
+- runs executor self-test;
+- runs exactly one requested phase;
+- returns executor stdout;
+- stops.
 
-## Two mutation surfaces
+Codex must not research, discover routes, choose alternative APIs, edit copy, refactor, or repair failures in the same run.
 
-### 1. Template-scoped changes
+## Execution surfaces
 
-Examples: copy, section settings, block insertion/order, reassurance text.
+The executor uses only explicitly frozen, guarded routes. For the current KRYO baseline system these are:
 
-Safe review process:
+- product read: `/api/marketing/shopify/get-product`
+- product-media read/write: `/api/marketing/shopify/product-media-baseline`
+- theme asset read: `/api/marketing/theme/asset`
+- guarded theme asset write: `/api/marketing/theme/deploy-asset`
 
-1. Clone the exact live product template to a unique review suffix.
-2. Apply only the frozen operations to the review template.
-3. Verify the source/live template is unchanged.
-4. Review with Shopify alternate-template preview:
-   `https://everestlabs.co/products/<handle>?view=<review-suffix>&country=AE`
-5. Stop at `REVIEW_READY`.
-6. After explicit approval, use the exact approved review-template bytes to overwrite the original live template key.
-7. Do not regenerate the changes at deployment time.
-8. Reread the live asset and compare required sentinels.
+The following are intentionally not part of this workflow:
 
-### 2. Product-scoped changes
+- `/api/marketing/shopify/admin-graphql` — does not exist
+- `/api/marketing/theme/clone-template` — executor does not rely on it
+- `/api/marketing/theme/configure-product` — live product template assignment must remain unchanged
 
-Examples: product media/gallery relationships and ordering.
+## REVIEW_BUILD
 
-Product media is attached to the product, not to a product template, so it cannot be faithfully sandboxed by an alternate template alone.
+The executor must:
 
-For a baseline task:
+1. read current product, variant/inventory, product media, live template and required block dependencies;
+2. assert every frozen precondition/checksum/sentinel;
+3. safely strip/preserve Shopify's autogenerated leading template comment before JSON parsing;
+4. generate the review template deterministically from the exact live source + frozen operations;
+5. prove the generated review contains no semantic changes outside the frozen operations;
+6. enforce Shopify JSON-template size/block guards;
+7. write only the alternate review-template key;
+8. reread review template, live source, product and media;
+9. prove live source checksum, product template suffix and product media are unchanged;
+10. fetch both the public preview URL and normal live URL and verify expected old/new markers;
+11. return `REVIEW_READY` and stop.
 
-1. Freeze exact source media URLs, alt text, and desired order in the manifest.
-2. Include them in the owner review packet without mutating the live product.
-3. Only after owner approval, execute the exact frozen product mutation.
-4. Capture returned media IDs.
-5. Execute the frozen reorder rule using those returned IDs.
-6. Reread the product media and verify final order.
-7. Rollback uses the pre-deployment media snapshot.
+### REVIEW_BUILD may never mutate
 
-Do not create a duplicate product merely to preview product-level media unless the manifest explicitly requires a fully faithful product-level sandbox.
-
-## Approval gate
-
-`REVIEW_BUILD` is never allowed to mutate:
-
-- the original live template;
-- live product media;
+- live source template;
+- product template assignment;
+- product media;
 - price;
 - variants;
 - inventory;
 - cart/checkout;
-- tracking;
-- Meta.
+- Downpay;
+- tracking/Meta.
 
-The phase ends with `REVIEW_READY` and stops.
+## Product gallery limitation
 
-Only an explicit owner instruction to run `DEPLOY_APPROVED` permits production writes.
+Shopify product media belongs to the product, not the product template. Therefore alternate-template preview cannot faithfully show a proposed gallery change without also changing the live product gallery.
 
-## Rollback requirements
+For a safe baseline review:
 
-Immediately before production writes, capture:
+- freeze exact existing Shopify file/media IDs and URLs;
+- show them in the `REVIEW_READY` review packet;
+- do not attach/reorder them during REVIEW_BUILD;
+- after owner approval, associate the existing files with KRYO and reorder them using the guarded media route.
 
-- exact current live-template bytes;
-- source template key and Shopify update timestamp if available;
-- product status / variant / inventory sentinels relevant to the task;
-- current product-media IDs, URLs and order if media will change;
-- UTC timestamp.
+Do not duplicate files or create a duplicate product merely to preview three already-approved product images unless the release explicitly requires a full product sandbox.
 
-Do not delete the review artifact until the monitoring decision is `KEPT` or the rollback has completed.
+## DEPLOY_APPROVED
 
-If rollback is required, restore exact pre-deployment state. Do not create a third interpretation of the page.
+Requires the exact approval token frozen in the JSON task.
 
-## Verification
+The executor must:
 
-Every production write is followed immediately by a live reread.
+1. rerun every current-state precondition;
+2. verify the private review artifact still equals the deterministic expected result;
+3. copy the current live template bytes to the frozen persistent rollback-template key and verify the snapshot checksum;
+4. copy the exact approved review bytes to the original live template key;
+5. reread and verify the live template;
+6. associate/reorder only the exact frozen existing media IDs through the guarded media route;
+7. reread product/media/template and verify all changed + protected sentinels;
+8. fetch the public live storefront and verify new markers and absence of removed fake urgency;
+9. record `deployed_at_utc` and return `LIVE_VERIFIED` with monitoring gates.
 
-A deployment is not complete because the write API returned 200. It is complete only when the reread confirms the frozen acceptance criteria.
+The product remains assigned to the same template suffix throughout.
 
-Output one of:
+## Transaction / rollback behaviour
 
-- `LIVE_VERIFIED`
-- `LIVE_VERIFY_FAILED`
+A Shopify theme + product-media release is not a single database transaction. Therefore the executor uses compensating rollback.
 
-On verification failure, stop and report the exact mismatch. Do not improvise a repair unless the manifest explicitly contains the repair operation.
+If the live template changes successfully but a later media/verification step fails:
 
-## Monitoring doctrine
+- restore the exact pre-deployment template bytes;
+- inspect current product-media state;
+- if the frozen new media set/order is present, remove those associations and restore the exact old order;
+- verify restoration;
+- return `DEPLOY_FAILED_ROLLED_BACK`.
 
-Baseline releases are judged for regression, not isolated causality.
+If restoration itself cannot be proven, return `ROLLBACK_FAILED` with exact observed state. Never improvise a third page state.
+
+## Explicit rollback
+
+An owner-approved rollback is allowed only when:
+
+- current live template still equals the approved release artifact; and
+- current media order still equals the frozen release order.
+
+If either has drifted since release, stop with `PRECONDITION_DRIFT` for research review instead of overwriting later work.
+
+Successful rollback returns `ROLLBACK_VERIFIED`.
+
+## Drift rule
+
+A frozen task is valid only for the exact state it was researched against.
+
+Any mismatch in inventory, variant, template checksum, dependency checksum, block structure, protected CTA/Downpay/shipping/chat sentinels, or media order returns `PRECONDITION_DRIFT` and stops before mutation.
+
+The executor never changes `7 of 10` to `6 of 10` by itself. The research operator must reread reality and freeze a revised task.
+
+## Monitoring
+
+Baseline releases are regression-controlled releases, not causal A/B tests.
 
 Use only traffic/events after `deployed_at_utc`.
 
-Always separate:
+Separate:
 
-- delivery quality: Meta spend, CTR, CPC, LPV, cost/LPV when freshness is proven;
-- onsite intent: clean LPV → ATC, cart progression, checkout;
-- mature outcome: purchase, CPA, ROAS/revenue after known purchase lag;
-- technical quality: wrong destination, errors, market/currency, broken CTA, tracking loss.
+- delivery quality: fresh Meta spend, CTR, CPC, LPV, cost/LPV;
+- onsite intent: clean LPV→ATC, cart progression, checkout;
+- mature outcome: purchase, CPA, ROAS/revenue after known multi-session lag;
+- technical quality: destination, market/currency, CTA/cart errors and tracking.
 
-Do not compare cost metrics from stale Meta mirrors.
+Never use stale Meta mirror cost metrics as current truth.
 
-The frozen task sets the exact gates. For current KRYO traffic, a typical baseline-release pattern is:
+Current KRYO baseline monitoring pattern:
 
-- ~25 clean paid LPVs: technical/regression checkpoint;
-- ~50 LPVs: directional intent checkpoint;
-- ~100 LPVs or 3–5 days: keep/revert checkpoint, while allowing mature purchases to lag.
-
-## Output contracts
-
-### REVIEW_BUILD success
-
-Return only:
-
-`REVIEW_READY`
-
-- task ID
-- review template key
-- preview URL
-- exact changed fields/assets
-- source live unchanged = PASS/FAIL
-- preconditions = PASS/FAIL
-- forbidden-change check = PASS/FAIL
-
-Then stop.
-
-### DEPLOY_APPROVED success
-
-Return only:
-
-`LIVE_VERIFIED`
-
-- task ID
-- deployed_at_utc
-- live template key
-- exact deployed changes
-- live verification checks
-- rollback snapshot location/reference
-- monitoring checkpoints
-
-Then stop.
-
-## Failure contract
-
-For any mismatch or unavailable required execution surface, stop with one of:
-
-- `PRECONDITION_DRIFT`
-- `REVIEW_BUILD_FAILED`
-- `APPROVAL_REQUIRED`
-- `EXECUTION_SURFACE_UNAVAILABLE`
-- `LIVE_VERIFY_FAILED`
-
-Never replace a failure with exploration.
+- ~25 clean paid LPVs: technical/regression check;
+- ~50 clean paid LPVs: directional intent check;
+- ~100 clean paid LPVs or 3–5 days: keep/investigate/revert decision;
+- current planning rollback trigger: LPV→ATC < ~6% at ~100 clean paid LPVs, no compensating checkout/purchase improvement, and traffic-side deterioration ruled out.
 
 ## Why this structure
 
-OpenAI's Codex guidance favours lean prompts, limited relevant tools, repository-local source-of-truth knowledge, progressive disclosure, and human steering at the intent/acceptance layer. Therefore this protocol intentionally keeps stable workflow in a reusable Skill and exact one-off decisions in a frozen manifest rather than repeating a giant prompt on every task.
+This follows the agent-harness principle: humans/research steer intent; agents execute a narrow, mechanically verifiable workflow. When execution fails, improve the missing capability or guardrail rather than asking the model to explore harder. The repository stores the stable executor and exact frozen release state, while the Codex prompt remains minimal.
