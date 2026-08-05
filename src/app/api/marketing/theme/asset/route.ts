@@ -1,23 +1,28 @@
 // Read theme assets — list by prefix or read a single asset's content.
 // Auth: x-sync-secret = MARKETING_SYNC_SECRET.
 //
-// GET /api/marketing/theme/asset?theme_id=X&prefix=templates/   → list assets
-// GET /api/marketing/theme/asset?theme_id=X&key=templates/product.kryo.json → read content
-// (theme_id defaults to live theme via /api/marketing/theme/info pattern)
+// GET /api/marketing/theme/asset?theme_id=X&prefix=templates/
+// GET /api/marketing/theme/asset?theme_id=X&key=templates/product.kryo.json
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getShopifyToken, getShopifyStoreUrl } from '@/lib/shopify-auth';
 
+const SHOPIFY_API_VERSION = '2026-07';
+
 interface ShopifyAssetListItem {
   key: string;
   size: number;
+  checksum?: string | null;
   content_type?: string;
+  created_at?: string;
   updated_at?: string;
   public_url?: string | null;
+  value?: string;
+  attachment?: string;
 }
 
 async function getLiveThemeId(storeUrl: string, token: string): Promise<number> {
-  const res = await fetch(`https://${storeUrl}/admin/api/2024-10/themes.json`, {
+  const res = await fetch(`https://${storeUrl}/admin/api/${SHOPIFY_API_VERSION}/themes.json`, {
     headers: { 'X-Shopify-Access-Token': token },
   });
   if (!res.ok) throw new Error(`themes.json ${res.status}`);
@@ -52,8 +57,7 @@ export async function GET(req: NextRequest) {
   const themeId = themeIdParam ? Number(themeIdParam) : await getLiveThemeId(storeUrl, token);
 
   if (key) {
-    // Read single asset content
-    const url = `https://${storeUrl}/admin/api/2024-10/themes/${themeId}/assets.json?asset[key]=${encodeURIComponent(key)}`;
+    const url = `https://${storeUrl}/admin/api/${SHOPIFY_API_VERSION}/themes/${themeId}/assets.json?asset[key]=${encodeURIComponent(key)}`;
     const res = await fetch(url, { headers: { 'X-Shopify-Access-Token': token } });
     if (!res.ok) {
       return NextResponse.json(
@@ -62,20 +66,22 @@ export async function GET(req: NextRequest) {
       );
     }
     const data = await res.json();
-    const asset = data.asset;
+    const asset = data.asset as ShopifyAssetListItem | undefined;
     return NextResponse.json({
       theme_id: themeId,
-      key: asset?.key,
-      content_type: asset?.content_type,
-      size: asset?.size,
+      key: asset?.key ?? null,
+      checksum_md5: asset?.checksum ?? null,
+      created_at: asset?.created_at ?? null,
+      updated_at: asset?.updated_at ?? null,
+      content_type: asset?.content_type ?? null,
+      size: asset?.size ?? null,
       value: asset?.value ?? null,
-      attachment_b64: asset?.attachment ?? null, // for binary assets
+      attachment_b64: asset?.attachment ?? null,
     });
   }
 
-  // List assets, filtered by prefix
   const res = await fetch(
-    `https://${storeUrl}/admin/api/2024-10/themes/${themeId}/assets.json`,
+    `https://${storeUrl}/admin/api/${SHOPIFY_API_VERSION}/themes/${themeId}/assets.json`,
     { headers: { 'X-Shopify-Access-Token': token } },
   );
   if (!res.ok) {
@@ -94,6 +100,11 @@ export async function GET(req: NextRequest) {
     total: all.length,
     returned: filtered.length,
     prefix,
-    assets: filtered.map((a) => ({ key: a.key, size: a.size, updated_at: a.updated_at })),
+    assets: filtered.map((a) => ({
+      key: a.key,
+      size: a.size,
+      checksum_md5: a.checksum ?? null,
+      updated_at: a.updated_at ?? null,
+    })),
   });
 }
