@@ -8,6 +8,7 @@ interrupt_message = true
 # Project subagents live in .codex/agents/*.toml when present.
 # Keep the primary Codex thread as the KRYO Growth Operator.
 # Use parallel agents for independent analysis/review; serialize write-heavy implementation.
+# Production Meta warehouse sync reads PIPEBOARD_API_TOKEN from Vercel.
 
 [mcp_servers.meta-ads-pipeboard]
 url = "https://meta-ads.mcp.pipeboard.co/"
