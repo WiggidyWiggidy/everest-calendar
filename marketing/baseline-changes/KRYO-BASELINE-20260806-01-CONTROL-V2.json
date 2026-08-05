@@ -1,0 +1,337 @@
+{
+  "task_id": "KRYO-BASELINE-20260806-01-CONTROL-V2",
+  "task_class": "BASELINE_CHANGE",
+  "version": 3,
+  "frozen_at_utc": "2026-08-05T18:00:00Z",
+  "commercial_purpose": "Improve trust, product tangibility and truthful urgency on the historical winning KRYO page without changing its proven one-SKU/direct-ATC purchase architecture.",
+  "approval_token": "DEPLOY_APPROVED KRYO-BASELINE-20260806-01-CONTROL-V2",
+  "rollback_token": "ROLLBACK_APPROVED KRYO-BASELINE-20260806-01-CONTROL-V2",
+  "vercel": {
+    "project_id": "prj_qR9zv74j4YKo8x55SlwpV9SvA8xy",
+    "team_id": "team_APTSoQ25dQx4XWTLo2B1jMhc"
+  },
+  "execution": {
+    "base_url": "https://everest-calendar.vercel.app",
+    "routes": {
+      "product": "/api/marketing/shopify/get-product",
+      "media": "/api/marketing/shopify/product-media-baseline",
+      "theme_asset": "/api/marketing/theme/asset",
+      "deploy_asset": "/api/marketing/theme/deploy-asset"
+    },
+    "forbidden_routes": [
+      "/api/marketing/shopify/admin-graphql",
+      "/api/marketing/theme/clone-template",
+      "/api/marketing/theme/configure-product"
+    ]
+  },
+  "product": {
+    "gid": "gid://shopify/Product/9334472311092",
+    "expected": {
+      "id": "9334472311092",
+      "handle": "kryo2",
+      "status": "ACTIVE",
+      "template_suffix": "kryo-2-2-track-cta2",
+      "total_inventory": 7,
+      "variant_count": 1,
+      "variant_id": "49131658805556",
+      "variant_inventory_quantity": 7
+    }
+  },
+  "theme": {
+    "id": 167131775284,
+    "gid": "gid://shopify/OnlineStoreTheme/167131775284",
+    "live_key": "templates/product.kryo-2-2-track-cta2.json",
+    "live_md5": "5ed437c042f77e959da8adbe964fedc2",
+    "review_key": "templates/product.kryo-2-2-control-v2-review.json",
+    "rollback_key": "templates/product.kryo-2-2-v2-rb.json"
+  },
+  "dependencies": {
+    "testimonial_block": {
+      "key": "blocks/ai_gen_block_5edb068.liquid",
+      "md5": "29cee03c386eaeac2fda55a1503a5e01"
+    }
+  },
+  "source_sentinels": [
+    {
+      "path": "sections.blocks_dijJNt.blocks.ai_gen_block_bbfce70_CeRWNE.settings.info_text",
+      "equals": "ONLY AED 3,990 TODAY | OFFER ENDS FRIDAY"
+    },
+    {
+      "path": "sections.blocks_dijJNt.blocks.ai_gen_block_d4edf68_nV8nd6.settings.announcement_text",
+      "equals": "AED 1,500 OFF APPLIED | OFFER ENDS FRIDAY"
+    },
+    {
+      "path": "sections.blocks_dijJNt.blocks.ai_gen_block_a11bf55_CzyXYf.settings.ship_date",
+      "equals": "August 15 | August Dubai batch almost full."
+    },
+    {
+      "path": "sections.blocks_dijJNt.blocks.ai_gen_block_55e2f8d_jEB4tB.settings.info_text",
+      "equals": "ONLY AED 3,990 TODAY"
+    },
+    {
+      "path": "sections.main.blocks.icon_with_text_4mxWMc.settings.heading_3",
+      "equals": "30 Day Risk-free Trial"
+    },
+    {
+      "path": "sections.blocks_dijJNt.block_order",
+      "equals": [
+        "ai_gen_block_bbfce70_CeRWNE",
+        "ai_gen_block_d4edf68_nV8nd6",
+        "ai_gen_block_a11bf55_CzyXYf",
+        "ai_gen_block_55e2f8d_jEB4tB",
+        "ai_gen_block_85a4796_YfYfPR",
+        "ai_gen_block_93b0085_RdFjHB",
+        "ai_gen_block_e13ab73_Bka7Mc",
+        "ai_gen_block_85a4796_cNFyY6",
+        "ai_gen_block_32cf0df_fNk3Bp",
+        "ai_gen_block_f5a1e10_biH6Q3",
+        "ai_gen_block_90ac413_pUqzVq",
+        "ai_gen_block_03d4a60_rAeFT8",
+        "ai_gen_block_fc789f9_deKhqQ",
+        "ai_gen_block_a89f847_WFJjBh"
+      ]
+    }
+  ],
+  "protected_sentinels": [
+    {
+      "path": "sections.blocks_dijJNt.blocks.ai_gen_block_a11bf55_CzyXYf.settings.headline",
+      "equals": "Step in tired. Step out switched on."
+    },
+    {
+      "path": "sections.blocks_dijJNt.blocks.ai_gen_block_a11bf55_CzyXYf.settings.subheadline",
+      "equals": "KRYO delivers controlled cold immersion inside your bathroom, designed to help you move from half-awake to switched on in seconds."
+    },
+    {
+      "path": "sections.blocks_dijJNt.blocks.ai_gen_block_a11bf55_CzyXYf.settings.primary_button_link",
+      "equals": "https://everestlabs.co/cart/add?id=49131658805556&quantity=1&return_to=%2Fcart"
+    },
+    {
+      "path": "sections.blocks_dijJNt.blocks.ai_gen_block_bbfce70_CeRWNE.settings.button_link",
+      "equals": "https://everestlabs.co/cart/add?id=49131658805556&quantity=1&return_to=%2Fcart"
+    },
+    {
+      "path": "sections.blocks_dijJNt.blocks.ai_gen_block_55e2f8d_jEB4tB.settings.button_link",
+      "equals": "https://everestlabs.co/cart/add?id=49131658805556&quantity=1&return_to=%2Fcart"
+    },
+    {
+      "path": "sections.main.blocks.icon_with_text_4mxWMc.settings.heading_1",
+      "equals": "AED 1,500 Saving"
+    },
+    {
+      "path": "sections.main.blocks.icon_with_text_4mxWMc.settings.heading_2",
+      "equals": "Performance Flow Upgrade"
+    },
+    {
+      "path": "sections.main.blocks.downpay_downpay_form_NTUhQx.settings.default_to_pay_in_full",
+      "equals": false
+    },
+    {
+      "path": "sections.main.blocks.downpay_downpay_form_NTUhQx.settings.deposit_help_text",
+      "equals": "50% today. Balance before dispatch."
+    },
+    {
+      "path": "sections.main.blocks.collapsible_tab_GEJnT9.settings.heading",
+      "equals": "Free Shipping & Returns"
+    },
+    {
+      "path": "sections.main.blocks.collapsible_tab_GEJnT9.settings.content",
+      "contains": "Free Shipping and Returns to Dubai"
+    },
+    {
+      "path": "sections.main.blocks.custom_liquid_EW3PiG.settings.custom_liquid",
+      "contains": "$chatway.openChatwayWidget"
+    },
+    {
+      "path": "sections.blocks_dijJNt.blocks.ai_gen_block_a89f847_WFJjBh.settings.button_link",
+      "equals": "https://everestlabs.co/cart/add?id=49131658805556&quantity=1&return_to=%2Fcart"
+    }
+  ],
+  "operations": [
+    {
+      "label": "T1 truthful first sticky scarcity",
+      "op": "set",
+      "path": "sections.blocks_dijJNt.blocks.ai_gen_block_bbfce70_CeRWNE.settings.info_text",
+      "from": "ONLY AED 3,990 TODAY | OFFER ENDS FRIDAY",
+      "to": "AED 3,990 · 7 OF 10 REMAIN · NEXT DISPATCH 15 AUGUST"
+    },
+    {
+      "label": "T2 truthful announcement scarcity",
+      "op": "set",
+      "path": "sections.blocks_dijJNt.blocks.ai_gen_block_d4edf68_nV8nd6.settings.announcement_text",
+      "from": "AED 1,500 OFF APPLIED | OFFER ENDS FRIDAY",
+      "to": "AUGUST DUBAI ALLOCATION · 7 OF 10 REMAIN · NEXT DISPATCH 15 AUGUST"
+    },
+    {
+      "label": "T3 truthful hero dispatch line",
+      "op": "set",
+      "path": "sections.blocks_dijJNt.blocks.ai_gen_block_a11bf55_CzyXYf.settings.ship_date",
+      "from": "August 15 | August Dubai batch almost full.",
+      "to": "Next dispatch 15 August · 7 of 10 August allocations remain."
+    },
+    {
+      "label": "T4 truthful second sticky scarcity",
+      "op": "set",
+      "path": "sections.blocks_dijJNt.blocks.ai_gen_block_55e2f8d_jEB4tB.settings.info_text",
+      "from": "ONLY AED 3,990 TODAY",
+      "to": "AED 3,990 · 7 OF 10 REMAIN"
+    },
+    {
+      "label": "T5 purchase reassurance",
+      "op": "set",
+      "path": "sections.main.blocks.icon_with_text_4mxWMc.settings.heading_3",
+      "from": "30 Day Risk-free Trial",
+      "to": "30 Day Risk-free Trial · Free Dubai Delivery & Returns"
+    },
+    {
+      "label": "T6 tester testimonial carousel",
+      "op": "insert_block_after",
+      "section": "blocks_dijJNt",
+      "after_id": "ai_gen_block_93b0085_RdFjHB",
+      "before_id": "ai_gen_block_e13ab73_Bka7Mc",
+      "block_id": "ai_gen_block_5edb068_GqHjBY",
+      "block": {
+        "type": "ai_gen_block_5edb068",
+        "settings": {
+          "max_width": 900,
+          "padding_top": 80,
+          "padding_bottom": 80,
+          "background_color": "#fafbfc",
+          "text_color": "#0f1419",
+          "author_color": "#5a6c7d",
+          "quote_size": 24,
+          "author_size": 12,
+          "quote_1": "I struggle with poor sleep and wake up groggy most mornings. KRYO obviously does not fix a bad night's sleep, but it changes how I feel when I get up. I keep mine at 5°C and do 45 seconds. It is intense, but manageable. Then I have a coffee, get some sunlight and I am ready to start the day.",
+          "author_1": "Tom M. · KRYO Founder",
+          "quote_2": "I have used cold plunges before and this feels completely different. The halo covers your upper body and the airflow makes the cold feel even sharper. It is not relaxing at all, but that is the point. The hardest part is knowing you could take one small step and make it stop.",
+          "author_2": "John Z. · Early KRYO Tester",
+          "quote_3": "I would still choose a long cold plunge after a really hard training session but to start the day this fits my schedule better. It is ready when I need it, takes less than a minute and uses fresh water every time so no rinsing off afterwards. It is something I can actually see myself continuing to use.",
+          "author_3": "James S. · Early KRYO Tester"
+        },
+        "blocks": {}
+      }
+    }
+  ],
+  "review_sentinels": [
+    {
+      "path": "sections.blocks_dijJNt.blocks.ai_gen_block_bbfce70_CeRWNE.settings.info_text",
+      "equals": "AED 3,990 · 7 OF 10 REMAIN · NEXT DISPATCH 15 AUGUST"
+    },
+    {
+      "path": "sections.blocks_dijJNt.blocks.ai_gen_block_d4edf68_nV8nd6.settings.announcement_text",
+      "equals": "AUGUST DUBAI ALLOCATION · 7 OF 10 REMAIN · NEXT DISPATCH 15 AUGUST"
+    },
+    {
+      "path": "sections.blocks_dijJNt.blocks.ai_gen_block_a11bf55_CzyXYf.settings.ship_date",
+      "equals": "Next dispatch 15 August · 7 of 10 August allocations remain."
+    },
+    {
+      "path": "sections.blocks_dijJNt.blocks.ai_gen_block_55e2f8d_jEB4tB.settings.info_text",
+      "equals": "AED 3,990 · 7 OF 10 REMAIN"
+    },
+    {
+      "path": "sections.main.blocks.icon_with_text_4mxWMc.settings.heading_3",
+      "equals": "30 Day Risk-free Trial · Free Dubai Delivery & Returns"
+    },
+    {
+      "path": "sections.blocks_dijJNt.blocks.ai_gen_block_5edb068_GqHjBY.settings.author_1",
+      "equals": "Tom M. · KRYO Founder"
+    },
+    {
+      "path": "sections.blocks_dijJNt.blocks.ai_gen_block_5edb068_GqHjBY.settings.author_2",
+      "equals": "John Z. · Early KRYO Tester"
+    },
+    {
+      "path": "sections.blocks_dijJNt.blocks.ai_gen_block_5edb068_GqHjBY.settings.author_3",
+      "equals": "James S. · Early KRYO Tester"
+    },
+    {
+      "path": "sections.blocks_dijJNt.block_order",
+      "equals": [
+        "ai_gen_block_bbfce70_CeRWNE",
+        "ai_gen_block_d4edf68_nV8nd6",
+        "ai_gen_block_a11bf55_CzyXYf",
+        "ai_gen_block_55e2f8d_jEB4tB",
+        "ai_gen_block_85a4796_YfYfPR",
+        "ai_gen_block_93b0085_RdFjHB",
+        "ai_gen_block_5edb068_GqHjBY",
+        "ai_gen_block_e13ab73_Bka7Mc",
+        "ai_gen_block_85a4796_cNFyY6",
+        "ai_gen_block_32cf0df_fNk3Bp",
+        "ai_gen_block_f5a1e10_biH6Q3",
+        "ai_gen_block_90ac413_pUqzVq",
+        "ai_gen_block_03d4a60_rAeFT8",
+        "ai_gen_block_fc789f9_deKhqQ",
+        "ai_gen_block_a89f847_WFJjBh"
+      ]
+    }
+  ],
+  "media": {
+    "expected_before_ids": [
+      "gid://shopify/MediaImage/39244795019572",
+      "gid://shopify/MediaImage/39244723159348",
+      "gid://shopify/MediaImage/39244723192116"
+    ],
+    "add_existing_file_ids": [
+      "gid://shopify/MediaImage/39545471172916",
+      "gid://shopify/MediaImage/39545471205684",
+      "gid://shopify/MediaImage/39545471140148"
+    ],
+    "desired_order": [
+      "gid://shopify/MediaImage/39244795019572",
+      "gid://shopify/MediaImage/39545471172916",
+      "gid://shopify/MediaImage/39545471205684",
+      "gid://shopify/MediaImage/39545471140148",
+      "gid://shopify/MediaImage/39244723159348",
+      "gid://shopify/MediaImage/39244723192116"
+    ],
+    "review_packet": [
+      {
+        "id": "gid://shopify/MediaImage/39545471172916",
+        "label": "What's in the box",
+        "url": "https://cdn.shopify.com/s/files/1/0718/0550/1748/files/kryo-whats-in-the-box.webp?v=1785069614"
+      },
+      {
+        "id": "gid://shopify/MediaImage/39545471205684",
+        "label": "Front view",
+        "url": "https://cdn.shopify.com/s/files/1/0718/0550/1748/files/kryo-front-view.webp?v=1785069614"
+      },
+      {
+        "id": "gid://shopify/MediaImage/39545471140148",
+        "label": "Side view",
+        "url": "https://cdn.shopify.com/s/files/1/0718/0550/1748/files/kryo-side-view.webp?v=1785069614"
+      }
+    ]
+  },
+  "constraints": {
+    "max_template_bytes": 524288,
+    "max_blocks_per_section": 50,
+    "block_section": "blocks_dijJNt"
+  },
+  "preview": {
+    "url": "https://everestlabs.co/products/kryo2?view=kryo-2-2-control-v2-review&country=AE",
+    "live_url": "https://everestlabs.co/products/kryo2?country=AE",
+    "review_contains": [
+      "7 OF 10 REMAIN",
+      "Next dispatch 15 August",
+      "Tom M. · KRYO Founder",
+      "Free Dubai Delivery"
+    ],
+    "review_not_contains": [
+      "OFFER ENDS FRIDAY"
+    ],
+    "live_contains_before_review": [
+      "OFFER ENDS FRIDAY",
+      "August Dubai batch almost full"
+    ],
+    "live_not_contains_before_review": [
+      "Tom M. · KRYO Founder"
+    ]
+  },
+  "monitoring": {
+    "historical_lpv_to_atc": 0.1,
+    "checkpoint_1": "~25 clean paid LPVs: technical/regression check",
+    "checkpoint_2": "~50 clean paid LPVs: directional intent check",
+    "checkpoint_3": "~100 clean paid LPVs or 3–5 days: keep/investigate/revert decision",
+    "rollback_trigger": "LPV→ATC < ~6% at ~100 clean paid LPVs, no compensating checkout/purchase improvement, and traffic-side deterioration ruled out"
+  }
+}
