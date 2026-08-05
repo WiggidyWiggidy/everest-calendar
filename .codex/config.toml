@@ -8,17 +8,3 @@ interrupt_message = true
 # Project subagents live in .codex/agents/*.toml.
 # Keep the primary Codex thread as the KRYO Growth Operator.
 # Use parallel agents for independent analysis/review; serialize write-heavy implementation.
-
-# Official Meta Ads MCP. Authentication is completed locally with:
-#   codex mcp login meta-ads
-# Codex stores MCP OAuth credentials separately from Claude Code.
-# Read-only tools can run without repeated prompts; tools not marked read-only
-# require approval before they can mutate live Meta advertising objects.
-[mcp_servers.meta-ads]
-url = "https://mcp.facebook.com/ads"
-auth = "oauth"
-enabled = true
-required = false
-default_tools_approval_mode = "writes"
-startup_timeout_sec = 20
-tool_timeout_sec = 60
