@@ -58,7 +58,8 @@ async function call(baseUrl: string, path: string, body: object = {}): Promise<S
 }
 
 function buildSteps(): SyncStep[] {
-  const metaEnabled = envEnabled('MARKETING_SYNC_META_ENABLED');
+  const metaCredentialsPresent = Boolean(process.env.META_ACCESS_TOKEN && process.env.META_AD_ACCOUNT_ID);
+  const metaEnabled = envEnabled('MARKETING_SYNC_META_ENABLED') || metaCredentialsPresent;
   const ga4CredentialsPresent = Boolean(
     process.env.GA_PROPERTY_ID &&
     (
@@ -80,33 +81,33 @@ function buildSteps(): SyncStep[] {
       path: '/api/marketing/sync/meta-ad-insights',
       body: { days: 8 },
       enabled: metaEnabled,
-      reason_when_disabled: 'disabled_until_official_meta_graph_token_is_validated',
+      reason_when_disabled: 'disabled_until_meta_credentials_are_present',
     },
     {
       name: 'meta_hourly',
       path: '/api/marketing/sync/meta-hourly',
       body: { days: 8 },
       enabled: metaEnabled,
-      reason_when_disabled: 'disabled_until_official_meta_graph_token_is_validated',
+      reason_when_disabled: 'disabled_until_meta_credentials_are_present',
     },
     {
       name: 'meta_campaigns',
       path: '/api/marketing/sync/meta-campaigns',
       enabled: metaEnabled,
-      reason_when_disabled: 'disabled_until_official_meta_graph_token_is_validated',
+      reason_when_disabled: 'disabled_until_meta_credentials_are_present',
     },
     {
       name: 'meta_dce',
       path: '/api/marketing/sync/meta-dce',
       body: { days: 8 },
       enabled: metaEnabled,
-      reason_when_disabled: 'disabled_until_official_meta_graph_token_is_validated',
+      reason_when_disabled: 'disabled_until_meta_credentials_are_present',
     },
     {
       name: 'meta_url_audit',
       path: '/api/marketing/sync/meta-url-audit',
       enabled: metaEnabled,
-      reason_when_disabled: 'disabled_until_official_meta_graph_token_is_validated',
+      reason_when_disabled: 'disabled_until_meta_credentials_are_present',
     },
     {
       name: 'ga4_hourly',
