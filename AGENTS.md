@@ -1,37 +1,82 @@
-# Everest Calendar Agent Rules
+# KRYO Codex Operating Contract
 
-## KRYO marketing work
+Codex is implementation-only. Do not choose marketing strategy, rewrite offers, change copy, change prices, or change live commerce state unless Tom gives the exact action.
 
-Before any KRYO marketing analysis, website experiment, ad draft, or customer-facing copy:
+## Current KRYO control
 
-1. Read `/Users/happy/Desktop/Claude Project/everest-calendar/MARKETING_RUNBOOK.md`.
-2. Read `/Users/happy/Desktop/Claude Project/everest-calendar/KRYO_SYSTEM_OPERATING_MAP.md`.
-3. Read the relevant files in `/Users/happy/Desktop/Claude Project/everest-calendar/marketing/`.
-4. Run source health before recommendations:
+Current live control:
+- Product handle: kryo2
+- Product ID: 9334472311092
+- Variant ID: 49131658805556
+- Live theme ID: 167131775284
+- Live template: templates/product.kryo-2-2-track-cta2.json
 
-```bash
-npm run audit:kryo-source-health
-```
+Do not use old KRYO handles as current truth:
+- kryo_
+- kryo2_
+- kryo-setup
+- kryo-2-0
+- kryo2-uae
 
-## Hard rules
+Historical docs may mention those handles. Treat them as archived unless Tom explicitly asks for historical research.
 
-- No live Shopify, theme, product, ad, budget, or offer mutation without Tom approving a named patch.
-- Ads created for Tom approval must land paused.
-- Website changes must be branch and PR based unless Tom explicitly asks for a direct hotfix.
-- Every website experiment needs an experiment ID, landing-page version, hypothesis, primary metric, guardrail, baseline, decision rule, and rollback plan.
-- Every ad needs an angle ID and hook ID.
-- Ads and landing pages must communicate the same promise, proof, offer, scarcity claim, and CTA.
-- Every recommendation must state the evidence, source freshness, expected metric movement, and what would prove it wrong.
-- Never invent unsupported medical, health, price, product, date, delivery, availability, or warranty claims.
-- Use AED for UAE-facing KRYO copy.
-- Failed, inconclusive, invalid, and tracking-failure experiments must be recorded.
-- Do not produce marketing output merely to appear productive.
+## Shopify execution lanes
 
-## Current KRYO commands
+Use only these lanes:
 
-- `npm run audit:kryo-source-health` validates source freshness.
-- `npm run analyse:kryo-performance` creates the chat analyst pack.
-- `npm run operator:kryo-growth-brief` creates the founder decision brief.
-- `npm run operator:kryo-experiment-packet` creates a proposed experiment packet.
-- `npm run audit:kryo-measurement-spine` checks lead/deposit/experiment spine readiness.
-- `npm run operator:kryo-preflight -- --mode website --handle kryo2_` checks website readiness.
+### Lane 0: audit only
+Read files, inspect code, check environment, and report.
+No external writes.
+
+### Lane 1: live theme micro-edit
+For one exact string replacement inside one existing Shopify theme asset.
+
+Allowed command:
+- node scripts/kryo-theme-asset-replace.mjs
+
+Allowed execution surface inside the script:
+- GET /api/marketing/theme/asset
+- POST /api/marketing/theme/deploy-asset
+
+Forbidden:
+- Shopify MCP write
+- Shopify CLI
+- shopify theme push
+- shopify theme pull
+- clone-template
+- clone-product
+- configure-product
+- product template reassignment
+- product description edits
+- price, variant, inventory, checkout, cart, Downpay, tracking, media changes
+
+### Lane 2: frozen baseline release
+For multi-step approved releases only.
+
+Allowed command:
+- bash scripts/run-kryo-baseline.sh
+
+Do not use this lane for one-line text edits.
+
+### Lane 3: product/admin data edit
+For product title, price, inventory, variants, product images, collections.
+
+Do not use this lane for theme text or template JSON.
+
+## Routing rules
+
+For KRYO Shopify tasks:
+- Do not read CLAUDE.md.
+- Do not read broad research docs unless the task is explicitly research.
+- Do not use PR #155 multi-agent workflow for direct Shopify fixes.
+- Do not use Shopify CLI as fallback.
+- Do not use Shopify MCP for MAIN theme writes.
+- If the requested change does not fit a lane, stop and report UNSUPPORTED_LANE.
+- If two attempts fail, stop. Do not fix forward.
+
+## Verification rule
+
+Every change must follow:
+read current state -> exact change -> reread same state -> public verification where applicable -> PASS/FAIL.
+
+A tool success response is not proof.

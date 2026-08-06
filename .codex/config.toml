@@ -1,0 +1,8 @@
+[mcp_servers.meta-ads]
+url = "https://mcp.facebook.com/ads"
+auth = "oauth"
+enabled = true
+required = false
+default_tools_approval_mode = "writes"
+startup_timeout_sec = 20
+tool_timeout_sec = 60
