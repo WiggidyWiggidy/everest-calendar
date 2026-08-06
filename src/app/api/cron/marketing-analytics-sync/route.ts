@@ -62,23 +62,12 @@ function buildSteps(): SyncStep[] {
   const ga4Enabled = envEnabled('MARKETING_SYNC_GA4_ENABLED');
   const gscEnabled = envEnabled('MARKETING_SYNC_GSC_ENABLED');
   const clarityEnabled = envEnabled('MARKETING_SYNC_CLARITY_ENABLED');
+  const legacyShopifyMetricsEnabled = envEnabled('MARKETING_SYNC_LEGACY_SHOPIFY_METRICS_ENABLED');
   const legacyAttributionBatchEnabled = envEnabled('MARKETING_SYNC_LEGACY_ATTRIBUTION_BATCH_ENABLED');
   const legacyScorecardEnabled = envEnabled('MARKETING_SYNC_LEGACY_SCORECARD_ENABLED');
   const legacyFindingsRefreshEnabled = envEnabled('MARKETING_SYNC_LEGACY_FINDINGS_REFRESH_ENABLED');
 
   return [
-    {
-      name: 'meta',
-      path: '/api/marketing/sync/meta',
-      enabled: metaEnabled,
-      reason_when_disabled: 'disabled_until_official_meta_graph_token_is_validated',
-    },
-    {
-      name: 'meta_campaigns',
-      path: '/api/marketing/sync/meta-campaigns',
-      enabled: metaEnabled,
-      reason_when_disabled: 'disabled_until_official_meta_graph_token_is_validated',
-    },
     {
       name: 'meta_ad_insights',
       path: '/api/marketing/sync/meta-ad-insights',
@@ -90,6 +79,12 @@ function buildSteps(): SyncStep[] {
       name: 'meta_hourly',
       path: '/api/marketing/sync/meta-hourly',
       body: { days: 8 },
+      enabled: metaEnabled,
+      reason_when_disabled: 'disabled_until_official_meta_graph_token_is_validated',
+    },
+    {
+      name: 'meta_campaigns',
+      path: '/api/marketing/sync/meta-campaigns',
       enabled: metaEnabled,
       reason_when_disabled: 'disabled_until_official_meta_graph_token_is_validated',
     },
@@ -107,22 +102,6 @@ function buildSteps(): SyncStep[] {
       reason_when_disabled: 'disabled_until_official_meta_graph_token_is_validated',
     },
     {
-      name: 'clarity',
-      path: '/api/marketing/sync/clarity',
-      enabled: clarityEnabled,
-      reason_when_disabled: 'disabled_by_default_secondary_context_only',
-    },
-    {
-      name: 'shopify',
-      path: '/api/marketing/sync/shopify',
-      enabled: true,
-    },
-    {
-      name: 'shopify_funnel',
-      path: '/api/marketing/sync/shopify-funnel',
-      enabled: true,
-    },
-    {
       name: 'ga4_hourly',
       path: '/api/marketing/sync/ga4-hourly',
       body: { days: 7, kryo_only: false },
@@ -132,9 +111,27 @@ function buildSteps(): SyncStep[] {
     {
       name: 'gsc',
       path: '/api/marketing/sync/gsc',
-      body: { days: 14, freshDays: 2, includeHourly: false },
+      body: { days: 14, freshDays: 2, includeHourly: false, writeFindings: false },
       enabled: gscEnabled,
       reason_when_disabled: 'disabled_until_gsc_oauth_refresh_token_is_validated',
+    },
+    {
+      name: 'clarity',
+      path: '/api/marketing/sync/clarity',
+      enabled: clarityEnabled,
+      reason_when_disabled: 'disabled_by_default_secondary_context_only',
+    },
+    {
+      name: 'legacy_shopify_order_totals',
+      path: '/api/marketing/sync/shopify',
+      enabled: legacyShopifyMetricsEnabled,
+      reason_when_disabled: 'disabled_because_kryo_shopify_daily_readout_is_the_trusted_shopify_source',
+    },
+    {
+      name: 'legacy_shopify_funnel',
+      path: '/api/marketing/sync/shopify-funnel',
+      enabled: legacyShopifyMetricsEnabled,
+      reason_when_disabled: 'disabled_because_kryo_shopify_daily_readout_is_the_trusted_shopify_source',
     },
     {
       name: 'process_attribution',
