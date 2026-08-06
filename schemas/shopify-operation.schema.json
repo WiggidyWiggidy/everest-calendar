@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://everestlabs.co/schemas/shopify-operation.schema.json",
+  "title": "Shopify operation manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["operation_type", "surface", "target", "change", "verification", "rollback", "forbidden", "approval_required"],
+  "properties": {
+    "operation_type": { "type": "string", "minLength": 1 },
+    "surface": { "type": "string", "minLength": 1 },
+    "target": { "type": "object", "minProperties": 1 },
+    "change": { "type": "object", "minProperties": 1 },
+    "verification": { "type": "object", "minProperties": 1 },
+    "rollback": { "type": "object" },
+    "forbidden": { "type": "array", "items": { "type": "string" } },
+    "approval_required": { "type": "boolean" },
+    "historical_research": { "type": "boolean" },
+    "tools": { "type": "array", "items": { "type": "string" } }
+  }
+}

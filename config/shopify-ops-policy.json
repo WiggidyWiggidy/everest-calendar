@@ -1,0 +1,45 @@
+{
+  "allowed_operation_types": [
+    "theme_asset_replace",
+    "theme_asset_json_patch",
+    "page_content_edit",
+    "product_data_edit",
+    "product_media_edit",
+    "navigation_menu_edit",
+    "full_page_template_release",
+    "ab_experiment_build",
+    "rollback"
+  ],
+  "implemented_operation_types": [
+    "theme_asset_replace",
+    "theme_asset_json_patch"
+  ],
+  "forbidden_tools": [
+    "Shopify CLI",
+    "Shopify MCP write",
+    "Shopify plugin write"
+  ],
+  "allowed_api_surfaces": {
+    "theme_assets": [
+      "GET /api/marketing/theme/asset",
+      "POST /api/marketing/theme/deploy-asset"
+    ],
+    "content_pages": [
+      "Shopify Page API / pageUpdate"
+    ],
+    "product_data": [
+      "Shopify GraphQL product mutations"
+    ]
+  },
+  "protected_surfaces": [
+    "checkout",
+    "cart",
+    "tracking",
+    "Downpay",
+    "price",
+    "inventory",
+    "variant",
+    "product_template_assignment"
+  ],
+  "protected_surface_rule": "Protected surfaces require explicit manifest permission."
+}

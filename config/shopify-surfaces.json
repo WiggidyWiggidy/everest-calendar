@@ -1,0 +1,24 @@
+{
+  "store_domain": "everestlabs.co",
+  "live_theme_id": 167131775284,
+  "products": {
+    "kryo": {
+      "handle": "kryo2",
+      "id": "9334472311092",
+      "variant_id": "49131658805556",
+      "template_key": "templates/product.kryo-2-2-track-cta2.json"
+    }
+  },
+  "pages": {
+    "kryo_resources": {
+      "url": "https://everestlabs.co/pages/kryo-resources"
+    }
+  },
+  "historical_handles": [
+    "kryo_",
+    "kryo2_",
+    "kryo-setup",
+    "kryo-2-0",
+    "kryo2-uae"
+  ]
+}
