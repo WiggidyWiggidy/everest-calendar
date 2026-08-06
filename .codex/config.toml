@@ -9,11 +9,6 @@ interrupt_message = true
 # Keep the primary Codex thread as the KRYO Growth Operator.
 # Use parallel agents for independent analysis/review; serialize write-heavy implementation.
 
-[mcp_servers.meta-ads-pipeboard]
-url = "https://meta-ads.mcp.pipeboard.co/"
-bearer_token_env_var = "PIPEBOARD_API_TOKEN"
-enabled = true
-required = false
-default_tools_approval_mode = "writes"
-startup_timeout_sec = 15
-tool_timeout_sec = 60
+# IMPORTANT: Do not re-enable Pipeboard Meta Ads MCP.
+# KRYO paid data source of truth is the official Meta Graph API sync into Supabase only.
+# Pipeboard was removed because it caused quota/token failures and stale/conflicting data paths.
