@@ -62,6 +62,7 @@ function buildSteps(): SyncStep[] {
   const ga4Enabled = envEnabled('MARKETING_SYNC_GA4_ENABLED');
   const gscEnabled = envEnabled('MARKETING_SYNC_GSC_ENABLED');
   const clarityEnabled = envEnabled('MARKETING_SYNC_CLARITY_ENABLED');
+  const legacyScorecardEnabled = envEnabled('MARKETING_SYNC_LEGACY_SCORECARD_ENABLED');
 
   return [
     {
@@ -146,7 +147,8 @@ function buildSteps(): SyncStep[] {
     {
       name: 'scorecard',
       path: '/api/marketing/kryo/scorecard',
-      enabled: true,
+      enabled: legacyScorecardEnabled,
+      reason_when_disabled: 'disabled_until_scorecard_is_refactored_to_use_vw_kryo_source_health',
     },
   ];
 }
