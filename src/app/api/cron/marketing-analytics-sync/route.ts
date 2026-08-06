@@ -59,7 +59,14 @@ async function call(baseUrl: string, path: string, body: object = {}): Promise<S
 
 function buildSteps(): SyncStep[] {
   const metaEnabled = envEnabled('MARKETING_SYNC_META_ENABLED');
-  const ga4Enabled = envEnabled('MARKETING_SYNC_GA4_ENABLED');
+  const ga4CredentialsPresent = Boolean(
+    process.env.GA_PROPERTY_ID &&
+    (
+      process.env.GA_SERVICE_ACCOUNT_JSON ||
+      (process.env.GOOGLE_OAUTH_CLIENT_ID && process.env.GOOGLE_OAUTH_CLIENT_SECRET && process.env.GOOGLE_OAUTH_REFRESH_TOKEN)
+    )
+  );
+  const ga4Enabled = envEnabled('MARKETING_SYNC_GA4_ENABLED') || ga4CredentialsPresent;
   const gscEnabled = envEnabled('MARKETING_SYNC_GSC_ENABLED');
   const clarityEnabled = envEnabled('MARKETING_SYNC_CLARITY_ENABLED');
   const legacyShopifyMetricsEnabled = envEnabled('MARKETING_SYNC_LEGACY_SHOPIFY_METRICS_ENABLED');
@@ -106,7 +113,7 @@ function buildSteps(): SyncStep[] {
       path: '/api/marketing/sync/ga4-hourly',
       body: { days: 7, kryo_only: false },
       enabled: ga4Enabled,
-      reason_when_disabled: 'disabled_until_ga4_property_permission_is_validated',
+      reason_when_disabled: 'disabled_until_ga4_credentials_are_present',
     },
     {
       name: 'gsc',
