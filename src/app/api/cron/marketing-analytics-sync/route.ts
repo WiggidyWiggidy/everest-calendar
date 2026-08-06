@@ -62,6 +62,7 @@ function buildSteps(): SyncStep[] {
   const ga4Enabled = envEnabled('MARKETING_SYNC_GA4_ENABLED');
   const gscEnabled = envEnabled('MARKETING_SYNC_GSC_ENABLED');
   const clarityEnabled = envEnabled('MARKETING_SYNC_CLARITY_ENABLED');
+  const legacyAttributionBatchEnabled = envEnabled('MARKETING_SYNC_LEGACY_ATTRIBUTION_BATCH_ENABLED');
   const legacyScorecardEnabled = envEnabled('MARKETING_SYNC_LEGACY_SCORECARD_ENABLED');
   const legacyFindingsRefreshEnabled = envEnabled('MARKETING_SYNC_LEGACY_FINDINGS_REFRESH_ENABLED');
 
@@ -138,7 +139,8 @@ function buildSteps(): SyncStep[] {
     {
       name: 'process_attribution',
       path: '/api/marketing/launch/process-attribution',
-      enabled: true,
+      enabled: legacyAttributionBatchEnabled,
+      reason_when_disabled: 'disabled_until_legacy_compute_ad_metrics_daily_is_refactored_or_removed',
     },
     {
       name: 'refresh_findings',
