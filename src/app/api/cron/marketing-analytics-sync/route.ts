@@ -63,6 +63,7 @@ function buildSteps(): SyncStep[] {
   const gscEnabled = envEnabled('MARKETING_SYNC_GSC_ENABLED');
   const clarityEnabled = envEnabled('MARKETING_SYNC_CLARITY_ENABLED');
   const legacyScorecardEnabled = envEnabled('MARKETING_SYNC_LEGACY_SCORECARD_ENABLED');
+  const legacyFindingsRefreshEnabled = envEnabled('MARKETING_SYNC_LEGACY_FINDINGS_REFRESH_ENABLED');
 
   return [
     {
@@ -142,7 +143,8 @@ function buildSteps(): SyncStep[] {
     {
       name: 'refresh_findings',
       path: '/api/marketing/launch/refresh-findings',
-      enabled: true,
+      enabled: legacyFindingsRefreshEnabled,
+      reason_when_disabled: 'disabled_to_prevent_legacy_refresh_marketing_findings_from_overwriting_audit_findings',
     },
     {
       name: 'scorecard',
