@@ -6,7 +6,7 @@
 //
 // Auth: NONE (public, called from browsers). Mitigation:
 //   - Validates event_type whitelist
-//   - Caps payload size (1KB)
+//   - Canonicalises channel to DB-safe source taxonomy
 //   - No PII captured
 //   - Row-level rate limit (TODO if needed) via session_id
 
@@ -23,11 +23,22 @@ const ALLOWED_EVENTS = new Set([
   'session_start', 'page_view', 'product_view',
   'add_to_cart', 'checkout_start', 'order_placed',
   'product_viewed', 'product_added_to_cart', 'checkout_started',
-  'cart_add_request', 'cart_add_failed',
-  'whatsapp_click', 'shopify_inbox_click', 'compatibility_cta_click',
+  'cart_add_request', 'cart_add_failed', 'cart_view', 'cart_checkout_click',
+  'cart_remove_item', 'cart_quantity_change', 'cart_exit_without_checkout', 'checkout_error',
+  'hero_cta_click', 'sticky_cta_click', 'whatsapp_click', 'whatsapp_cta_click',
+  'shopify_inbox_click', 'chatway_click', 'compatibility_cta_click',
   'installation_faq_open', 'hose_connection_faq_open', 'delivery_faq_open',
   'returns_faq_open', 'comparison_section_view', 'reviews_section_view',
-  'offer_section_view', 'guarantee_section_view',
+  'offer_section_view', 'guarantee_section_view', 'whats_in_box_section_view',
+  'testimonial_section_view', 'mechanism_section_view', 'buy_area_view',
+  'price_lock_popup_view', 'price_lock_popup_submit', 'exit_intent_popup_view',
+  'exit_intent_popup_submit', 'whatsapp_lead_submit', 'lead_form_submit',
+  'scroll_depth_25', 'scroll_depth_50', 'scroll_depth_75', 'scroll_depth_90',
+]);
+
+const CANONICAL_CHANNELS = new Set([
+  'meta', 'google', 'tiktok', 'pinterest', 'linkedin', 'organic',
+  'direct', 'email', 'referral', 'sms', 'whatsapp', 'unknown',
 ]);
 
 function svc() {
@@ -36,6 +47,32 @@ function svc() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
+}
+
+function clean(value?: string | null) {
+  return String(value ?? '').trim().toLowerCase();
+}
+
+function canonicalChannel(source?: string | null, medium?: string | null, referrer?: string | null) {
+  const src = clean(source);
+  const med = clean(medium);
+  const ref = clean(referrer);
+  const combined = `${src} ${med} ${ref}`;
+
+  if (/facebook|fb\b|instagram|\big\b|meta|threads/.test(combined)) return 'meta';
+  if (/google|gclid|youtube|yt\b/.test(combined)) return 'google';
+  if (/tiktok|ttclid/.test(combined)) return 'tiktok';
+  if (/pinterest/.test(combined)) return 'pinterest';
+  if (/linkedin/.test(combined)) return 'linkedin';
+  if (/whatsapp|wa\.me/.test(combined)) return 'whatsapp';
+  if (/email|klaviyo|mailchimp|newsletter/.test(combined)) return 'email';
+  if (/sms|text/.test(combined)) return 'sms';
+  if (/organic|seo/.test(combined)) return 'organic';
+
+  if (!src && !ref) return 'direct';
+  if (CANONICAL_CHANNELS.has(src)) return src;
+  if (ref) return 'referral';
+  return 'unknown';
 }
 
 interface PixelEvent {
@@ -90,7 +127,6 @@ export async function POST(request: NextRequest) {
 
   const eventType = EVENT_ALIASES[body.event_type] ?? body.event_type;
 
-  // Resolve landing_page_id if the page_path matches a known KRYO variant
   const sb = svc();
   let landingPageId: string | null = null;
   if (body.page_path && body.page_path.includes('/products/')) {
@@ -107,14 +143,8 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Resolve channel from utm_source (or referrer)
-  const channel = body.utm_source ||
-    (body.referrer && /facebook|fb|instagram/i.test(body.referrer) ? 'meta' :
-     body.referrer && /google/i.test(body.referrer) ? 'google' :
-     body.referrer && /tiktok/i.test(body.referrer) ? 'tiktok' :
-     body.referrer ? 'referral' : 'direct');
+  const channel = canonicalChannel(body.utm_source, body.utm_medium, body.referrer);
 
-  // ip_country / ip_region — Vercel x-forwarded-* headers carry this
   const ipCountry = request.headers.get('x-vercel-ip-country') || null;
   const ipRegion = request.headers.get('x-vercel-ip-region') || null;
   const userAgent = request.headers.get('user-agent') || '';
@@ -128,6 +158,7 @@ export async function POST(request: NextRequest) {
   const isInternal = Boolean(body.is_internal) || /admin\.shopify\.com|adsmanager\.facebook\.com/i.test(body.referrer ?? '');
   const trafficClass = isBot ? 'bot' : isInternal ? 'internal_qa' :
     channel === 'meta' && (metaAdId || body.utm_source) ? 'paid_meta' :
+    channel === 'whatsapp' ? 'whatsapp_return' :
     channel === 'direct' ? 'unknown_direct' : channel;
 
   const { error } = await sb.from('attribution_touches').insert({
@@ -182,12 +213,11 @@ export async function POST(request: NextRequest) {
   });
 
   if (error) {
-    console.error('storefront-event insert failed:', error.message);
+    console.error('storefront-event insert failed:', error.message, { eventType, channel, utm_source: body.utm_source });
     return NextResponse.json({ error: 'insert_failed' }, { status: 500 });
   }
 
   return NextResponse.json({ success: true }, {
-    // CORS so the storefront pixel can POST cross-origin
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -196,7 +226,6 @@ export async function POST(request: NextRequest) {
   });
 }
 
-// CORS preflight
 export async function OPTIONS() {
   return new NextResponse(null, {
     headers: {
