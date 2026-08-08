@@ -1,354 +1,115 @@
 # KRYO Experiment Validation Research Protocol
 
-**Purpose:** turn Tom's proposed marketing experiments into a research-backed ICE decision, an implementation schedule, and a measurable funnel readout.
+**Purpose:** turn Tom's proposed marketing experiments into research-backed decisions, a canonical operating priority queue, an implementation sequence, and measurable readouts.
 
-**Created:** 2026-08-06
+**Updated:** 2026-08-08
 
-This protocol exists because KRYO has low traffic, an unfamiliar high-ticket product, and a live page where stacking unresearched changes can destroy attribution. A proposal is not ready for Codex until the research layer has reduced uncertainty enough to decide whether the change should be a live patch, A/B test, technical fix, asset project, hold, or reject.
+## 1. Source of truth and the key distinction
 
-## 1. Operating principle
+`public.marketing_proposals` is the canonical KRYO ICE/proposal registry.
 
-Every experiment must answer five questions before implementation:
+There are TWO different views of this registry and they must not be confused:
 
-1. **What exact customer fear, objection, or behaviour does this address?**
-2. **Which exact funnel metric should move if the hypothesis is true?**
-3. **What secondary metrics and guardrails prove whether the change helped or hurt?**
-4. **What evidence supports or disproves Tom's hypothesis?**
-5. **Is this a small timestamped live patch, a major A/B test, an asset project, a technical fix, or a hold?**
+- `public.vw_marketing_proposal_ice_matrix` = full research/proposal matrix. Useful for analysis, not the daily operating list.
+- `public.vw_kryo_experiment_operating_queue` = canonical daily operating queue. Use this when Tom asks: "what experiments have we decided to prioritise?", when planning the calendar, or when reviewing the next few days.
 
-Do not treat a high ICE score as permission to implement if tracking is missing.
+Do not use old `marketing_experiments` or `kryo_growth_experiments` draft rows to answer current-priority questions unless explicitly researching experiment history. Those tables contain legacy/draft history and are not the current operating queue.
 
-## 2. Required workflow
+## 2. Why the old readout failed
 
-```text
-Tom idea / observed problem
-        ↓
-Proposal logged in Supabase marketing_proposals
-        ↓
-Research validation sprint
-        ↓
-Tom proposal separated from research assessment
-        ↓
-Funnel metric and guardrails attached
-        ↓
-ICE score updated with evidence basis
-        ↓
-Decision: live patch / A-B test / technical fix / asset project / hold / reject
-        ↓
-Codex receives exact implementation prompt only after decision is clear
-        ↓
-Live timestamp into marketing_change_log when deployed
-        ↓
-Metric readout and learning stored
-```
+The old ICE view mixed research candidates, holds, infrastructure, live tests, scheduled tests and asset projects in one long list. It also filtered primarily on `action_data.product_handle/page/page_path`, so a valid KRYO experiment could disappear when those tags were missing. `recommended_order` was often absent because newer decisions used `week_sequence_order`. Finally, free-form `implementation_status` strings were not consistently recognised by the view's sort logic.
 
-## 3. Proposal database requirements
+Result: real decisions such as the $25->$50 Meta budget test existed in Supabase but were effectively invisible or buried in operational references.
 
-Every serious proposal should populate or update these fields in `public.marketing_proposals`:
+## 3. Mandatory logging rule
 
-- `tom_proposal`
-- `research_assessment`
-- `funnel_stage`
-- `primary_metric_key`
-- `secondary_metric_keys`
-- `guardrail_metric_keys`
-- `expected_metric_direction`
-- `baseline_window`
-- `post_change_window`
-- `measurement_plan`
+Whenever Tom and the growth operator reach a clear decision that a KRYO marketing action is a real experiment/priority, update or create the `marketing_proposals` row in the same interaction. Do not leave a decided experiment only in chat, GitHub notes, calendar, or memory.
+
+Every current KRYO row must include:
+
+- `action_data.product_handle = "kryo2"`
+- market where relevant
+- ICE Impact / Confidence / Ease / score
 - `implementation_status`
-- `implementation_schedule`
-- `implemented_change_ids`
-- `change_started_at`
-- `tom_claim_confidence`
-- `research_confidence`
-- `data_confidence`
-- `confidence_basis`
-- `ease_basis`
-- `ice_impact`
-- `ice_confidence`
-- `ice_ease`
-- `ice_score`
 - `recommended_decision`
-- `risk_to_current_cvr`
 - `next_action`
+- primary metric + guardrails
+- research/data confidence where available
+- `implementation_schedule.week_sequence_order` once it has entered the decided operating sequence
+- dependencies / launch conditions where applicable
+- actual timestamp once live
 
-The readout queue is `public.vw_marketing_proposal_ice_matrix`.
+If an experiment is discussed but NOT decided, keep it as candidate/research and do not assign it a sequence order.
 
-## 4. Research layers
+## 4. Operating states
 
-Each validation sprint should check six layers.
+The daily queue normalises proposals into five states:
 
-### A. KRYO live data layer
+1. `LIVE / MEASURING` - already changed; protect attribution and read results.
+2. `DECIDED / SCHEDULED` - Tom/operator have decided to run it and timing/condition is known.
+3. `DECIDED / PREP` - decision is positive but a real dependency must be completed first (costing, asset, verified fix).
+4. `CANDIDATE / RESEARCH` - potentially valuable but not yet a committed experiment.
+5. `HOLD / BACKLOG` - explicitly not a current priority.
 
-Use Shopify and Supabase first.
+Calendar/operations questions should normally show states 1-3 only. Candidates must not crowd out committed work simply because they have a high theoretical ICE score.
 
-Required checks:
+## 5. Priority logic
 
-- current sessions on `/products/kryo2`
-- add-to-cart sessions
-- PDP add-to-cart rate
-- checkout starts
-- cart-to-checkout rate
-- completed checkout rate
-- purchase conversion rate
-- WhatsApp/chat/conversation signals if available
-- current live change timestamps
-- whether today's data is partial
-- whether another live change would contaminate attribution
+ICE estimates commercial attractiveness. It does NOT by itself determine execution order.
 
-Source of truth order:
+Execution order is:
 
-1. Shopify live/Admin Analytics for commerce and Shopify funnel metrics
-2. Supabase for KRYO events, historical performance, change logs, and readout views
-3. Meta/live ad tools only if fresh and verified
-4. GitHub for implementation context and human-readable operating docs
+1. protect/read live tests;
+2. run committed experiment with lowest `week_sequence_order`;
+3. respect dependencies and contamination risk;
+4. prepare the next committed experiment;
+5. only then pull from candidate research using ICE.
 
-### B. Customer psychology layer
+Therefore a score-63 candidate with an unresolved logistics dependency can sit behind a score-56 experiment that is already scheduled and ready to run.
 
-Define the actual buyer state.
+## 6. Current committed sequence (as of 2026-08-08)
 
-Examples:
+The database is the live authority, but the intended sequence is:
 
-- curiosity but low trust
-- understands product but fears setup complexity
-- wants product but needs human reassurance
-- adds to cart but cart is slow or unclear
-- understands offer but delays due high price
-- needs proof that the product is real and works
+1. 72-hour Meta budget stress test: $25/day -> $50/day. Budget only; do not stack page/creative changes during its clean read window.
+2. Bottom-of-funnel August dispatch/offer creative, conditional on the budget test preserving traffic quality. Parallel cart audit is allowed; only fix an objectively confirmed bug.
+3. Next-day Dubai delivery offer test, after logistics cost/SLA feasibility is confirmed. Prefer a truthful explicit arrival promise over vague dispatch wording.
+4. WhatsApp assist/nurture layer only if the budget + BOF read shows warm traffic needs assisted conversion.
+5. Real KRYO promotional/demo video asset and subsequent PDP/Meta test.
 
-Write the mechanism as a causal chain:
+Live Aug 6 PDP changes remain `LIVE / MEASURING` and should be read separately from the sequence above.
 
-```text
-Customer fear / uncertainty
-↓
-Page change
-↓
-Behaviour changed
-↓
-Metric moved
-```
+## 7. Research workflow
 
-### C. Category-leader layer
+Tom idea / observed problem -> log proposal -> validate with Shopify/Supabase first -> external research -> define causal mechanism -> metrics/guardrails -> ICE -> decision state -> if committed assign sequence -> implementation -> timestamp -> readout -> learning.
 
-Analyse businesses that sell expensive or unfamiliar products, especially:
+Source-of-truth order:
 
-- Eight Sleep
-- Plunge
-- Oura
-- Whoop
-- Tonal
-- Therabody
+1. Shopify live/Admin Analytics for commerce/funnel metrics.
+2. Supabase for KRYO events, proposals, historical performance, change logs and readouts.
+3. Meta/live ad tools only if fresh and verified.
+4. GitHub for implementation context and operating rules.
 
-Look for how they solve:
+## 8. ICE scoring
 
-- product comprehension
-- price justification
-- risk reversal
-- setup reassurance
-- support / human reassurance
-- reviews and proof
-- video/demo usage
-- financing/payment friction
-- post-purchase risk
+`ICE = Impact × Confidence × Ease / 10`
 
-Do not copy their surface design blindly. Translate their buyer psychology to KRYO.
+Impact: 10 = could materially change KRYO sales economics; 8-9 = likely material primary-funnel movement; 6-7 = meaningful narrower effect; <=5 = smaller/diagnostic.
 
-### D. Market/channel layer
+Confidence: 9-10 = KRYO data + strong external evidence + manageable downside; 7-8 = strong directional evidence; 5-6 = plausible/theoretical with uncertainty; <=4 = weak/high-risk.
 
-For Dubai/UAE, check whether the proposed channel or behaviour fits the local market.
+Ease: 9-10 = quick low-risk change; 7-8 = small implementation + measurement; 5-6 = moderate dependency/investigation; 3-4 = asset/physical/multi-day; <=2 = major dependency.
 
-Examples:
+## 9. Measurement minimum
 
-- mobile commerce behaviour
-- WhatsApp/business messaging preference
-- payment/checkout expectations
-- high-ticket purchase behaviour
-- local trust norms
-- delivery/returns expectations
+Before implementation, define one primary metric, at least two secondary metrics, at least two guardrails, baseline, post-change window, timestamp plan, rollback/fail condition, and any required custom event.
 
-### E. UX/CRO risk layer
+Do not stack changes during a protected experiment window unless the second action is an objectively necessary technical fix and is separately timestamped.
 
-Look for evidence that the same tactic can hurt conversion.
+## 10. Codex boundary
 
-Examples:
+Codex is implementation-only after strategy is specified. A handoff must define exact surface, exact change/copy, event tracking, forbidden scope, success criteria, rollback condition, read-before/write/read-after checks and marketing change-log timestamp. Codex must not rediscover strategy.
 
-- WhatsApp may cannibalise direct add-to-cart
-- popups can interrupt task flow
-- sticky chat can block mobile content
-- video can slow page load
-- too much information can increase decision work
-- extra product options can create choice complexity
+## 11. Daily operations query
 
-A good experiment proposal must include guardrails.
-
-### F. Implementation and measurement layer
-
-Check whether the experiment can be measured before it is implemented.
-
-Minimum requirement:
-
-- one primary metric
-- at least two secondary metrics
-- at least two guardrails
-- baseline window
-- post-change window
-- event name if custom tracking is required
-- implementation timestamp plan
-- rollback/fail condition
-
-## 5. ICE scoring rules
-
-Formula:
-
-```text
-ICE score = Impact × Confidence × Ease / 10
-```
-
-### Impact score
-
-Impact means expected commercial upside if the hypothesis is true.
-
-Guide:
-
-- 10: could materially change KRYO sales economics or unlock a reusable asset/channel
-- 8-9: likely to move a primary funnel metric materially
-- 6-7: meaningful but narrower effect
-- 4-5: small optimisation or diagnostic improvement
-- 1-3: low ceiling, cosmetic, or not connected to a revenue metric
-
-Impact must name the metric expected to move.
-
-### Confidence score
-
-Confidence must not be made up. It should combine:
-
-- KRYO data and current funnel context
-- external research and benchmarks
-- category-leader analogues
-- consumer psychology fit
-- implementation risk and cannibalisation risk
-- measurement quality
-
-Confidence guide:
-
-- 9-10: KRYO data + strong external evidence + low downside
-- 7-8: strong directional evidence but limited KRYO-specific proof
-- 5-6: plausible, supported by theory, but with clear uncertainty
-- 3-4: weak evidence or high risk of downside
-- 1-2: mostly guesswork or contradicted by data
-
-### Ease score
-
-Ease is based on KRYO's actual resources, not generic effort.
-
-Guide:
-
-- 9-10: copy/layout change Codex can implement quickly with low risk
-- 7-8: small theme change plus tracking/readback
-- 5-6: requires technical investigation or moderate implementation
-- 3-4: requires asset production, physical product readiness, or multi-day work
-- 1-2: major dependency, large build, or unclear implementation
-
-## 6. Decision taxonomy
-
-### Small timestamped live patch
-
-Use when:
-
-- one variable is changed
-- traffic is too low for clean A/B testing
-- downside risk is limited
-- measurement exists
-- change can be reverted
-
-### Major A/B test
-
-Use when:
-
-- change alters the purchase architecture
-- change could strongly cannibalise current conversion
-- enough traffic is available
-- variants can be cleanly separated
-
-### Technical conversion fix
-
-Use when:
-
-- issue is not a marketing hypothesis
-- the current funnel is objectively broken or slow
-- the correct action is measure → isolate cause → fix → reread
-
-Do not A/B test obvious defects.
-
-### Asset project
-
-Use when:
-
-- impact is high but implementation requires product completion, photo/video shoot, creative editing, or external dependency
-
-### Hold
-
-Use when:
-
-- risk is high
-- measurement is missing
-- another cleaner experiment should run first
-- current live changes need a readout window
-
-### Reject
-
-Use when:
-
-- hypothesis is contradicted by live data or external evidence
-- change conflicts with KRYO positioning
-- change creates a tracking/checkout risk
-
-## 7. Codex handoff requirements
-
-Codex should only receive implementation work after the research sprint defines:
-
-- exact page/template/resource
-- exact location
-- exact copy
-- exact event tracking
-- exact forbidden scope
-- exact success criteria
-- exact rollback condition
-- read-before / write / read-after checks
-- marketing_change_log timestamp instruction
-
-Codex should not rediscover strategy or make marketing judgement calls.
-
-## 8. Standard validation output format
-
-Every serious research validation should produce:
-
-1. Executive verdict
-2. Tom proposal
-3. Research assessment
-4. KRYO live context
-5. Customer psychology
-6. Category leader parallels
-7. Market/channel evidence
-8. UX/CRO risk evidence
-9. Metrics and measurement plan
-10. ICE score and basis
-11. Implementation recommendation
-12. Codex-ready prompt
-13. Database updates performed
-14. Required follow-up readout
-
-## 9. Current model example
-
-The first full model example is:
-
-`docs/kryo-growth/research/KRYO_WHATSAPP_ASSISTED_SALES_EXPERIMENT_2026_08.md`
-
-Use it as the standard for future requests such as:
-
-- validate this experiment
-- disprove this experiment
-- research whether this should be live patched or A/B tested
-- update the ICE score with evidence
-- prepare Codex implementation prompt
+For regular operations/calendar planning, query `public.vw_kryo_experiment_operating_queue`, show `LIVE / MEASURING`, `DECIDED / SCHEDULED`, and `DECIDED / PREP`, ordered by operating state then `sequence_order`. Explain dependencies. Do not substitute a raw ICE-score sort or legacy experiment table.
