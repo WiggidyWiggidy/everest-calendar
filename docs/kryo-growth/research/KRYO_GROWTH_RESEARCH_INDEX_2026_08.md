@@ -98,7 +98,22 @@ Use for:
 - expert assisted sales;
 - demonstration / mechanism proof.
 
-## 7. Assisted conversion
+## 7. Promo video and research memory protocol
+
+`KRYO_PROMO_VIDEO_AND_RESEARCH_MEMORY_PROTOCOL_2026_08.md`
+
+Use for:
+- Eight Sleep-style promotional video structure translated to KRYO;
+- how video increases product comprehension, belief and purchase intent;
+- exact 60-90 second KRYO video sequence;
+- required shot list for founder/product/customer proof footage;
+- PDP, Meta, retargeting and WhatsApp repurposing rules;
+- research-memory capture rules for ChatGPT/user/competitor insights;
+- resolving conflicting research over time.
+
+**Key decision:** the KRYO promo video is not just content. It is a conversion, proof and comprehension asset. It should be created now, then tested cleanly on the current winning PDP before a full PDP rebuild.
+
+## 8. Assisted conversion
 
 `KRYO_ASSISTED_CONVERSION_WHATSAPP_AND_EXIT_INTENT_2026_08.md`
 
@@ -111,7 +126,7 @@ Use for:
 
 **Key decision:** WhatsApp is strategically valuable, but it is not bundled into Control v2 Release 1. Introduce it as a separate measured assisted-conversion release after the baseline is stable. Exit intent remains later.
 
-## 8. Control v2 research spec
+## 9. Control v2 research spec
 
 `KRYO_CONTROL_V2_PRETEST_UPGRADE_2026_08.md`
 
@@ -124,7 +139,7 @@ Use for:
 
 Execution must use the frozen task manifest, not reinterpret this research note.
 
-## 9. Authority order
+## 10. Authority order
 
 For decisions, use this order:
 
@@ -136,7 +151,7 @@ For decisions, use this order:
 6. **Canonical KRYO Growth OS** — broader strategy and historical benchmark.
 7. Older KRYO docs — historical context only where not superseded.
 
-## 10. Measurement gate
+## 11. Measurement gate
 
 At the time these notes were expanded:
 
@@ -150,7 +165,7 @@ Therefore:
 
 Onsite funnel data can still detect technical failures and directional intent.
 
-## 11. Immediate sequence
+## 12. Immediate sequence
 
 ### A. Control v2 Release 1
 
@@ -196,15 +211,36 @@ Mechanism / product education:
 - engineered system;
 - preferably real demonstration footage.
 
-### E. Major validation test
+### E. Promo video / comprehension asset
 
-Only after a pre-frame demonstrates commercial signal:
+Start asset creation now:
+- tired morning state;
+- KRYO reveal;
+- real Halo/water/use footage;
+- temperature/mechanism proof;
+- what arrives;
+- 30-morning trial/risk reversal;
+- cutdowns for Meta and WhatsApp.
+
+First clean test:
+- current winning PDP + video near hero / first product explanation;
+- no simultaneous cart copy, price, delivery or full PDP rebuild change.
+
+### F. Major validation test
+
+Only after a pre-frame or video/proof asset demonstrates commercial signal:
 - build a matched first-20–25% landing-page treatment;
 - use controlled Meta Experiment only if causal certainty is worth the delivery-efficiency cost.
 
-### F. Assisted conversion
+### G. Assisted conversion
 
 After Control v2 stabilises:
 - subordinate WhatsApp specialist path;
 - measure assisted revenue / 1-, 7-, 30-day conversion;
 - later test targeted exit-intent → WhatsApp with no extra discount by default.
+
+## 13. Research memory rule
+
+When a ChatGPT/user/competitor insight materially changes KRYO positioning, offer, video, page structure, cart psychology, follow-up, price, delivery promise or measurement logic, it must be captured in Supabase and/or a GitHub research note.
+
+If new research conflicts with old research, do not choose automatically. Record the conflict, evidence on both sides, current status, supersession rule and the experiment or live data that resolves it.
